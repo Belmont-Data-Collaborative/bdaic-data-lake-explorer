@@ -4,6 +4,7 @@ import { Database, Settings, Cloud, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfigurationPanel } from "@/components/configuration-panel";
 import { SearchFilters } from "@/components/search-filters";
+import { MainPageActions } from "@/components/main-page-actions";
 import { StatsCards } from "@/components/stats-cards";
 import { DatasetList } from "@/components/dataset-list";
 import { FolderCard } from "@/components/folder-card";
@@ -469,6 +470,17 @@ export default function Home({ onLogout }: HomeProps) {
           </>
         ) : (
           <>
+            {/* Main Page Actions */}
+            <MainPageActions
+              folders={folders}
+              onRefresh={() => {
+                refetchAllDatasets();
+                setIsRefreshing(false);
+              }}
+              onSelectDataset={handleSelectDataset}
+              isRefreshing={isRefreshing}
+            />
+
             {/* Folder Cards */}
             <div className="space-y-4 relative">
               <div className="flex items-center justify-between">
