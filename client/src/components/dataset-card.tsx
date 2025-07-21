@@ -739,7 +739,7 @@ export function DatasetCard({
                     onClick={() => setIsChatOpen(true)}
                   >
                     <Search className="mr-2" size={16} />
-                    Explore Data
+                    Ask AI
                   </Button>
                   <Button
                     variant="outline"
