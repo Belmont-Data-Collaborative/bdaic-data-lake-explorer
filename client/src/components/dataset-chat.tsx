@@ -19,8 +19,8 @@ import {
   ArcElement,
   PointElement,
   LineElement,
-} from 'chart.js';
-import { Bar, Pie, Line } from 'react-chartjs-2';
+} from "chart.js";
+import { Bar, Pie, Line } from "react-chartjs-2";
 import type { Dataset } from "@shared/schema";
 
 // Register Chart.js components
@@ -33,11 +33,11 @@ ChartJS.register(
   Legend,
   ArcElement,
   PointElement,
-  LineElement
+  LineElement,
 );
 
 interface ChartData {
-  type: 'bar' | 'pie' | 'line';
+  type: "bar" | "pie" | "line";
   data: any;
   options?: any;
   title?: string;
@@ -79,18 +79,7 @@ export function DatasetChat({ dataset, isOpen, onClose }: DatasetChatProps) {
       const welcomeMessage: Message = {
         id: `welcome-${Date.now()}`,
         role: "assistant",
-        content: `Hello! I'm your AI data analyst for the "${dataset.name}" dataset. I have access to the actual data file and can help you with:
-
-📊 **Data Analysis & Visualization**: Create charts and graphs from the data
-📁 **File Access**: Analyze the actual dataset contents and structure
-🔍 **Pattern Discovery**: Find relationships, trends, and insights
-📈 **Statistical Analysis**: Calculate correlations, distributions, and summaries
-💡 **Recommendations**: Suggest analysis approaches and interpretations
-
-Ask me questions like:
-- "Show me a chart of the top 10 states by poverty rate"
-- "What's the relationship between food access and poverty?"
-- "Create a visualization of the data trends"
+        content: `Hello! I'm your AI data analyst for the "${dataset.name}" dataset
 
 What would you like to explore?`,
         timestamp: new Date(),
@@ -102,11 +91,15 @@ What would you like to explore?`,
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", `/api/datasets/${dataset.id}/chat`, {
-        message,
-        conversationHistory: messages.slice(-10), // Send last 10 messages for context
-        enableVisualization: true, // Request chart data if applicable
-      });
+      const response = await apiRequest(
+        "POST",
+        `/api/datasets/${dataset.id}/chat`,
+        {
+          message,
+          conversationHistory: messages.slice(-10), // Send last 10 messages for context
+          enableVisualization: true, // Request chart data if applicable
+        },
+      );
       return response.json();
     },
     onSuccess: (data) => {
@@ -118,7 +111,7 @@ What would you like to explore?`,
         chart: data.chart, // Include chart data if provided
         hasFileAccess: data.hasFileAccess,
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
     },
     onError: (error: any) => {
@@ -141,7 +134,7 @@ What would you like to explore?`,
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     chatMutation.mutate(inputValue.trim());
     setInputValue("");
@@ -159,22 +152,22 @@ What would you like to explore?`,
       responsive: true,
       plugins: {
         legend: {
-          position: 'top' as const,
+          position: "top" as const,
         },
         title: {
           display: !!chart.title,
-          text: chart.title || '',
+          text: chart.title || "",
         },
       },
       ...chart.options,
     };
 
     switch (chart.type) {
-      case 'bar':
+      case "bar":
         return <Bar data={chart.data} options={commonOptions} />;
-      case 'pie':
+      case "pie":
         return <Pie data={chart.data} options={commonOptions} />;
-      case 'line':
+      case "line":
         return <Line data={chart.data} options={commonOptions} />;
       default:
         return null;
@@ -183,11 +176,14 @@ What would you like to explore?`,
 
   const downloadData = async () => {
     try {
-      const response = await apiRequest("GET", `/api/datasets/${dataset.id}/download`);
+      const response = await apiRequest(
+        "GET",
+        `/api/datasets/${dataset.id}/download`,
+      );
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
+      const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
       a.download = `${dataset.name}.csv`;
       document.body.appendChild(a);
@@ -218,7 +214,9 @@ What would you like to explore?`,
               <Bot className="text-blue-600" size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">AI Data Analyst</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                AI Data Analyst
+              </h2>
               <p className="text-sm text-gray-600 flex items-center space-x-1">
                 <BarChart3 className="h-3 w-3" />
                 <span>Analyzing: {dataset.name}</span>
@@ -226,7 +224,12 @@ What would you like to explore?`,
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" onClick={downloadData} title="Download Dataset">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={downloadData}
+              title="Download Dataset"
+            >
               <Download className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -245,7 +248,9 @@ What would you like to explore?`,
               >
                 <div
                   className={`flex items-start space-x-3 max-w-[80%] ${
-                    message.role === "user" ? "flex-row-reverse space-x-reverse" : ""
+                    message.role === "user"
+                      ? "flex-row-reverse space-x-reverse"
+                      : ""
                   }`}
                 >
                   <div
@@ -255,7 +260,11 @@ What would you like to explore?`,
                         : "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {message.role === "user" ? <User size={16} /> : <Bot size={16} />}
+                    {message.role === "user" ? (
+                      <User size={16} />
+                    ) : (
+                      <Bot size={16} />
+                    )}
                   </div>
                   <div
                     className={`rounded-lg px-4 py-3 ${
@@ -266,19 +275,53 @@ What would you like to explore?`,
                   >
                     {message.role === "assistant" ? (
                       <div className="text-sm">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                            em: ({ children }) => <em className="italic">{children}</em>,
-                            ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-                            li: ({ children }) => <li className="mb-1">{children}</li>,
-                            code: ({ children }) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs">{children}</code>,
-                            h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base font-bold mb-1">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                            p: ({ children }) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-semibold">
+                                {children}
+                              </strong>
+                            ),
+                            em: ({ children }) => (
+                              <em className="italic">{children}</em>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="list-disc pl-4 mb-2">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="list-decimal pl-4 mb-2">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="mb-1">{children}</li>
+                            ),
+                            code: ({ children }) => (
+                              <code className="bg-gray-200 px-1 py-0.5 rounded text-xs">
+                                {children}
+                              </code>
+                            ),
+                            h1: ({ children }) => (
+                              <h1 className="text-lg font-bold mb-2">
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2 className="text-base font-bold mb-1">
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3 className="text-sm font-bold mb-1">
+                                {children}
+                              </h3>
+                            ),
                           }}
                         >
                           {message.content}
@@ -292,17 +335,21 @@ What would you like to explore?`,
                         )}
                         {message.hasFileAccess && (
                           <div className="mt-2 flex items-center space-x-1 text-xs text-green-600">
-                            <BarChart3 className="h-3 w-3" />
-                            <span>Analysis includes actual file data</span>
+                            {/* <BarChart3 className="h-3 w-3" /> */}
+                            {/* <span>Analysis includes actual file data</span> */}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {message.content}
+                      </p>
                     )}
                     <p
                       className={`text-xs mt-2 ${
-                        message.role === "user" ? "text-blue-100" : "text-gray-500"
+                        message.role === "user"
+                          ? "text-blue-100"
+                          : "text-gray-500"
                       }`}
                     >
                       {message.timestamp.toLocaleTimeString()}
@@ -320,7 +367,9 @@ What would you like to explore?`,
                   <div className="bg-gray-100 rounded-lg px-4 py-3">
                     <div className="flex items-center space-x-2">
                       <Loader2 className="animate-spin" size={16} />
-                      <span className="text-sm text-gray-600">AI is thinking...</span>
+                      <span className="text-sm text-gray-600">
+                        AI is thinking...
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -350,7 +399,8 @@ What would you like to explore?`,
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Press Enter to send • The AI has context about this dataset's structure and metadata
+            Press Enter to send • The AI has context about this dataset's
+            structure and metadata
           </p>
         </div>
       </div>

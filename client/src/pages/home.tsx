@@ -86,8 +86,8 @@ export default function Home({ onLogout }: HomeProps) {
         page: "1",
         limit: "10000",
         folder: selectedFolder || "all",
-        ...(searchTerm && { search: searchTerm }),
-        ...(formatFilter !== "all" && { format: formatFilter }),
+        ...(selectedFolder && searchTerm && { search: searchTerm }),
+        ...(selectedFolder && formatFilter !== "all" && { format: formatFilter }),
       });
       const response = await fetch(`/api/datasets?${params}`);
       return response.json();
@@ -469,22 +469,6 @@ export default function Home({ onLogout }: HomeProps) {
           </>
         ) : (
           <>
-            {/* Search Filters */}
-            <SearchFilters
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              formatFilter={formatFilter}
-              onFormatChange={setFormatFilter}
-              folders={folders}
-              onRefresh={() => {
-                refetchDatasets();
-                setIsRefreshing(false);
-              }}
-              onSelectDataset={handleSelectDataset}
-              isRefreshing={isRefreshing}
-              showFolderFilter={false}
-            />
-
             {/* Folder Cards */}
             <div className="space-y-4 relative">
               <div className="flex items-center justify-between">
