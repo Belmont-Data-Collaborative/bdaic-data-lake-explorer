@@ -1,0 +1,88 @@
+Project Overview:
+
+Build a full-stack web application on Replit that explores the contents of an Amazon S3 bucket (bdaic-public-transform) in a folder-wise hierarchy. The bucket contains CSS files and accompanying YAML metadata. The app will:
+
+🗂️ Features
+S3 Data Lake Explorer UI
+
+Display CSS files in the same hierarchical structure as the S3 bucket (multiple folders and subfolders).
+
+Hide YAML files from the display, but utilize them in the background for metadata.
+
+Metadata Integration
+
+Load YAML metadata corresponding to each CSS file (same name, different extension).
+
+Show metadata summary when hovering or selecting a file.
+
+AI Insights (File Level)
+
+Add an “AI Insight” button next to each CSS file.
+
+Use an AI model (OpenAI GPT or Claude API) to analyze the CSS content and its YAML metadata to provide:
+
+Purpose
+
+Complexity
+
+Usage context
+
+Code smells / improvement suggestions
+
+AI Insights (Folder Level)
+
+Provide a folder-level “AI Insight” button that summarizes:
+
+Total files
+
+Styling trends
+
+Reused patterns
+
+Anomalies across files in the folder
+
+Authentication
+
+Add a lightweight login system (e.g., email + password or Google OAuth).
+
+Only allow access to authorized users.
+
+Store credentials securely (e.g., Replit Secrets or external auth provider).
+
+Tech Stack Recommendations:
+
+Frontend: React.js + Tailwind CSS (for a clean, responsive UI)
+
+Backend: Flask or FastAPI (lightweight, async-friendly, Replit-compatible)
+
+AI Integration: OpenAI’s gpt-4 or gpt-3.5-turbo via API
+
+Storage Access: boto3 for S3 (configure Replit secrets for access keys)
+
+YAML Parsing: Use pyyaml to parse and map metadata to files
+
+Authentication: Use Firebase Auth or simple JWT-based system with bcrypt
+
+Security and Optimization Tips:
+
+Use IAM roles with read-only permissions to your S3 bucket.
+
+Use pagination or lazy loading for very large folders.
+
+Sanitize YAML and CSS content before feeding it to AI.
+
+Cache AI insight results locally to minimize API costs.
+
+Add download/share options for insights (PDF or Markdown export).
+
+Log file views and insight requests for analytics.
+
+Stretch Goals (Optional):
+
+Add versioning and history tracking for CSS files.
+
+Let users upload/update metadata through the UI.
+
+Let users bookmark folders or files for quick access.
+
+Add AI-generated visualizations (e.g., heatmaps of usage).
