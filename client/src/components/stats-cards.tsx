@@ -1,6 +1,6 @@
 import { Folder, HardDrive, Map, Clock, BarChart3 } from "lucide-react";
 import { useDynamicTime } from "@/hooks/use-dynamic-time";
-import { useCountAnimation, useStaggeredCountAnimation } from "@/hooks/use-count-animation";
+import { useCountAnimation } from "@/hooks/use-count-animation";
 
 interface Stats {
   totalDatasets: number;
@@ -18,7 +18,8 @@ interface StatsCardsProps {
 export function StatsCards({ stats }: StatsCardsProps) {
   const dynamicLastUpdated = useDynamicTime(stats?.lastRefreshTime || null);
   
-  // Animated counting for numeric stats
+  // Always call hooks at the top level - never conditionally
+  // Animated counting for numeric stats (will be used when stats are available)
   const animatedDatasets = useCountAnimation({
     target: stats?.totalDatasets || 0,
     duration: 1800,
@@ -37,11 +38,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
     delay: 500,
   });
 
+  // Loading state placeholders (will be used when stats are not available)
+  const placeholderDatasets = useCountAnimation({ target: 250, duration: 2000 });
+  const placeholderSources = useCountAnimation({ target: 15, duration: 1800, delay: 200 });
+  const placeholderPoints = useCountAnimation({ target: 15000000, duration: 2500, delay: 400 });
+
   // Loading state with animated placeholders
   if (!stats) {
-    const placeholderDatasets = useCountAnimation({ target: 250, duration: 2000 });
-    const placeholderSources = useCountAnimation({ target: 15, duration: 1800, delay: 200 });
-    const placeholderPoints = useCountAnimation({ target: 15000000, duration: 2500, delay: 400 });
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
