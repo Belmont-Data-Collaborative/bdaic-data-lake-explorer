@@ -573,6 +573,71 @@ export class AwsS3Service {
     }
   }
 
+  async downloadFullFile(
+    bucketName: string,
+    source: string,
+    datasetName: string,
+  ): Promise<Buffer | null> {
+    try {
+      // Find the first data file (non-YAML) for this dataset
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: source ? `${source}/` : "",
+        MaxKeys: 100,
+      });
+
+      const response = await this.s3Client.send(command);
+      if (!response.Contents) return null;
+
+      // Find a data file that matches the dataset name
+      const dataFile = response.Contents.find((file) => {
+        if (!file.Key) return false;
+        const fileName = file.Key.split("/").pop() || "";
+        const baseName = fileName.replace(/\.[^/.]+$/, "");
+        const extension = fileName.split(".").pop()?.toLowerCase();
+
+        return (
+          baseName === datasetName &&
+          extension !== "yaml" &&
+          extension !== "yml"
+        );
+      });
+
+      if (!dataFile?.Key) {
+        console.error(`No data file found for dataset: ${datasetName}`);
+        return null;
+      }
+
+      console.log(`Downloading full file for ${datasetName}: ${dataFile.Key}`);
+
+      // Download the complete file
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: dataFile.Key,
+      });
+
+      const downloadResponse = await this.s3Client.send(getObjectCommand);
+
+      if (!downloadResponse.Body) return null;
+
+      // Convert the stream to buffer
+      const chunks: Buffer[] = [];
+      const stream = downloadResponse.Body as any;
+
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+
+      const fullBuffer = Buffer.concat(chunks);
+      console.log(`Successfully downloaded full file: ${fullBuffer.length} bytes`);
+      
+      return fullBuffer;
+    } catch (error) {
+      console.error(`Error downloading full file for ${datasetName}:`, error);
+      return null;
+    }
+  }
+
   private async extractEnhancedMetadata(
     bucketName: string,
     files: any[],

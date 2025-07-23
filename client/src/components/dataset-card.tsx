@@ -184,6 +184,56 @@ export function DatasetCard({
     },
   });
 
+  const downloadFullMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `/api/datasets/${dataset.id}/download-full`,
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Download failed");
+      }
+
+      // Get filename from Content-Disposition header or create one
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      return { blob, fileName };
+    },
+    onSuccess: (data: { blob: Blob; fileName: string }) => {
+      // Create a temporary link and trigger download
+      const url = window.URL.createObjectURL(data.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download started",
+        description: `Full file ${data.fileName} is downloading.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Download failed",
+        description: error.message || "Failed to download full file",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getIconForFormat = (format: string) => {
     const formatLower = format.toLowerCase();
     if (formatLower.includes("csv")) return Table;
@@ -740,7 +790,7 @@ export function DatasetCard({
 
               {/* Action Buttons */}
               <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
-                <div className="flex items-center space-x-4" role="group" aria-label="Dataset actions">
+                <div className="flex items-center flex-wrap gap-2 sm:gap-4" role="group" aria-label="Dataset actions">
                   <Button
                     className="bg-primary hover:bg-primary/90 text-primary-foreground touch-target"
                     onClick={() => setIsChatOpen(true)}
@@ -766,6 +816,26 @@ export function DatasetCard({
                       <>
                         <Download className="mr-2" size={16} aria-hidden="true" />
                         <span>Download Sample</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => downloadFullMutation.mutate(dataset.id)}
+                    disabled={downloadFullMutation.isPending}
+                    className="touch-target"
+                    aria-label={`Download full file of ${dataset.name}`}
+                  >
+                    {downloadFullMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                        <span>Downloading...</span>
+                        <span className="sr-only">Downloading full file</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2" size={16} aria-hidden="true" />
+                        <span>Download Full File</span>
                       </>
                     )}
                   </Button>

@@ -667,6 +667,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download full file endpoint
+  app.get("/api/datasets/:id/download-full", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const dataset = await storage.getDataset(id);
+      
+      if (!dataset) {
+        return res.status(404).json({ message: "Dataset not found" });
+      }
+
+      const config = await storage.getAwsConfig();
+      
+      if (!config || !config.bucketName) {
+        return res.status(400).json({ message: "AWS configuration not found" });
+      }
+
+      const s3Service = createAwsS3Service(config.region);
+      
+      // Get full file content from S3
+      const fileContent = await s3Service.downloadFullFile(config.bucketName, dataset.source, dataset.name);
+      
+      if (!fileContent) {
+        return res.status(404).json({ message: "File not found or failed to download" });
+      }
+
+      // Set appropriate headers for file download
+      const fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Length', fileContent.length);
+      
+      // Send the full file content
+      res.send(fileContent);
+    } catch (error) {
+      console.error("Error downloading full file:", error);
+      res.status(500).json({ message: "Failed to download full file" });
+    }
+  });
+
   // Get community data points calculation
   app.get("/api/community-data-points", async (req, res) => {
     try {
