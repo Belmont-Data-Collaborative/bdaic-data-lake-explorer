@@ -1,19 +1,16 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Home from "@/pages/home";
+import Login from "@/pages/login";
+import NotFound from "@/pages/not-found";
+import ApiDocsPage from "@/pages/api-docs";
+import AwsConfigPage from "@/pages/aws-config";
 import { MainLayout } from "@/components/main-layout";
 import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper";
-import { 
-  HomePage, 
-  LoginPage, 
-  AwsConfigPage, 
-  ApiDocsPage, 
-  NotFoundPage,
-  PageLoadingFallback 
-} from "@/pages/lazy-pages";
 
 function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -50,23 +47,17 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <Suspense fallback={<PageLoadingFallback />}>
-        <LoginPage onLogin={handleLogin} />
-      </Suspense>
-    );
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
     <MainLayout onLogout={handleLogout}>
-      <Suspense fallback={<PageLoadingFallback />}>
-        <Switch>
-          <Route path="/" component={() => <HomePage />} />
-          <Route path="/aws-config" component={() => <AwsConfigPage />} />
-          <Route path="/api-docs" component={() => <ApiDocsPage />} />
-          <Route component={() => <NotFoundPage />} />
-        </Switch>
-      </Suspense>
+      <Switch>
+        <Route path="/" component={() => <Home />} />
+        <Route path="/aws-config" component={() => <AwsConfigPage />} />
+        <Route path="/api-docs" component={() => <ApiDocsPage />} />
+        <Route component={NotFound} />
+      </Switch>
     </MainLayout>
   );
 }

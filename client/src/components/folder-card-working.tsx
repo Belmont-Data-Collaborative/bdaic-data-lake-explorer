@@ -5,20 +5,35 @@ import { useMemo, memo } from "react";
 import type { Dataset } from "@shared/schema";
 
 interface FolderCardProps {
-  name: string;
-  count: number;
-  communityDataPoints?: number;
+  folderName: string;
+  datasets: Dataset[];
   onClick: () => void;
+  totalCommunityDataPoints?: number;
 }
 
-export const FolderCard = memo(function FolderCard({ name, count, communityDataPoints = 0, onClick }: FolderCardProps) {
-  // Use the provided count and data instead of calculating from datasets
-  const displayName = name.replace(/_/g, ' ').toUpperCase();
-  const formattedCommunityPoints = communityDataPoints.toLocaleString();
+export const FolderCard = memo(function FolderCard({ folderName, datasets, onClick, totalCommunityDataPoints }: FolderCardProps) {
+  // Memoize expensive calculations
+  const { datasetCount, totalSize, formatCounts } = useMemo(() => {
+    const datasetCount = datasets.length;
+    const totalSize = datasets.reduce((total, dataset) => total + (dataset.sizeBytes || 0), 0);
+    
+    // Get unique formats in this folder
+    const formatSet = new Set(datasets.map(d => d.format));
+    const formats = Array.from(formatSet);
+    const formatCounts = formats.map(format => ({
+      format,
+      count: datasets.filter(d => d.format === format).length
+    })).sort((a, b) => b.count - a.count);
+    
+    return { datasetCount, totalSize, formatCounts };
+  }, [datasets]);
 
-  // Simple formatting helper
-  const formatCount = (num: number): string => {
-    return num.toLocaleString();
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
   return (
@@ -33,7 +48,7 @@ export const FolderCard = memo(function FolderCard({ name, count, communityDataP
       }}
       tabIndex={0}
       role="button"
-      aria-label={`Open ${displayName} folder with ${count} datasets`}
+      aria-label={`Open ${folderName.replace(/_/g, ' ')} folder with ${datasetCount} datasets`}
     >
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
