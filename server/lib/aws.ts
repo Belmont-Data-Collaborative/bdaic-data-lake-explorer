@@ -577,7 +577,7 @@ export class AwsS3Service {
     bucketName: string,
     source: string,
     datasetName: string,
-  ): Promise<Buffer | null> {
+  ): Promise<{ stream: any; key: string; size?: number } | null> {
     try {
       // Find the first data file (non-YAML) for this dataset
       const command = new ListObjectsV2Command({
@@ -608,7 +608,7 @@ export class AwsS3Service {
         return null;
       }
 
-      console.log(`Downloading full file for ${datasetName}: ${dataFile.Key}`);
+      console.log(`Preparing full file stream for ${datasetName}: ${dataFile.Key}`);
 
       // Download the complete file
       const getObjectCommand = new GetObjectCommand({
@@ -620,20 +620,15 @@ export class AwsS3Service {
 
       if (!downloadResponse.Body) return null;
 
-      // Convert the stream to buffer
-      const chunks: Buffer[] = [];
-      const stream = downloadResponse.Body as any;
-
-      for await (const chunk of stream) {
-        chunks.push(chunk);
-      }
-
-      const fullBuffer = Buffer.concat(chunks);
-      console.log(`Successfully downloaded full file: ${fullBuffer.length} bytes`);
+      console.log(`Successfully prepared full file stream: ${dataFile.Size || 'unknown'} bytes`);
       
-      return fullBuffer;
+      return {
+        stream: downloadResponse.Body,
+        key: dataFile.Key,
+        size: dataFile.Size || undefined
+      };
     } catch (error) {
-      console.error(`Error downloading full file for ${datasetName}:`, error);
+      console.error(`Error preparing full file stream for ${datasetName}:`, error);
       return null;
     }
   }

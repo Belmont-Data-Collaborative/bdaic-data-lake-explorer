@@ -685,10 +685,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const s3Service = createAwsS3Service(config.region);
       
-      // Get full file content from S3
-      const fileContent = await s3Service.downloadFullFile(config.bucketName, dataset.source, dataset.name);
+      // Get full file stream from S3
+      const fileInfo = await s3Service.downloadFullFile(config.bucketName, dataset.source, dataset.name);
       
-      if (!fileContent) {
+      if (!fileInfo) {
         return res.status(404).json({ message: "File not found or failed to download" });
       }
 
@@ -696,13 +696,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader('Content-Length', fileContent.length);
       
-      // Send the full file content
-      res.send(fileContent);
+      // Set content length if available
+      if (fileInfo.size) {
+        res.setHeader('Content-Length', fileInfo.size);
+      }
+      
+      // Pipe the stream directly to the response to avoid memory issues
+      const stream = fileInfo.stream as any;
+      stream.pipe(res);
+      
+      // Handle stream errors
+      stream.on('error', (error: any) => {
+        console.error('Stream error during download:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to download full file" });
+        }
+      });
+      
     } catch (error) {
       console.error("Error downloading full file:", error);
-      res.status(500).json({ message: "Failed to download full file" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to download full file" });
+      }
     }
   });
 
