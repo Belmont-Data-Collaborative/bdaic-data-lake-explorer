@@ -19,11 +19,9 @@ interface Stats {
   totalCommunityDataPoints?: number;
 }
 
-interface HomeProps {
-  onLogout?: () => void;
-}
+interface HomeProps {}
 
-export default function Home({ onLogout }: HomeProps) {
+export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState("all");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -333,50 +331,7 @@ export default function Home({ onLogout }: HomeProps) {
   const paginatedFolders = foldersWithDatasets;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                  <Database className="text-white" size={16} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">
-                    Data Lake Explorer
-                  </h1>
-                  <p className="text-sm text-gray-500">
-                    AWS S3 Dataset Management
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
-                <Cloud className="text-primary-600" size={16} />
-                <span className="text-sm font-medium text-gray-700">
-                  {awsConfig?.bucketName || "Not configured"}
-                </span>
-              </div>
-              {onLogout && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onLogout}
-                  className="flex items-center space-x-2"
-                >
-                  <LogOut size={16} />
-                  <span>Logout</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Configuration Panel */}
         <ConfigurationPanel onRefreshStateChange={setIsRefreshing} />
 
@@ -539,7 +494,6 @@ export default function Home({ onLogout }: HomeProps) {
             </div>
           </>
         )}
-      </main>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-16">

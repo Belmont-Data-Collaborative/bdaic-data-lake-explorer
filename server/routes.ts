@@ -811,6 +811,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Documentation endpoint - serve API docs from replit.md
+  app.get("/api/docs/markdown", async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Read the replit.md file
+      const filePath = path.join(process.cwd(), 'replit.md');
+      const content = fs.readFileSync(filePath, 'utf-8');
+      
+      // Extract only the API Documentation section
+      const apiDocsStart = content.indexOf('## API Documentation');
+      if (apiDocsStart === -1) {
+        return res.status(404).json({ message: "API Documentation section not found" });
+      }
+      
+      // Find the next major section to stop at
+      const nextSectionIndex = content.indexOf('\n## ', apiDocsStart + 1);
+      const apiDocsContent = nextSectionIndex !== -1 
+        ? content.substring(apiDocsStart, nextSectionIndex)
+        : content.substring(apiDocsStart);
+      
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(apiDocsContent);
+    } catch (error) {
+      console.error("Error reading API documentation:", error);
+      res.status(500).json({ message: "Failed to load API documentation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

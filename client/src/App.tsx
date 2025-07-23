@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import ApiDocsPage from "@/pages/api-docs";
+import { MainLayout } from "@/components/main-layout";
 
 function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,10 +49,13 @@ function Router() {
   }
 
   return (
-    <Switch>
-      <Route path="/" component={() => <Home onLogout={handleLogout} />} />
-      <Route component={NotFound} />
-    </Switch>
+    <MainLayout onLogout={handleLogout}>
+      <Switch>
+        <Route path="/" component={() => <Home />} />
+        <Route path="/api-docs" component={() => <ApiDocsPage />} />
+        <Route component={NotFound} />
+      </Switch>
+    </MainLayout>
   );
 }
 
