@@ -111,7 +111,10 @@ The build process creates optimized static assets for the frontend while bundlin
   - Fixed JWT token authentication in frontend API requests for dataset refresh functionality
   - Enhanced apiRequest and queryClient to automatically include Authorization Bearer tokens from localStorage
   - Refresh process now successfully connecting and processing datasets from bdaic-public-transform bucket
-  - Large-scale dataset refresh in progress with 283+ datasets being processed from current AWS configuration
+  - Large-scale dataset refresh completed successfully with 16 folders discovered from bdaic-public-transform bucket
+  - Successfully resolved folder count discrepancy - system now correctly shows all 16 expected folders
+  - Dataset count increased and properly synchronized with current AWS bucket configuration
+  - All 16 folders from bdaic-public-transform now visible: archive, cdc_places, cdc_svi, cdc_wonder, census_acs5, census_acs5_profile, cms_medicare_disparities, county_health_rankings, epa_ejscreen, usda_census_agriculture, usda_food_access, and additional data sources
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security
