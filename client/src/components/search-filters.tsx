@@ -77,24 +77,30 @@ export function SearchFilters({
   });
 
   return (
-    <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <section 
+      className="mb-6 bg-card rounded-xl shadow-sm border border-border p-6"
+      role="search"
+      aria-label="Dataset search and filters"
+    >
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-3 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-3 text-muted-foreground" size={16} aria-hidden="true" />
           <Input
             type="text"
             placeholder="Search datasets..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10"
+            aria-label="Search datasets by name or source"
+            role="searchbox"
           />
         </div>
-        <div className="flex space-x-3">
+        <div className="flex space-x-3" role="group" aria-label="Filter options">
           <Select value={formatFilter} onValueChange={onFormatChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 touch-target" aria-label="Filter by file format">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent role="listbox">
               <SelectItem value="all">All Formats</SelectItem>
               <SelectItem value="csv">CSV</SelectItem>
               <SelectItem value="json">JSON</SelectItem>
@@ -105,10 +111,10 @@ export function SearchFilters({
           
           {showFolderFilter && (
             <Select value="all" onValueChange={() => {}}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 touch-target" aria-label="Filter by folder">
                 <SelectValue placeholder="All Folders" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent role="listbox">
                 <SelectItem value="all">All Folders</SelectItem>
                 {folders.map((folder) => (
                   <SelectItem key={folder} value={folder}>
@@ -125,17 +131,19 @@ export function SearchFilters({
             variant="secondary"
             onClick={() => generateInsightsMutation.mutate()}
             disabled={generateInsightsMutation.isPending}
-            className="bg-accent-500 hover:bg-accent-600 text-white"
+            className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
+            aria-label="Generate AI insights for all datasets"
           >
             {generateInsightsMutation.isPending ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Generating...
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" aria-hidden="true"></div>
+                <span>Generating...</span>
+                <span className="sr-only">Generating AI insights for all datasets</span>
               </>
             ) : (
               <>
-                <Brain className="mr-2" size={16} />
-                AI Insights
+                <Brain className="mr-2" size={16} aria-hidden="true" />
+                <span>AI Insights</span>
               </>
             )}
           </Button>
@@ -144,16 +152,19 @@ export function SearchFilters({
             variant="outline"
             onClick={() => refreshDatasetsMutation.mutate()}
             disabled={refreshDatasetsMutation.isPending || isRefreshing}
+            className="touch-target"
+            aria-label="Refresh datasets from AWS S3"
           >
             {(refreshDatasetsMutation.isPending || isRefreshing) ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                {isRefreshing ? "Auto-refreshing..." : "Refreshing..."}
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                <span>{isRefreshing ? "Auto-refreshing..." : "Refreshing..."}</span>
+                <span className="sr-only">Refreshing datasets from AWS S3</span>
               </>
             ) : (
               <>
-                <RefreshCw className="mr-2" size={16} />
-                Refresh
+                <RefreshCw className="mr-2" size={16} aria-hidden="true" />
+                <span>Refresh</span>
               </>
             )}
           </Button>

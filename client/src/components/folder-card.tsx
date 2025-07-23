@@ -18,7 +18,8 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
     const totalSize = datasets.reduce((total, dataset) => total + (dataset.sizeBytes || 0), 0);
     
     // Get unique formats in this folder
-    const formats = [...new Set(datasets.map(d => d.format))];
+    const formatSet = new Set(datasets.map(d => d.format));
+    const formats = Array.from(formatSet);
     const formatCounts = formats.map(format => ({
       format,
       count: datasets.filter(d => d.format === format).length
@@ -37,8 +38,17 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
 
   return (
     <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2 hover:border-blue-300 group"
+      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2 hover:border-blue-300 group touch-target"
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open ${folderName.replace(/_/g, ' ')} folder with ${datasetCount} datasets`}
     >
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
@@ -47,7 +57,7 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
               <Folder className="text-blue-600" size={24} />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+              <h3 className="text-lg font-semibold text-foreground mb-2 truncate">
                 {folderName.replace(/_/g, ' ').toUpperCase()}
               </h3>
               <div className="flex flex-wrap gap-2 mb-3">
