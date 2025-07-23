@@ -446,8 +446,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                 </Card>
               ) : (
                 <Register 
-                  onSuccess={handleRegistrationSuccess}
-                  onCancel={() => setShowRegister(false)}
+                  onRegistrationSuccess={handleRegistrationSuccess}
+                  onBackToLogin={() => setShowRegister(false)}
                 />
               )}
             </div>

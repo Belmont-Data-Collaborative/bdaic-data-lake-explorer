@@ -31,9 +31,9 @@ export default function Register({ onRegistrationSuccess, onBackToLogin }: Regis
       const res = await apiRequest('POST', '/api/auth/register', {
         username: data.username,
         email: data.email,
-        passwordHash: data.password, // API expects passwordHash
-        role: data.role,
+        password: data.password, // API expects password field
         confirmPassword: data.confirmPassword,
+        role: data.role,
       });
       return res.json();
     },
