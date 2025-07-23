@@ -80,15 +80,21 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
-- July 23, 2025: Implemented comprehensive focus management and keyboard navigation for accessibility
-  - Created useFocusTrap hook with automatic focus restoration and tab cycling within modals
-  - Added useKeyboardNavigation hook for customizable keyboard shortcuts and navigation
-  - Enhanced dataset chat modal with proper focus trapping, ARIA attributes, and escape key handling
-  - Implemented arrow key navigation for main tabs (left/right arrow keys to switch tabs)
-  - Added skip links for screen readers (Skip to main content, Skip to navigation)
-  - Enhanced modal accessibility with role="dialog", aria-modal="true", and proper labeling
-  - Added screen reader utility classes (.sr-only) for accessible content structure
-  - Improved input focus management with automatic focusing when modals open
+- July 23, 2025: Implemented comprehensive accessibility overhaul with ARIA labels, keyboard navigation, and semantic HTML
+  - Enhanced all interactive elements with proper ARIA labels and keyboard navigation support
+  - Converted components to use semantic HTML (article, section, nav) for better screen reader navigation
+  - Added comprehensive ARIA attributes: aria-expanded, aria-controls, aria-label, aria-describedby
+  - Implemented keyboard navigation for folder cards (Enter/Space keys to activate)
+  - Enhanced search filters with role="search", role="group", and proper ARIA labeling
+  - Added screen reader support with sr-only content and aria-hidden for decorative icons
+  - Improved loading states with aria-live="polite" and proper status announcements
+  - Added touch-target class for 44px minimum interactive areas on all buttons
+  - Enhanced dataset cards with proper semantic structure and ARIA controls
+  - Implemented focus management with useFocusTrap and useKeyboardNavigation hooks
+  - Created skip links for "Skip to main content" and "Skip to navigation"
+  - Enhanced dataset chat modal with role="dialog", aria-modal="true", and focus trapping
+  - Added arrow key navigation for main tabs (left/right arrow keys to switch tabs)
+  - All decorative icons marked with aria-hidden="true" for screen reader optimization
 - July 23, 2025: Implemented WCAG AA color contrast compliance for accessibility
   - Updated all CSS color variables to meet 4.5:1 contrast ratio requirements for text
   - Replaced low-contrast gray colors with semantic design tokens (foreground, muted-foreground, etc.)

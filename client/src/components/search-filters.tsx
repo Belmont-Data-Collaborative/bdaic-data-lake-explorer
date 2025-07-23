@@ -170,6 +170,6 @@ export function SearchFilters({
           </Button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

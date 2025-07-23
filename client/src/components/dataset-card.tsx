@@ -219,38 +219,44 @@ export function DatasetCard({
   const iconColorClass = getIconColorForFormat(dataset.format);
 
   return (
-    <div
+    <article
       id={`dataset-${dataset.id}`}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+      className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow"
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger className="w-full px-6 py-4 hover:bg-gray-50 transition-colors">
+        <CollapsibleTrigger 
+          className="w-full px-6 py-4 hover:bg-muted/50 transition-colors touch-target"
+          aria-expanded={isOpen}
+          aria-controls={`dataset-content-${dataset.id}`}
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} dataset details for ${dataset.name}`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div
                 className={`w-10 h-10 ${iconColorClass} rounded-lg flex items-center justify-center`}
+                aria-hidden="true"
               >
                 <Icon size={20} />
               </div>
               <div className="text-left">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   {dataset.name}
                 </h3>
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                   <span className="flex items-center space-x-1">
-                    <FolderOpen size={12} />
+                    <FolderOpen size={12} aria-hidden="true" />
                     <span>{dataset.source}</span>
                   </span>
                   <span className="flex items-center space-x-1">
-                    <FileText size={12} />
+                    <FileText size={12} aria-hidden="true" />
                     <span>{dataset.format}</span>
                   </span>
                   <span className="flex items-center space-x-1">
-                    <Weight size={12} />
+                    <Weight size={12} aria-hidden="true" />
                     <span>{dataset.size}</span>
                   </span>
                   <span className="flex items-center space-x-1">
-                    <Calendar size={12} />
+                    <Calendar size={12} aria-hidden="true" />
                     <span>
                       {new Date(dataset.lastModified).toLocaleDateString()}
                     </span>
@@ -263,21 +269,22 @@ export function DatasetCard({
                 {dataset.status}
               </Badge>
               <ChevronDown
-                className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                 size={20}
+                aria-hidden="true"
               />
             </div>
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent>
-          <div className="border-t border-gray-200 bg-gray-50">
+        <CollapsibleContent id={`dataset-content-${dataset.id}`}>
+          <div className="border-t border-border bg-muted/30">
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Metadata Section */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
-                    <Info className="text-primary-600 mr-2" size={16} />
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center">
+                    <Info className="text-primary mr-2" size={16} aria-hidden="true" />
                     Metadata
                   </h4>
                   <div className="space-y-3">
@@ -732,29 +739,33 @@ export function DatasetCard({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
+                <div className="flex items-center space-x-4" role="group" aria-label="Dataset actions">
                   <Button
-                    className="bg-primary-600 hover:bg-primary-700"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground touch-target"
                     onClick={() => setIsChatOpen(true)}
+                    aria-label={`Open AI chat for ${dataset.name}`}
                   >
-                    <Search className="mr-2" size={16} />
-                    Ask AI
+                    <Search className="mr-2" size={16} aria-hidden="true" />
+                    <span>Ask AI</span>
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => downloadSampleMutation.mutate()}
+                    onClick={() => downloadSampleMutation.mutate(dataset.id)}
                     disabled={downloadSampleMutation.isPending}
+                    className="touch-target"
+                    aria-label={`Download 10% sample of ${dataset.name}`}
                   >
                     {downloadSampleMutation.isPending ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                        Downloading...
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                        <span>Downloading...</span>
+                        <span className="sr-only">Downloading sample file</span>
                       </>
                     ) : (
                       <>
-                        <Download className="mr-2" size={16} />
-                        Download Sample
+                        <Download className="mr-2" size={16} aria-hidden="true" />
+                        <span>Download Sample</span>
                       </>
                     )}
                   </Button>
@@ -799,6 +810,6 @@ export function DatasetCard({
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
       />
-    </div>
+    </article>
   );
 }
