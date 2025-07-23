@@ -28,7 +28,8 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
   });
 
   const currentTab = location === "/user-panel" ? "user-panel" : 
-                    location === "/admin" ? "admin" : "home";
+                    location === "/admin" ? "admin" :
+                    location === "/aws-config" ? "aws-config" : "home";
 
   const handleTabChange = (value: string) => {
     if (value === "home") {
@@ -37,12 +38,14 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
       navigate("/user-panel");
     } else if (value === "admin") {
       navigate("/admin");
+    } else if (value === "aws-config") {
+      navigate("/aws-config");
     }
   };
 
   // Keyboard navigation for tab switching
   const availableTabs = currentUser?.role === 'admin' 
-    ? ["home", "user-panel", "admin"]
+    ? ["home", "user-panel", "aws-config", "admin"]
     : ["home", "user-panel"];
 
   useKeyboardNavigation({
@@ -131,7 +134,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           {/* Navigation Tabs */}
           <div id="navigation" className="border-t border-border overflow-x-auto">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full" role="navigation" aria-label="Main navigation">
-              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} sm:max-w-2xl bg-transparent h-auto p-0`}>
+              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}>
                 <TabsTrigger 
                   value="home" 
                   className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
@@ -146,6 +149,15 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   <User size={16} />
                   <span className="text-responsive-sm">User Panel</span>
                 </TabsTrigger>
+                {currentUser?.role === 'admin' && (
+                  <TabsTrigger 
+                    value="aws-config" 
+                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                  >
+                    <Settings size={16} />
+                    <span className="text-responsive-sm">AWS Config</span>
+                  </TabsTrigger>
+                )}
                 {currentUser?.role === 'admin' && (
                   <TabsTrigger 
                     value="admin" 

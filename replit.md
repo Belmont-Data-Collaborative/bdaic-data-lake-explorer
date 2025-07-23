@@ -95,6 +95,9 @@ The build process creates optimized static assets for the frontend while bundlin
   - Implemented current user protection - admins cannot delete their own account
   - Added visual indicators in user table to highlight current user with "You" badge
   - Enhanced admin panel to show comprehensive user list with creation dates and last login times
+  - Added AWS Configuration tab exclusively for admin users with full S3 bucket management
+  - Restored AWS configuration interface as admin-only functionality with connection testing and activation
+  - Updated navigation system for admins to have 4 tabs: Dataset Explorer, User Panel, AWS Config, Admin Panel
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security

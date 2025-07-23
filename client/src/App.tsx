@@ -9,6 +9,7 @@ import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import UserPanel from "@/pages/user-panel";
 import AdminPanel from "@/pages/admin-panel";
+import AwsConfiguration from "@/pages/aws-configuration";
 import { MainLayout } from "@/components/main-layout";
 import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper";
 import { apiRequest } from "@/lib/queryClient";
@@ -110,6 +111,20 @@ function Router() {
       <Switch>
         <Route path="/" component={() => <Home />} />
         <Route path="/user-panel" component={() => <UserPanel currentUser={currentUser} />} />
+        <Route path="/aws-config" component={() => {
+          // Role-based access control for AWS configuration
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access AWS configuration.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AwsConfiguration />;
+        }} />
         <Route path="/admin" component={() => {
           // Role-based access control for admin panel
           if (currentUser?.role !== 'admin') {
