@@ -80,6 +80,15 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented WCAG AA color contrast compliance for accessibility
+  - Updated all CSS color variables to meet 4.5:1 contrast ratio requirements for text
+  - Replaced low-contrast gray colors with semantic design tokens (foreground, muted-foreground, etc.)
+  - Added WCAG compliant utility classes for text (text-contrast-high, text-contrast-medium, text-contrast-muted)
+  - Created accessible status colors (text-success, text-warning, text-error, text-info) with proper contrast
+  - Updated API documentation ReactMarkdown components to use semantic color tokens
+  - Enhanced navigation tabs and main layout with accessible color combinations
+  - Added touch-target utility class ensuring minimum 44px interactive areas
+  - Fixed CSS utility class bug for .bg-accent-700 (was using color instead of background-color)
 - July 23, 2025: Implemented comprehensive error boundary system for graceful error handling
   - Created ErrorBoundary component with retry functionality and detailed error information
   - Added error boundaries to all critical components: DatasetList, StatsCards, FolderCard grid, and ConfigurationPanel

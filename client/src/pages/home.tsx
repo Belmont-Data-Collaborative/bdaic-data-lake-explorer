@@ -362,8 +362,8 @@ export default function Home() {
                     <ArrowLeft size={16} />
                     <span>Back to Folders</span>
                   </Button>
-                  <div className="h-6 w-px bg-gray-300" />
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <div className="h-6 w-px bg-border" />
+                  <h2 className="text-lg font-semibold text-foreground">
                     {selectedFolder.replace(/_/g, " ").toUpperCase()} Datasets
                   </h2>
                 </div>
@@ -387,10 +387,10 @@ export default function Home() {
             {/* Dataset List */}
             <div className="space-y-4 relative">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-foreground">
                   Datasets
                 </h2>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   {isRefreshing && (
                     <div className="flex items-center space-x-2 text-blue-600">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>

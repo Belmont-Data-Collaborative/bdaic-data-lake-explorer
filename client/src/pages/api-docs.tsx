@@ -260,13 +260,13 @@ For complete documentation, please check the project files or contact the develo
                         const isInline = !className;
                         if (isInline) {
                           return (
-                            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                            <code className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
                               {children}
                             </code>
                           );
                         }
                         return (
-                          <code className="block bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono" {...props}>
+                          <code className="block bg-foreground text-background p-4 rounded-lg overflow-x-auto text-sm font-mono" {...props}>
                             {children}
                           </code>
                         );
@@ -280,17 +280,17 @@ For complete documentation, please check the project files or contact the develo
                         </div>
                       ),
                       th: ({ children, ...props }) => (
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" {...props}>
+                        <th className="px-6 py-3 bg-muted text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props}>
                           {children}
                         </th>
                       ),
                       td: ({ children, ...props }) => (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-b border-gray-200" {...props}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground border-b border-border" {...props}>
                           {children}
                         </td>
                       ),
                       blockquote: ({ children, ...props }) => (
-                        <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-6 bg-blue-50 text-blue-900" {...props}>
+                        <blockquote className="border-l-4 border-primary pl-4 py-2 my-6 bg-primary/5 text-foreground" {...props}>
                           {children}
                         </blockquote>
                       ),
@@ -305,12 +305,12 @@ For complete documentation, please check the project files or contact the develo
                         </ol>
                       ),
                       li: ({ children, ...props }) => (
-                        <li className="text-gray-700" {...props}>
+                        <li className="text-contrast-medium" {...props}>
                           {children}
                         </li>
                       ),
                       a: ({ children, ...props }) => (
-                        <a className="text-blue-600 hover:text-blue-800 underline" {...props}>
+                        <a className="text-info hover:text-primary underline" {...props}>
                           {children}
                         </a>
                       ),
