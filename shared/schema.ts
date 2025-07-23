@@ -60,6 +60,27 @@ export const authConfig = pgTable("auth_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("user"), // 'user', 'admin'
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+}, (table) => ({
+  // Index on username for fast user lookups
+  usernameIdx: index("idx_users_username").on(table.username),
+  // Index on email for email-based lookups
+  emailIdx: index("idx_users_email").on(table.email),
+  // Index on role for role-based queries
+  roleIdx: index("idx_users_role").on(table.role),
+  // Index on isActive for filtering active users
+  isActiveIdx: index("idx_users_is_active").on(table.isActive),
+}));
+
 export const refreshLog = pgTable("refresh_log", {
   id: serial("id").primaryKey(),
   lastRefreshTime: timestamp("last_refresh_time").notNull().defaultNow(),
@@ -110,6 +131,35 @@ export const insertAuthConfigSchema = createInsertSchema(authConfig).omit({
 
 export const insertRefreshLogSchema = createInsertSchema(refreshLog).omit({
   id: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+});
+
+// Registration schema with password confirmation
+export const registerUserSchema = insertUserSchema.extend({
+  confirmPassword: z.string(),
+}).refine((data) => data.passwordHash === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Login schema
+export const loginUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+// Update user schema
+export const updateUserSchema = z.object({
+  username: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(["user", "admin"]).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type Dataset = typeof datasets.$inferSelect;
@@ -177,3 +227,8 @@ export type RefreshLog = typeof refreshLog.$inferSelect;
 export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
 export type Download = typeof downloads.$inferSelect;
 export type InsertDownload = z.infer<typeof insertDownloadSchema>;
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterUser = z.infer<typeof registerUserSchema>;
+export type LoginUser = z.infer<typeof loginUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;

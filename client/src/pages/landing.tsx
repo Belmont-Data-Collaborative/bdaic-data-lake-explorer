@@ -6,9 +6,11 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Database, Cloud, BarChart3, Shield, Download, Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import Register from "./register";
 import type { Dataset } from "@shared/schema";
 
 interface Stats {
@@ -33,8 +35,10 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
-  const [password, setPassword] = useState("");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginData, setLoginData] = useState({ username: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
 
   // Fetch global statistics for public display
@@ -109,49 +113,77 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
   const stats: Stats | undefined = allDatasets.length > 0 ? calculateStats(allDatasets) : globalStats;
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password.trim()) {
+  // Enhanced login mutation supporting both JWT and legacy auth
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.token && data.user) {
+        // JWT-based authentication
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${data.user.username}!`,
+        });
+      } else {
+        // Legacy password-based authentication
+        toast({
+          title: "Login successful",
+          description: "Welcome to the Data Lake Explorer!",
+        });
+      }
+      onLogin();
+    },
+    onError: (error: any) => {
       toast({
-        title: "Password required",
-        description: "Please enter your password to continue.",
+        title: "Login failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!loginData.username.trim() && !loginData.password.trim()) {
+      toast({
+        title: "Login required",
+        description: "Please enter your credentials",
         variant: "destructive",
       });
       return;
     }
 
-    setIsLoggingIn(true);
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
+    // Support legacy password-only login if no username provided
+    const credentials = loginData.username.trim() 
+      ? loginData 
+      : { username: "", password: loginData.password };
 
-      if (response.ok) {
-        toast({
-          title: "Login successful",
-          description: "Welcome to the Data Lake Explorer!",
-        });
-        onLogin();
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Login failed",
-          description: errorData.message || "Invalid password. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoggingIn(false);
-      setPassword("");
-    }
+    loginMutation.mutate(credentials);
+  };
+
+  const handleRegistrationSuccess = (user: any, token: string) => {
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    toast({
+      title: "Registration successful",
+      description: `Welcome, ${user.username}!`,
+    });
+    onLogin();
   };
 
   return (
@@ -338,40 +370,86 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
           <TabsContent value="login" className="space-y-6">
             <div className="max-w-md mx-auto">
-              <Card>
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center space-x-2">
-                    <Shield className="text-primary" size={24} />
-                    <span>Access Data Lake Explorer</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Enter your credentials to access the full data lake explorer interface
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter your password"
-                        disabled={isLoggingIn}
-                        className="mt-1"
-                      />
+              {!showRegister ? (
+                <Card>
+                  <CardHeader className="text-center">
+                    <CardTitle className="flex items-center justify-center space-x-2">
+                      <Shield className="text-primary" size={24} />
+                      <span>Access Data Lake Explorer</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Enter your credentials to access the full data lake explorer interface
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <Label htmlFor="username">Username (optional for legacy login)</Label>
+                        <Input
+                          id="username"
+                          type="text"
+                          value={loginData.username}
+                          onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                          placeholder="Enter your username"
+                          disabled={loginMutation.isPending}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            value={loginData.password}
+                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                            placeholder="Enter your password"
+                            disabled={loginMutation.isPending}
+                            className="mt-1 pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={loginMutation.isPending}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={loginMutation.isPending}
+                      >
+                        {loginMutation.isPending ? "Signing in..." : "Access Explorer"}
+                      </Button>
+                    </form>
+                    
+                    <div className="mt-4 text-center">
+                      <Button
+                        variant="link"
+                        onClick={() => setShowRegister(true)}
+                        className="text-sm"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        New user? Register here
+                      </Button>
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={isLoggingIn}
-                    >
-                      {isLoggingIn ? "Signing in..." : "Access Explorer"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Register 
+                  onSuccess={handleRegistrationSuccess}
+                  onCancel={() => setShowRegister(false)}
+                />
+              )}
             </div>
           </TabsContent>
         </Tabs>

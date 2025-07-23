@@ -1,17 +1,26 @@
 import { useLocation } from "wouter";
-import { Database, Book, Cloud, LogOut, Settings } from "lucide-react";
+import { Database, Book, Cloud, LogOut, Settings, Shield, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import type { AwsConfig } from "@shared/schema";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+}
 
 interface MainLayoutProps {
   children: React.ReactNode;
   onLogout?: () => void;
+  currentUser?: User | null;
 }
 
-export function MainLayout({ children, onLogout }: MainLayoutProps) {
+export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps) {
   const [location, navigate] = useLocation();
 
   const { data: awsConfig } = useQuery<AwsConfig>({
@@ -19,7 +28,8 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
   });
 
   const currentTab = location === "/api-docs" ? "api-docs" : 
-                    location === "/aws-config" ? "aws-config" : "home";
+                    location === "/aws-config" ? "aws-config" : 
+                    location === "/admin" ? "admin" : "home";
 
   const handleTabChange = (value: string) => {
     if (value === "home") {
@@ -28,22 +38,26 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
       navigate("/aws-config");
     } else if (value === "api-docs") {
       navigate("/api-docs");
+    } else if (value === "admin") {
+      navigate("/admin");
     }
   };
 
   // Keyboard navigation for tab switching
+  const availableTabs = currentUser?.role === 'admin' 
+    ? ["home", "aws-config", "api-docs", "admin"]
+    : ["home", "aws-config", "api-docs"];
+
   useKeyboardNavigation({
     onArrowLeft: () => {
-      const tabs = ["home", "aws-config", "api-docs"];
-      const currentIndex = tabs.indexOf(currentTab);
-      const prevIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
-      handleTabChange(tabs[prevIndex]!);
+      const currentIndex = availableTabs.indexOf(currentTab);
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : availableTabs.length - 1;
+      handleTabChange(availableTabs[prevIndex]!);
     },
     onArrowRight: () => {
-      const tabs = ["home", "aws-config", "api-docs"];
-      const currentIndex = tabs.indexOf(currentTab);
-      const nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
-      handleTabChange(tabs[nextIndex]!);
+      const currentIndex = availableTabs.indexOf(currentTab);
+      const nextIndex = currentIndex < availableTabs.length - 1 ? currentIndex + 1 : 0;
+      handleTabChange(availableTabs[nextIndex]!);
     },
     isActive: true,
   });
@@ -80,12 +94,29 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+              {/* User Info */}
+              {currentUser && (
+                <div className="hidden md:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg">
+                  <User className="text-primary flex-shrink-0" size={16} />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-contrast-high">
+                      {currentUser.username}
+                    </span>
+                    <Badge variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'} className="text-xs px-1 py-0">
+                      {currentUser.role}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+              
+              {/* AWS Config Info */}
               <div className="hidden sm:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg max-w-48">
                 <Cloud className="text-primary flex-shrink-0" size={16} />
                 <span className="text-sm font-medium text-contrast-medium text-ellipsis">
                   {awsConfig?.bucketName || "Not configured"}
                 </span>
               </div>
+              
               {onLogout && (
                 <Button
                   variant="outline"
@@ -103,7 +134,7 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
           {/* Navigation Tabs */}
           <div id="navigation" className="border-t border-border overflow-x-auto">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full" role="navigation" aria-label="Main navigation">
-              <TabsList className="flex w-full min-w-max sm:grid sm:grid-cols-3 sm:max-w-2xl bg-transparent h-auto p-0">
+              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} sm:max-w-3xl bg-transparent h-auto p-0`}>
                 <TabsTrigger 
                   value="home" 
                   className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
@@ -125,6 +156,15 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
                   <Book size={16} />
                   <span className="text-responsive-sm">API Docs</span>
                 </TabsTrigger>
+                {currentUser?.role === 'admin' && (
+                  <TabsTrigger 
+                    value="admin" 
+                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                  >
+                    <Shield size={16} />
+                    <span className="text-responsive-sm">Admin Panel</span>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
           </div>

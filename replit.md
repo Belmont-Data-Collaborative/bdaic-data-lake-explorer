@@ -80,6 +80,16 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
+  - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
+  - Added JWT token authentication with bcrypt password hashing for security
+  - Built user registration system with role assignment (admin/user) capabilities
+  - Created authentication middleware with token verification and role-based authorization
+  - Added comprehensive user management API routes for registration, login, profile, and admin functions
+  - Built admin panel component for user oversight with role editing and account management
+  - Enhanced landing page with registration support and JWT token-based authentication
+  - Integrated authentication system into existing application while maintaining backward compatibility
+  - Added user verification endpoints and secure token storage with localStorage
 - July 23, 2025: Implemented comprehensive download tracking system for monitoring dataset usage
   - Added downloads table to PostgreSQL database with foreign key relationships and proper indexing
   - Added download count columns (downloadCountSample, downloadCountFull, downloadCountMetadata) to datasets table

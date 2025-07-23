@@ -1,0 +1,111 @@
+# 🚀 Replit Prompt: User Authentication with Role-Based Access Control
+
+## 🧩 Objective
+Build a full-stack user authentication system with **registration**, **login**, and **role-based access control** using:
+
+- Backend: Node.js (Express)
+- Frontend: React
+- Database: SQLite or MongoDB (flexible)
+- Auth: JWT (JSON Web Tokens)
+
+---
+
+## 🔐 Step 1: Backend Setup - User Model and DB
+
+**Prompt:**
+
+> Create a Node.js (Express) backend with a `/register` and `/login` route.
+> 
+> Set up a database with a `users` table (or collection) that stores:
+> - `username` (unique)
+> - `password` (hashed with bcrypt)
+> - `role` (either `'user'` or `'admin'`, default to `'user'`)
+> 
+> Use SQLite or MongoDB and set up basic DB connection and schema.
+
+---
+
+## 🔑 Step 2: User Registration and Login API
+
+**Prompt:**
+
+> In the Express backend, implement:
+> 
+> - A `/register` POST route that hashes the password and stores the new user in the DB.
+> - A `/login` POST route that verifies credentials, then returns a **JWT token** that includes the user’s `id` and `role` as payload.
+> 
+> Use environment variable for JWT secret key. Use `jsonwebtoken` and `bcrypt`.
+
+---
+
+## 🛡️ Step 3: Role-Based Access Middleware
+
+**Prompt:**
+
+> Add middleware for:
+> 
+> - Verifying the JWT token on protected routes.
+> - Authorizing access based on user role (`admin` or `user`).
+> 
+> Example:
+> - `/admin/*` routes should only allow `admin` users.
+> - `/user/*` routes should allow both roles.
+
+---
+
+## 🌐 Step 4: Frontend Login/Register UI (React)
+
+**Prompt:**
+
+> Build a React frontend with:
+> 
+> - A registration form that hits the `/register` API
+> - A login form that hits the `/login` API
+> - Store the JWT token in `localStorage` after login
+> 
+> After login, direct the user to a protected dashboard route.
+
+---
+
+## 🧭 Step 5: Role-Based Dashboard & Route Guarding
+
+**Prompt:**
+
+> In React, implement:
+> 
+> - A `Dashboard` page that displays different content for `admin` and `user` roles based on the decoded JWT.
+> - Route guarding: Only allow access to `/dashboard` if user is authenticated.
+> 
+> Optionally: Show different navbar/menu items based on role.
+
+---
+
+## 🚪 Step 6: Logout and Session Handling
+
+**Prompt:**
+
+> Add logout functionality by:
+> 
+> - Clearing the token from `localStorage`
+> - Redirecting the user back to the login page
+
+---
+
+## ✅ Bonus: Admin Panel Route
+
+**Prompt:**
+
+> Add a route `/admin/panel` that:
+> 
+> - Only shows up for admin users
+> - Fetches and displays a list of all registered users from the backend
+
+---
+
+## 📦 Final Output
+
+A fully working full-stack app with secure:
+- User registration and login
+- JWT auth
+- Role-based access
+- Conditional UI based on user roles

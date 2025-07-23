@@ -1,7 +1,8 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload } from "@shared/schema";
+import { datasets, awsConfig, authConfig, refreshLog, downloads, users, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 export interface IStorage {
   // Dataset operations
@@ -252,6 +253,115 @@ export class DatabaseStorage implements IStorage {
         lastRefreshTime: new Date(),
         datasetsCount,
       });
+  }
+
+  // User management methods
+  async createUser(userData: InsertUser): Promise<User> {
+    // Hash the password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(userData.passwordHash, saltRounds);
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        passwordHash,
+      })
+      .returning();
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user || undefined;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user || undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(asc(users.createdAt));
+  }
+
+  async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+
+  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+    const user = await this.getUserByUsername(username);
+    if (!user || !user.isActive) {
+      return null;
+    }
+    
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    return isValid ? user : null;
+  }
+
+  async updateUserLastLogin(id: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  generateJWT(user: User): string {
+    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+    return jwt.sign(
+      { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role 
+      },
+      secret,
+      { expiresIn: '24h' }
+    );
+  }
+
+  verifyJWT(token: string): { id: number; username: string; role: string } | null {
+    try {
+      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+      const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
+      return decoded;
+    } catch (error) {
+      return null;
+    }
   }
 
   async recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download> {

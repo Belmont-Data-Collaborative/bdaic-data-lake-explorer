@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema } from "@shared/schema";
+import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
+import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
 // Simple cache for expensive operations
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -58,9 +59,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     next();
   });
-  // Authentication endpoints
+  
+  // User Registration and Authentication endpoints
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validation = registerUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { username, email, passwordHash, role = "user" } = validation.data;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        role,
+        isActive: true,
+      });
+
+      // Generate JWT token
+      const token = storage.generateJWT(newUser);
+
+      res.status(201).json({
+        message: "User registered successfully",
+        token,
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role,
+        },
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
+      // Try new user-based authentication first
+      const userValidation = loginUserSchema.safeParse(req.body);
+      if (userValidation.success) {
+        const { username, password } = userValidation.data;
+        
+        const user = await storage.verifyUserPassword(username, password);
+        
+        if (user) {
+          // Update last login time
+          await storage.updateUserLastLogin(user.id);
+          
+          // Generate JWT token
+          const token = storage.generateJWT(user);
+          
+          return res.json({ 
+            success: true,
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              role: user.role,
+            },
+          });
+        }
+      }
+
+      // Fall back to legacy password authentication
       const { password } = req.body;
       
       if (!password) {
@@ -124,6 +205,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking auth status:", error);
       res.status(500).json({ message: "Failed to check auth status" });
+    }
+  });
+
+  // User verification endpoint for JWT tokens
+  app.get("/api/auth/verify", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const user = await storage.getUserById(req.user!.id);
+      if (!user || !user.isActive) {
+        return res.status(403).json({ message: "User account is inactive" });
+      }
+      
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("Error verifying user:", error);
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  // Admin routes - User management
+  app.get("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const validation = updateUserSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedUser = await storage.updateUser(userId, validation.data);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        isActive: updatedUser.isActive,
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Prevent admin from deleting themselves
+      if (userId === req.user!.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const success = await storage.deleteUser(userId);
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // User routes - profile management
+  app.get("/api/user/profile", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const user = await storage.getUserById(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/user/profile", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const allowedUpdates = { username: req.body.username, email: req.body.email };
+      const validation = updateUserSchema.pick({ username: true, email: true }).safeParse(allowedUpdates);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedUser = await storage.updateUser(req.user!.id, validation.data);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role,
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
