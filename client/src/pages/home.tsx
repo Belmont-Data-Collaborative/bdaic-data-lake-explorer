@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Database, Settings, Cloud, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConfigurationPanel } from "@/components/configuration-panel";
+
 import { SearchFilters } from "@/components/search-filters";
 import { MainPageActions } from "@/components/main-page-actions";
 import { StatsCards } from "@/components/stats-cards";
@@ -332,9 +332,6 @@ export default function Home() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Configuration Panel */}
-        <ConfigurationPanel onRefreshStateChange={setIsRefreshing} />
-
         {/* Stats Cards */}
         <div className="relative">
           {selectedFolder && (

@@ -80,6 +80,12 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Restructured application into tab-based navigation system
+  - Created separate AWS Configuration tab with dedicated route /aws-config
+  - Built standalone AWS configuration page removing configuration panel from home page
+  - Added three-tab navigation: Dataset Explorer, AWS Configuration, and API Documentation
+  - Enhanced MainLayout component to handle three-tab system with proper routing
+  - Separated concerns for better user experience and cleaner architecture
 - July 23, 2025: Added comprehensive API documentation to replit.md
   - Documented all 20+ API endpoints with request/response formats
   - Added detailed data models for Dataset, AwsConfig, DatasetMetadata, and DatasetInsights

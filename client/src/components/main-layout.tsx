@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Database, Book, Cloud, LogOut } from "lucide-react";
+import { Database, Book, Cloud, LogOut, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,11 +18,14 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
     queryKey: ["/api/aws-config"],
   });
 
-  const currentTab = location === "/api-docs" ? "api-docs" : "home";
+  const currentTab = location === "/api-docs" ? "api-docs" : 
+                    location === "/aws-config" ? "aws-config" : "home";
 
   const handleTabChange = (value: string) => {
     if (value === "home") {
       navigate("/");
+    } else if (value === "aws-config") {
+      navigate("/aws-config");
     } else if (value === "api-docs") {
       navigate("/api-docs");
     }
@@ -73,13 +76,20 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
           {/* Navigation Tabs */}
           <div className="border-t border-gray-200">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 max-w-md bg-transparent h-auto p-0">
+              <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="home" 
                   className="flex items-center space-x-2 py-3 px-4 border-b-2 border-transparent data-[state=active]:border-primary-600 data-[state=active]:bg-transparent data-[state=active]:text-primary-600 rounded-none"
                 >
                   <Database size={16} />
                   <span>Dataset Explorer</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="aws-config" 
+                  className="flex items-center space-x-2 py-3 px-4 border-b-2 border-transparent data-[state=active]:border-primary-600 data-[state=active]:bg-transparent data-[state=active]:text-primary-600 rounded-none"
+                >
+                  <Settings size={16} />
+                  <span>AWS Configuration</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="api-docs" 

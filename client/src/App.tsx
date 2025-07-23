@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import ApiDocsPage from "@/pages/api-docs";
+import AwsConfigPage from "@/pages/aws-config";
 import { MainLayout } from "@/components/main-layout";
 
 function Router() {
@@ -52,6 +53,7 @@ function Router() {
     <MainLayout onLogout={handleLogout}>
       <Switch>
         <Route path="/" component={() => <Home />} />
+        <Route path="/aws-config" component={() => <AwsConfigPage />} />
         <Route path="/api-docs" component={() => <ApiDocsPage />} />
         <Route component={NotFound} />
       </Switch>
