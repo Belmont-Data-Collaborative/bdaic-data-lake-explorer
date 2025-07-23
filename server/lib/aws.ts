@@ -736,7 +736,7 @@ export class AwsS3Service {
             };
           }
         });
-        metadata.columnCount = metadata.columns.length;
+        metadata.columnCount = metadata.columns?.length || 0;
       } else if (parsedYaml.schema && Array.isArray(parsedYaml.schema)) {
         metadata.columns = parsedYaml.schema.map((col: any) => {
           if (typeof col === "string") {
@@ -760,7 +760,7 @@ export class AwsS3Service {
           }
           return { name: String(col), type: "string" };
         });
-        metadata.columnCount = metadata.columns.length;
+        metadata.columnCount = metadata.columns?.length || 0;
       } else if (parsedYaml.columns && Array.isArray(parsedYaml.columns)) {
         metadata.columns = parsedYaml.columns.map((col: any) => ({
           name: String(col.name || col),
@@ -772,7 +772,7 @@ export class AwsS3Service {
               : [String(col.sample_values)]
             : undefined,
         }));
-        metadata.columnCount = metadata.columns.length;
+        metadata.columnCount = metadata.columns?.length || 0;
       }
 
       // Extract column count directly if available

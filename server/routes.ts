@@ -23,7 +23,8 @@ function setCache(key: string, data: any, ttl: number = 30000): void {
 
 function invalidateCache(pattern?: string): void {
   if (pattern) {
-    for (const key of cache.keys()) {
+    const keys = Array.from(cache.keys());
+    for (const key of keys) {
       if (key.includes(pattern)) {
         cache.delete(key);
       }
@@ -362,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!stats) {
         const datasets = await storage.getDatasets();
         const totalCount = datasets.length;
-        const folders = [...new Set(datasets.map(d => d.topLevelFolder).filter(Boolean))];
+        const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
         
         stats = {
           totalCount,
@@ -499,6 +500,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!downloadUrl) {
         return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Handle the download object which contains key, bucketName, and sampleSize
+      if (typeof downloadUrl === 'object' && downloadUrl !== null) {
+        return res.status(501).json({ error: "Direct download not implemented. Use sample download endpoint instead." });
       }
       
       // Redirect to the presigned URL for download
@@ -643,14 +649,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const datasets = await storage.getDatasets();
       const results = datasets
-        .filter(d => d.metadata && 
-                    d.metadata.recordCount && 
-                    d.metadata.columnCount && 
-                    d.metadata.completenessScore)
+        .filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && 
+                 metadata.recordCount && 
+                 metadata.columnCount && 
+                 metadata.completenessScore;
+        })
         .map(d => {
-          const recordCount = parseInt(d.metadata.recordCount);
-          const columnCount = d.metadata.columnCount;
-          const completenessScore = d.metadata.completenessScore / 100.0; // Convert percentage to decimal
+          const metadata = d.metadata as any;
+          const recordCount = parseInt(metadata.recordCount);
+          const columnCount = metadata.columnCount;
+          const completenessScore = metadata.completenessScore / 100.0; // Convert percentage to decimal
           
           return {
             file_name: d.name,
@@ -676,19 +686,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate community data points for each dataset and group by folder
       datasets
-        .filter(d => d.metadata && 
-                    d.metadata.recordCount && 
-                    d.metadata.columnCount && 
-                    d.metadata.completenessScore &&
-                    d.topLevelFolder)
+        .filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && 
+                 metadata.recordCount && 
+                 metadata.columnCount && 
+                 metadata.completenessScore &&
+                 d.topLevelFolder;
+        })
         .forEach(d => {
-          const recordCount = parseInt(d.metadata.recordCount);
-          const columnCount = d.metadata.columnCount;
-          const completenessScore = d.metadata.completenessScore / 100.0;
+          const metadata = d.metadata as any;
+          const recordCount = parseInt(metadata.recordCount);
+          const columnCount = metadata.columnCount;
+          const completenessScore = metadata.completenessScore / 100.0;
           const communityDataPoints = recordCount * columnCount * completenessScore;
           
-          const currentTotal = folderTotals.get(d.topLevelFolder) || 0;
-          folderTotals.set(d.topLevelFolder, currentTotal + communityDataPoints);
+          const currentTotal = folderTotals.get(d.topLevelFolder!) || 0;
+          folderTotals.set(d.topLevelFolder!, currentTotal + communityDataPoints);
         });
       
       // Format results with folder labels
@@ -708,9 +722,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/folders", async (req, res) => {
     try {
       const datasets = await storage.getDatasets();
-      const folders = [...new Set(datasets
+      const folders = Array.from(new Set(datasets
         .map(d => d.topLevelFolder)
-        .filter(Boolean))]
+        .filter(Boolean)))
         .sort();
       
       res.json(folders);
@@ -757,14 +771,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate total community data points across all datasets
       const totalCommunityDataPoints = datasets
-        .filter(d => d.metadata && 
-                    d.metadata.recordCount && 
-                    d.metadata.columnCount && 
-                    d.metadata.completenessScore)
+        .filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && 
+                 metadata.recordCount && 
+                 metadata.columnCount && 
+                 metadata.completenessScore;
+        })
         .reduce((total, d) => {
-          const recordCount = parseInt(d.metadata.recordCount);
-          const columnCount = d.metadata.columnCount;
-          const completenessScore = d.metadata.completenessScore / 100.0;
+          const metadata = d.metadata as any;
+          const recordCount = parseInt(metadata.recordCount);
+          const columnCount = metadata.columnCount;
+          const completenessScore = metadata.completenessScore / 100.0;
           return total + (recordCount * columnCount * completenessScore);
         }, 0);
       
