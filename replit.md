@@ -80,6 +80,12 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Added comprehensive API documentation to replit.md
+  - Documented all 20+ API endpoints with request/response formats
+  - Added detailed data models for Dataset, AwsConfig, DatasetMetadata, and DatasetInsights
+  - Included authentication, AWS configuration, dataset, folder, and statistics endpoints
+  - Added error response formats and caching strategy documentation
+  - Fixed all TypeScript compilation bugs (27 diagnostics resolved)
 - July 16, 2025: Fixed download sample to download only 10% of files and made Explore Data button functional
   - Modified AWS service to use server-side partial downloads instead of presigned URLs with range
   - Fixed AWS signature error by implementing server-side range requests and streaming to client
@@ -180,6 +186,210 @@ The build process creates optimized static assets for the frontend while bundlin
   - Implemented proper password change flow requiring old password
 - July 02, 2025: Initial setup with core features
 - January 02, 2025: Added basic authentication with password protection
+
+## API Documentation
+
+### Authentication Endpoints
+
+#### POST /api/auth/login
+Authenticate with the application password.
+- **Body**: `{ "password": "string" }`
+- **Success**: `{ "success": true }`
+- **Error**: `401` Invalid password, `400` Password required
+
+#### POST /api/auth/set-password
+Set or change the application password.
+- **Body**: `{ "currentPassword": "string", "newPassword": "string" }`
+- **Success**: `{ "message": "Password updated successfully" }`
+- **Error**: `400` Invalid password length, `401` Current password incorrect
+
+#### GET /api/auth/status
+Check if a password is configured.
+- **Success**: `{ "hasPassword": boolean }`
+
+### AWS Configuration Endpoints
+
+#### GET /api/aws-config
+Get the active AWS S3 configuration.
+- **Success**: `AwsConfig` object or `null`
+
+#### POST /api/aws-config
+Create or update AWS S3 configuration.
+- **Body**: `{ "bucketName": "string", "region": "string", "name": "string" }`
+- **Success**: `AwsConfig` object
+- **Error**: `400` Validation errors
+
+#### GET /api/aws-configs
+Get all AWS configurations.
+- **Success**: Array of `AwsConfig` objects
+
+#### POST /api/aws-configs
+Create a new AWS configuration.
+- **Body**: `{ "bucketName": "string", "region": "string", "name": "string" }`
+- **Success**: `AwsConfig` object
+
+#### PUT /api/aws-configs/:id
+Update an existing AWS configuration.
+- **Body**: Partial `AwsConfig` object
+- **Success**: Updated `AwsConfig` object
+- **Error**: `404` Configuration not found
+
+#### DELETE /api/aws-configs/:id
+Delete an AWS configuration.
+- **Success**: `{ "message": "Configuration deleted successfully" }`
+- **Error**: `404` Configuration not found
+
+#### POST /api/aws-configs/:id/activate
+Set a configuration as active and refresh datasets.
+- **Success**: `AwsConfig` object
+- **Error**: `404` Configuration not found
+
+#### POST /api/aws-config/test
+Test connection to AWS S3 bucket.
+- **Body**: `{ "bucketName": "string", "region": "string" }`
+- **Success**: `{ "connected": boolean }`
+
+### Dataset Endpoints
+
+#### GET /api/datasets
+List datasets with pagination and filtering.
+- **Query Parameters**:
+  - `page`: Page number (default: 1)
+  - `limit`: Items per page (default: 50, max: 10000)
+  - `folder`: Filter by top-level folder
+  - `search`: Search in dataset names and sources
+  - `format`: Filter by file format
+- **Success**: `{ "datasets": Dataset[], "totalCount": number, "page": number, "limit": number, "totalPages": number }`
+
+#### GET /api/datasets/quick-stats
+Get quick dataset statistics (cached).
+- **Success**: `{ "totalCount": number, "folders": string[], "lastUpdated": string }`
+
+#### POST /api/datasets/refresh
+Refresh datasets from S3 (requires active AWS config).
+- **Success**: `{ "message": string, "datasets": Dataset[] }`
+- **Error**: `400` No AWS configuration
+
+#### GET /api/datasets/:id
+Get a specific dataset by ID.
+- **Success**: `Dataset` object
+- **Error**: `404` Dataset not found
+
+#### POST /api/datasets/:id/insights
+Generate AI insights for a dataset.
+- **Success**: `{ "insights": DatasetInsights }`
+- **Error**: `404` Dataset not found
+
+#### POST /api/datasets/bulk-insights
+Generate AI insights for all datasets.
+- **Success**: `{ "message": string, "insights": object }`
+
+#### GET /api/datasets/:id/download
+Download dataset (redirects to presigned URL).
+- **Success**: Redirects to download URL
+- **Error**: `404` Dataset/file not found, `501` Not implemented
+
+#### GET /api/datasets/:id/download-sample
+Download a 10% sample of the dataset.
+- **Success**: Binary file download
+- **Error**: `404` Dataset not found
+
+#### POST /api/datasets/:id/chat
+Chat with AI about a specific dataset.
+- **Body**: `{ "message": "string", "conversationHistory": array, "enableVisualization": boolean }`
+- **Success**: `{ "response": "string", "conversationHistory": array }`
+- **Error**: `404` Dataset not found
+
+### Folder Endpoints
+
+#### GET /api/folders
+Get list of unique top-level folders.
+- **Success**: Array of folder names
+
+#### GET /api/folders/community-data-points
+Get community data points calculation by folder.
+- **Success**: Array of `{ "folder_label": string, "total_community_data_points": number }`
+
+### Statistics Endpoints
+
+#### GET /api/stats
+Get comprehensive application statistics (cached 5 minutes).
+- **Success**: 
+```json
+{
+  "totalDatasets": number,
+  "totalSize": string,
+  "dataSources": number,
+  "lastUpdated": string,
+  "lastRefreshTime": string,
+  "totalCommunityDataPoints": number
+}
+```
+
+#### GET /api/community-data-points
+Get detailed community data points for all datasets.
+- **Success**: Array of dataset community data point calculations
+
+### Data Models
+
+#### Dataset
+```typescript
+{
+  id: number,
+  name: string,
+  source: string,
+  topLevelFolder: string,
+  format: string,
+  size: string,
+  sizeBytes: number,
+  lastModified: Date,
+  createdDate: Date,
+  status: string,
+  metadata: DatasetMetadata,
+  insights: DatasetInsights
+}
+```
+
+#### AwsConfig
+```typescript
+{
+  id: number,
+  name: string,
+  bucketName: string,
+  region: string,
+  isConnected: boolean,
+  lastConnected: Date,
+  isActive: boolean,
+  createdAt: Date
+}
+```
+
+#### DatasetMetadata
+Includes fields like `recordCount`, `columnCount`, `completenessScore`, `title`, `description`, `dataSource`, `columns`, `tags`, etc.
+
+#### DatasetInsights
+```typescript
+{
+  summary: string,
+  patterns: string[],
+  useCases: string[]
+}
+```
+
+### Error Responses
+All endpoints return consistent error format:
+```json
+{
+  "message": "Error description",
+  "errors": [] // Optional validation errors
+}
+```
+
+### Caching Strategy
+- Dataset queries: 1-minute cache
+- Statistics: 5-minute cache
+- Quick stats: 1-minute cache
+- Automatic cache invalidation on data refresh
 
 ## User Preferences
 
