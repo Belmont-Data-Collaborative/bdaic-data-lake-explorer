@@ -650,7 +650,8 @@ export class AwsS3Service {
       if (!response.Contents) return null;
 
       // Find the YAML metadata file that matches the dataset name
-      const metadataFile = response.Contents.find((file) => {
+      // First try exact match, then try partial match
+      let metadataFile = response.Contents.find((file) => {
         if (!file.Key) return false;
         const fileName = file.Key.split("/").pop() || "";
         const baseName = fileName.replace(/\.[^/.]+$/, "");
@@ -661,6 +662,33 @@ export class AwsS3Service {
           (extension === "yaml" || extension === "yml")
         );
       });
+
+      // If exact match not found, try to find any YAML file that contains the dataset name
+      if (!metadataFile) {
+        metadataFile = response.Contents.find((file) => {
+          if (!file.Key) return false;
+          const fileName = file.Key.split("/").pop() || "";
+          const extension = fileName.split(".").pop()?.toLowerCase();
+
+          return (
+            (extension === "yaml" || extension === "yml") &&
+            fileName.toLowerCase().includes(datasetName.toLowerCase())
+          );
+        });
+      }
+
+      // If still not found, try to find any YAML file in the same directory
+      if (!metadataFile) {
+        metadataFile = response.Contents.find((file) => {
+          if (!file.Key) return false;
+          const extension = file.Key.split(".").pop()?.toLowerCase();
+          return extension === "yaml" || extension === "yml";
+        });
+      }
+
+      console.log(`Available files in ${source}:`, response.Contents?.map(f => f.Key) || []);
+      console.log(`Looking for metadata file for dataset: ${datasetName}`);
+      console.log(`Found metadata file:`, metadataFile?.Key || "None");
 
       if (!metadataFile?.Key) {
         console.error(`No metadata file found for dataset: ${datasetName}`);

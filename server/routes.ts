@@ -744,7 +744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileInfo = await s3Service.downloadMetadataFile(config.bucketName, dataset.source, dataset.name);
       
       if (!fileInfo) {
-        return res.status(404).json({ message: "Metadata file not found or failed to download" });
+        console.log(`No metadata file found for dataset ${dataset.name} in ${dataset.source}`);
+        return res.status(404).json({ 
+          message: "No YAML metadata file found for this dataset",
+          details: `Searched in folder: ${dataset.source}` 
+        });
       }
 
       // Set appropriate headers for file download
