@@ -122,7 +122,7 @@ function Router() {
               </div>
             );
           }
-          return <AdminPanel />;
+          return <AdminPanel currentUser={currentUser} />;
         }} />
         <Route component={NotFound} />
       </Switch>

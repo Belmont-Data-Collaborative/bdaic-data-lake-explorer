@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle } from "lucide-react";
@@ -21,7 +22,11 @@ interface User {
   lastLoginAt: string | null;
 }
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  currentUser?: { id: number; username: string; email: string; role: string } | null;
+}
+
+export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const { toast } = useToast();
@@ -192,8 +197,15 @@ export default function AdminPanel() {
             </TableHeader>
             <TableBody>
               {users?.map((user: User) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
+                <TableRow key={user.id} className={currentUser?.id === user.id ? "bg-primary/5" : ""}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center space-x-2">
+                      <span>{user.username}</span>
+                      {currentUser?.id === user.id && (
+                        <Badge variant="outline" className="text-xs">You</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -287,25 +299,27 @@ export default function AdminPanel() {
 
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDeletingUser(user)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeletingUser(user)}
+                                disabled={currentUser?.id === user.id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {currentUser?.id === user.id 
+                                ? "Cannot delete your own account" 
+                                : "Delete user"
+                              }
+                            </TooltipContent>
+                          </Tooltip>
                         </DialogTrigger>
                         <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle className="flex items-center space-x-2">
-                              <AlertTriangle className="h-5 w-5 text-destructive" />
-                              <span>Delete User</span>
-                            </DialogTitle>
-                            <DialogDescription>
-                              Are you sure you want to delete user "{deletingUser?.username}"? 
-                              This action cannot be undone.
-                            </DialogDescription>
-                          </DialogHeader>
+
                           <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
