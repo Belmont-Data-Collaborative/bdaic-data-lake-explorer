@@ -108,6 +108,10 @@ The build process creates optimized static assets for the frontend while bundlin
   - Protected current user from changing their own active status
   - Fixed dataset refresh endpoint to require authentication and properly refresh from current AWS bucket configuration
   - Debugged issue where dataset explorer was showing cached data instead of data from bdaic-public-transform bucket
+  - Fixed JWT token authentication in frontend API requests for dataset refresh functionality
+  - Enhanced apiRequest and queryClient to automatically include Authorization Bearer tokens from localStorage
+  - Refresh process now successfully connecting and processing datasets from bdaic-public-transform bucket
+  - Large-scale dataset refresh in progress with 283+ datasets being processed from current AWS configuration
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security

@@ -19,6 +19,12 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
   
+  // Add JWT token from localStorage if available
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
   if (customHeaders) {
     Object.assign(headers, customHeaders);
   }
@@ -40,7 +46,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers: Record<string, string> = {};
+    
+    // Add JWT token from localStorage if available
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    
     const res = await fetch(queryKey[0] as string, {
+      headers,
       credentials: "include",
     });
 
