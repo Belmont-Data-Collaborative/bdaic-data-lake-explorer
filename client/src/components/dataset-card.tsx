@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/collapsible";
 
 import { useToast } from "@/hooks/use-toast";
+import { useErrorHandler } from "@/hooks/use-error-handler";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DatasetChat } from "@/components/dataset-chat";
 import type { Dataset, DatasetInsights, DatasetMetadata } from "@shared/schema";
@@ -62,6 +64,12 @@ export function DatasetCard({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { toast } = useToast();
+  const { handleError } = useErrorHandler();
+  const chatFocusTrapRef = useFocusTrap({ 
+    isActive: isChatOpen, 
+    restoreFocus: true, 
+    autoFocus: true 
+  });
 
   const metadata = dataset.metadata as DatasetMetadata | null;
   const insights = dataset.insights as DatasetInsights | null;
@@ -346,10 +354,11 @@ export function DatasetCard({
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger 
-          className="w-full px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors touch-target container-safe"
+          className="w-full px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors touch-target container-safe focus-ring"
           aria-expanded={isOpen}
           aria-controls={`dataset-content-${dataset.id}`}
-          aria-label={`${isOpen ? 'Collapse' : 'Expand'} dataset details for ${dataset.name}`}
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} dataset details for ${dataset.name}. Format: ${dataset.format}, Size: ${dataset.size}, Last modified: ${new Date(dataset.lastModified).toLocaleDateString()}`}
+          aria-describedby={`dataset-summary-${dataset.id}`}
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
@@ -361,23 +370,41 @@ export function DatasetCard({
                 <Icon size={20} className="hidden sm:block" />
               </div>
               <div className="text-left min-w-0 flex-1">
-                <h3 className="text-base sm:text-lg font-semibold text-foreground text-break">
-                  {dataset.name}
-                </h3>
-                <div className="flex items-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
-                  <span className="flex items-center space-x-1 flex-shrink-0">
+                <header>
+                  <h3 className="text-base sm:text-lg font-semibold text-contrast-high text-break">
+                    {dataset.name}
+                  </h3>
+                </header>
+                
+                <div 
+                  id={`dataset-summary-${dataset.id}`}
+                  className="sr-only"
+                >
+                  Dataset {dataset.name} in {dataset.format} format, 
+                  {dataset.size} in size, 
+                  {downloadStats ? (downloadStats.sample + downloadStats.full + downloadStats.metadata) : 0} total downloads, 
+                  last modified on {new Date(dataset.lastModified).toLocaleDateString()}.
+                  {metadata?.description && ` Description: ${metadata.description}`}
+                </div>
+                
+                <div 
+                  className="flex items-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-contrast-medium mt-1"
+                  role="list"
+                  aria-label="Dataset properties"
+                >
+                  <span className="flex items-center space-x-1 flex-shrink-0" role="listitem" aria-label={`File format: ${dataset.format}`}>
                     <FileText size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.format}</span>
                   </span>
-                  <span className="flex items-center space-x-1 flex-shrink-0">
+                  <span className="flex items-center space-x-1 flex-shrink-0" role="listitem" aria-label={`File size: ${dataset.size}`}>
                     <Weight size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.size}</span>
                   </span>
-                  <span className="flex items-center space-x-1 flex-shrink-0">
+                  <span className="flex items-center space-x-1 flex-shrink-0" role="listitem" aria-label={`Total downloads: ${downloadStats ? (downloadStats.sample + downloadStats.full + downloadStats.metadata) : 0}`}>
                     <Download size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>Downloads: {downloadStats ? (downloadStats.sample + downloadStats.full + downloadStats.metadata) : 0}</span>
                   </span>
-                  <span className="flex items-center space-x-1 flex-shrink-0">
+                  <span className="flex items-center space-x-1 flex-shrink-0" role="listitem" aria-label={`Last modified: ${new Date(dataset.lastModified).toLocaleDateString()}`}>
                     <Calendar size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>Last modified: {new Date(dataset.lastModified).toLocaleDateString()}</span>
                   </span>
@@ -385,11 +412,15 @@ export function DatasetCard({
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-              <Badge variant={getStatusColor(dataset.status)} className="text-xs">
+              <Badge 
+                variant={getStatusColor(dataset.status)} 
+                className="text-xs"
+                aria-label={`Dataset status: ${dataset.status}`}
+              >
                 {dataset.status}
               </Badge>
               <ChevronDown
-                className={`text-muted-foreground transition-transform duration-200 w-4 h-4 sm:w-5 sm:h-5 ${isOpen ? "rotate-180" : ""}`}
+                className={`text-contrast-muted transition-transform duration-200 w-4 h-4 sm:w-5 sm:h-5 ${isOpen ? "rotate-180" : ""}`}
                 aria-hidden="true"
               />
             </div>

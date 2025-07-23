@@ -1,71 +1,70 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 
-interface UseKeyboardNavigationOptions {
+interface KeyboardNavigationOptions {
   onEscape?: () => void;
   onEnter?: () => void;
   onArrowUp?: () => void;
   onArrowDown?: () => void;
   onArrowLeft?: () => void;
   onArrowRight?: () => void;
-  isActive?: boolean;
+  enabled?: boolean;
 }
 
-export function useKeyboardNavigation({
-  onEscape,
-  onEnter,
-  onArrowUp,
-  onArrowDown,
-  onArrowLeft,
-  onArrowRight,
-  isActive = true,
-}: UseKeyboardNavigationOptions) {
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!isActive) return;
-
-    switch (event.key) {
-      case 'Escape':
-        if (onEscape) {
-          event.preventDefault();
-          onEscape();
-        }
-        break;
-      case 'Enter':
-        if (onEnter) {
-          event.preventDefault();
-          onEnter();
-        }
-        break;
-      case 'ArrowUp':
-        if (onArrowUp) {
-          event.preventDefault();
-          onArrowUp();
-        }
-        break;
-      case 'ArrowDown':
-        if (onArrowDown) {
-          event.preventDefault();
-          onArrowDown();
-        }
-        break;
-      case 'ArrowLeft':
-        if (onArrowLeft) {
-          event.preventDefault();
-          onArrowLeft();
-        }
-        break;
-      case 'ArrowRight':
-        if (onArrowRight) {
-          event.preventDefault();
-          onArrowRight();
-        }
-        break;
-    }
-  }, [onEscape, onEnter, onArrowUp, onArrowDown, onArrowLeft, onArrowRight, isActive]);
+export function useKeyboardNavigation(options: KeyboardNavigationOptions) {
+  const {
+    onEscape,
+    onEnter,
+    onArrowUp,
+    onArrowDown,
+    onArrowLeft,
+    onArrowRight,
+    enabled = true,
+  } = options;
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!enabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Escape':
+          onEscape?.();
+          break;
+        case 'Enter':
+          if (e.ctrlKey || e.metaKey) {
+            onEnter?.();
+          }
+          break;
+        case 'ArrowUp':
+          if (e.altKey) {
+            e.preventDefault();
+            onArrowUp?.();
+          }
+          break;
+        case 'ArrowDown':
+          if (e.altKey) {
+            e.preventDefault();
+            onArrowDown?.();
+          }
+          break;
+        case 'ArrowLeft':
+          if (e.altKey) {
+            e.preventDefault();
+            onArrowLeft?.();
+          }
+          break;
+        case 'ArrowRight':
+          if (e.altKey) {
+            e.preventDefault();
+            onArrowRight?.();
+          }
+          break;
+      }
+    };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown, isActive]);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [enabled, onEscape, onEnter, onArrowUp, onArrowDown, onArrowLeft, onArrowRight]);
 }

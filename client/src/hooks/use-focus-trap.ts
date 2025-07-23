@@ -1,40 +1,43 @@
 import { useEffect, useRef } from 'react';
 
-interface UseFocusTrapOptions {
+interface FocusTrapOptions {
   isActive: boolean;
-  restoreOnClose?: boolean;
+  restoreFocus?: boolean;
+  autoFocus?: boolean;
 }
 
-export function useFocusTrap({ isActive, restoreOnClose = true }: UseFocusTrapOptions) {
+export function useFocusTrap(options: FocusTrapOptions) {
   const containerRef = useRef<HTMLElement>(null);
-  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!isActive) return;
-
-    // Store the currently focused element
-    previousActiveElementRef.current = document.activeElement as HTMLElement;
+    if (!options.isActive || !containerRef.current) return;
 
     const container = containerRef.current;
-    if (!container) return;
+    
+    // Store the previously focused element
+    if (options.restoreFocus !== false) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
+    }
 
-    // Get all focusable elements
+    // Get all focusable elements within the container
     const getFocusableElements = () => {
-      const selectors = [
+      const focusableSelectors = [
         'button:not([disabled])',
-        '[href]',
         'input:not([disabled])',
         'select:not([disabled])',
         'textarea:not([disabled])',
+        'a[href]',
         '[tabindex]:not([tabindex="-1"])',
-        '[contenteditable="true"]'
+        '[role="button"]:not([disabled])',
+        '[role="link"]:not([disabled])',
       ].join(', ');
       
-      return Array.from(container.querySelectorAll(selectors)) as HTMLElement[];
+      return Array.from(container.querySelectorAll(focusableSelectors)) as HTMLElement[];
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
 
       const focusableElements = getFocusableElements();
       if (focusableElements.length === 0) return;
@@ -42,49 +45,42 @@ export function useFocusTrap({ isActive, restoreOnClose = true }: UseFocusTrapOp
       const firstElement = focusableElements[0];
       const lastElement = focusableElements[focusableElements.length - 1];
 
-      if (event.shiftKey) {
-        // Shift + Tab (backwards)
+      if (e.shiftKey) {
+        // Shift + Tab: go to previous element
         if (document.activeElement === firstElement) {
-          event.preventDefault();
-          lastElement.focus();
+          e.preventDefault();
+          lastElement?.focus();
         }
       } else {
-        // Tab (forwards)
+        // Tab: go to next element
         if (document.activeElement === lastElement) {
-          event.preventDefault();
-          firstElement.focus();
+          e.preventDefault();
+          firstElement?.focus();
         }
       }
     };
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // Allow parent components to handle escape
-        const escapeEvent = new CustomEvent('focustrap:escape', { bubbles: true });
-        container.dispatchEvent(escapeEvent);
+    // Auto-focus first element if requested
+    if (options.autoFocus !== false) {
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length > 0) {
+        focusableElements[0]?.focus();
       }
-    };
-
-    // Focus the first focusable element
-    const focusableElements = getFocusableElements();
-    if (focusableElements.length > 0) {
-      focusableElements[0].focus();
     }
 
-    // Add event listeners
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keydown', handleEscape);
+    // Add event listener
+    container.addEventListener('keydown', handleKeyDown);
 
+    // Cleanup function
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keydown', handleEscape);
-
-      // Restore focus when deactivating
-      if (restoreOnClose && previousActiveElementRef.current) {
-        previousActiveElementRef.current.focus();
+      container.removeEventListener('keydown', handleKeyDown);
+      
+      // Restore focus to previously active element
+      if (options.restoreFocus !== false && previousActiveElement.current) {
+        previousActiveElement.current.focus();
       }
     };
-  }, [isActive, restoreOnClose]);
+  }, [options.isActive, options.restoreFocus, options.autoFocus]);
 
   return containerRef;
 }

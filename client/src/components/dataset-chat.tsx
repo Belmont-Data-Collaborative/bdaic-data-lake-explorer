@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, X, Bot, User, Loader2, Download, BarChart3, MessageCircle } from "lucide-react";
+import { Send, X, Bot, User, Loader2, Download, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -69,12 +69,12 @@ export function DatasetChat({ dataset, isOpen, onClose }: DatasetChatProps) {
   const { toast } = useToast();
 
   // Focus management
-  const focusTrapRef = useFocusTrap({ isActive: isOpen });
+  const focusTrapRef = useFocusTrap({ isActive: isOpen }) as React.RefObject<HTMLDivElement>;
   
   // Keyboard navigation
   useKeyboardNavigation({
     onEscape: onClose,
-    isActive: isOpen,
+    enabled: isOpen,
   });
 
   const scrollToBottom = () => {
@@ -286,19 +286,19 @@ What would you like to explore?`,
               variant="ghost"
               size="sm"
               onClick={downloadData}
-              title="Download Dataset"
-              className="touch-target"
+              aria-label="Download dataset sample"
+              className="touch-target focus-ring"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={onClose}
-              aria-label="Close dialog"
-              className="touch-target"
+              aria-label="Close AI chat dialog"
+              className="touch-target focus-ring"
             >
-              <X size={16} />
+              <X size={16} aria-hidden="true" />
             </Button>
           </div>
         </div>

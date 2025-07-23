@@ -65,14 +65,14 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
   return (
     <div className="min-h-screen bg-background overflow-safe">
       {/* Skip Links for Screen Readers */}
-      <div className="sr-only">
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50">
+      <nav role="navigation" aria-label="Skip links">
+        <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <a href="#navigation" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-32 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50">
+        <a href="#navigation" className="skip-link">
           Skip to navigation
         </a>
-      </div>
+      </nav>
       
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm container-safe">
@@ -96,13 +96,21 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
             <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
               {/* User Info */}
               {currentUser && (
-                <div className="hidden md:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg">
-                  <User className="text-primary flex-shrink-0" size={16} />
+                <div 
+                  className="hidden md:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg"
+                  role="status"
+                  aria-label={`Current user: ${currentUser.username}, role: ${currentUser.role}`}
+                >
+                  <User className="text-primary flex-shrink-0" size={16} aria-hidden="true" />
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-contrast-high">
                       {currentUser.username}
                     </span>
-                    <Badge variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'} className="text-xs px-1 py-0">
+                    <Badge 
+                      variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'} 
+                      className="text-xs px-1 py-0"
+                      aria-label={`User role: ${currentUser.role}`}
+                    >
                       {currentUser.role}
                     </Badge>
                   </div>
@@ -110,8 +118,12 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
               )}
               
               {/* AWS Config Info */}
-              <div className="hidden sm:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg max-w-48">
-                <Cloud className="text-primary flex-shrink-0" size={16} />
+              <div 
+                className="hidden sm:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg max-w-48"
+                role="status"
+                aria-label={`AWS bucket: ${awsConfig?.bucketName || "Not configured"}`}
+              >
+                <Cloud className="text-primary flex-shrink-0" size={16} aria-hidden="true" />
                 <span className="text-sm font-medium text-contrast-medium text-ellipsis">
                   {awsConfig?.bucketName || "Not configured"}
                 </span>
@@ -122,9 +134,10 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   variant="outline"
                   size="sm"
                   onClick={onLogout}
-                  className="flex items-center space-x-1 sm:space-x-2 touch-target"
+                  className="flex items-center space-x-1 sm:space-x-2 touch-target focus-ring"
+                  aria-label="Sign out of your account"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={16} aria-hidden="true" />
                   <span className="hidden sm:inline">Logout</span>
                 </Button>
               )}
@@ -132,44 +145,60 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           </div>
           
           {/* Navigation Tabs */}
-          <div id="navigation" className="border-t border-border overflow-x-auto">
-            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full" role="navigation" aria-label="Main navigation">
-              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}>
+          <nav id="navigation" className="border-t border-border overflow-x-auto" role="navigation" aria-label="Main navigation">
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+              <TabsList 
+                className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}
+                role="tablist"
+                aria-label="Main navigation tabs"
+              >
                 <TabsTrigger 
                   value="home" 
-                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
+                  role="tab"
+                  aria-selected={currentTab === "home"}
+                  aria-controls="main-content"
                 >
-                  <Database size={16} />
+                  <Database size={16} aria-hidden="true" />
                   <span className="text-responsive-sm">Dataset Explorer</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="user-panel" 
-                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
+                  role="tab"
+                  aria-selected={currentTab === "user-panel"}
+                  aria-controls="main-content"
                 >
-                  <User size={16} />
+                  <User size={16} aria-hidden="true" />
                   <span className="text-responsive-sm">User Panel</span>
                 </TabsTrigger>
                 {currentUser?.role === 'admin' && (
                   <TabsTrigger 
                     value="aws-config" 
-                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
+                    role="tab"
+                    aria-selected={currentTab === "aws-config"}
+                    aria-controls="main-content"
                   >
-                    <Settings size={16} />
+                    <Settings size={16} aria-hidden="true" />
                     <span className="text-responsive-sm">AWS Config</span>
                   </TabsTrigger>
                 )}
                 {currentUser?.role === 'admin' && (
                   <TabsTrigger 
                     value="admin" 
-                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
+                    className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
+                    role="tab"
+                    aria-selected={currentTab === "admin"}
+                    aria-controls="main-content"
                   >
-                    <Shield size={16} />
+                    <Shield size={16} aria-hidden="true" />
                     <span className="text-responsive-sm">Admin Panel</span>
                   </TabsTrigger>
                 )}
               </TabsList>
             </Tabs>
-          </div>
+          </nav>
         </div>
       </header>
 

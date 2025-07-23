@@ -132,99 +132,35 @@
   .text-accent-700 { color: var(--accent-700); }
   .text-accent-800 { color: var(--accent-800); }
   .text-accent-900 { color: var(--accent-900); }
-}
 
-/* Animation utilities */
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  .animate-slide-down {
-    animation: slideDown 0.3s ease-out;
-  }
-
-  .animate-pulse-soft {
-    animation: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-}
-
-/* WCAG Accessibility utilities */
-@layer utilities {
-  /* High contrast text combinations - WCAG AA compliant (4.5:1 ratio) */
-  .text-contrast-high {
-    color: hsl(0, 0%, 9%);
-  }
+  /* WCAG AA Compliant Text Colors (4.5:1 contrast ratio) */
+  .text-contrast-high { color: hsl(0, 0%, 9%); } /* High contrast text */
+  .text-contrast-medium { color: hsl(215, 25%, 27%); } /* Medium contrast text */
+  .text-contrast-muted { color: hsl(215, 16%, 47%); } /* Muted text (still AA compliant) */
   
-  .text-contrast-medium {
-    color: hsl(215, 16%, 35%);
-  }
-  
-  .text-contrast-muted {
-    color: hsl(215, 16%, 47%);
-  }
-
   /* Status colors with proper contrast */
-  .text-success {
-    color: hsl(142, 71%, 24%);
-  }
-  
-  .text-warning {
-    color: hsl(32, 95%, 32%);
-  }
-  
-  .text-error {
-    color: hsl(0, 84%, 35%);
-  }
-  
-  .text-info {
-    color: hsl(210, 82%, 35%);
-  }
+  .text-success { color: hsl(142, 76%, 36%); } /* Success green */
+  .text-warning { color: hsl(32, 95%, 44%); } /* Warning orange */
+  .text-error { color: hsl(0, 84%, 45%); } /* Error red */
+  .text-info { color: hsl(210, 82%, 41%); } /* Info blue */
 
-  /* Background colors with proper foreground contrast */
-  .bg-success {
-    background-color: hsl(142, 71%, 45%);
-    color: hsl(0, 0%, 100%);
-  }
-  
-  .bg-warning {
-    background-color: hsl(32, 95%, 50%);
-    color: hsl(0, 0%, 100%);
-  }
-  
-  .bg-error {
-    background-color: hsl(0, 84%, 45%);
-    color: hsl(0, 0%, 100%);
-  }
-  
-  .bg-info {
-    background-color: hsl(210, 82%, 41%);
-    color: hsl(0, 0%, 100%);
-  }
+  .bg-success { background-color: hsl(142, 76%, 36%); }
+  .bg-warning { background-color: hsl(32, 95%, 44%); }
+  .bg-error { background-color: hsl(0, 84%, 45%); }
+  .bg-info { background-color: hsl(210, 82%, 41%); }
 
-  /* Interactive states with enhanced contrast */
-  .interactive-focus {
-    outline: 2px solid hsl(210, 82%, 41%);
-    outline-offset: 2px;
-  }
-
-  /* Ensure minimum touch targets (44px) */
+  /* Focus and interaction utilities */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
-
-  /* Overflow prevention utilities */
-  .overflow-safe {
-    overflow-x: hidden;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+  
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
   }
-
-  .text-ellipsis {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50;
   }
 
   .text-break {
