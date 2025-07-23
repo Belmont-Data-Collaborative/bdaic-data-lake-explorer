@@ -280,9 +280,34 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role}
-                    </Badge>
+                    <Select 
+                      value={user.role} 
+                      onValueChange={(newRole) => {
+                        updateUserMutation.mutate({
+                          userId: user.id,
+                          updates: { role: newRole }
+                        });
+                      }}
+                      disabled={updateUserMutation.isPending}
+                    >
+                      <SelectTrigger className="w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">
+                          <div className="flex items-center space-x-2">
+                            <Shield className="h-3 w-3" />
+                            <span>Admin</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="user">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-3 w-3" />
+                            <span>User</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(user.isActive)}>

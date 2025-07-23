@@ -101,6 +101,8 @@ The build process creates optimized static assets for the frontend while bundlin
   - Added reload buttons to both Admin Panel and AWS Configuration for independent module refresh
   - Enhanced admin panel authentication with clear error messages and logout functionality
   - Fixed authentication flow issues and provided clear login instructions for JWT-based authentication
+  - Made role column directly editable with dropdown selection in admin panel user table
+  - Enhanced role selection UI with icons and improved visual feedback
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security
