@@ -10,7 +10,7 @@ import NotFound from "@/pages/not-found";
 import ApiDocsPage from "@/pages/api-docs";
 import AwsConfigPage from "@/pages/aws-config";
 import { MainLayout } from "@/components/main-layout";
-import { ErrorBoundary } from "@/components/error-boundary";
+import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper";
 
 function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,14 +64,14 @@ function Router() {
 
 function App() {
   return (
-    <ErrorBoundary>
+    <ErrorBoundaryWrapper level="page" componentName="DataLakeExplorerApp">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
           <Router />
         </TooltipProvider>
       </QueryClientProvider>
-    </ErrorBoundary>
+    </ErrorBoundaryWrapper>
   );
 }
 
