@@ -113,8 +113,11 @@ The build process creates optimized static assets for the frontend while bundlin
   - Refresh process now successfully connecting and processing datasets from bdaic-public-transform bucket
   - Large-scale dataset refresh completed successfully with 16 folders discovered from bdaic-public-transform bucket
   - Successfully resolved folder count discrepancy - system now correctly shows all 16 expected folders
-  - Dataset count increased and properly synchronized with current AWS bucket configuration
-  - All 16 folders from bdaic-public-transform now visible: archive, cdc_places, cdc_svi, cdc_wonder, census_acs5, census_acs5_profile, cms_medicare_disparities, county_health_rankings, epa_ejscreen, usda_census_agriculture, usda_food_access, and additional data sources
+  - Dataset count increased from 283 to 256 with proper bucket synchronization and archive folder removal
+  - Fixed frontend folder display issue by implementing proper filtering logic to show only folders with datasets
+  - Resolved race condition in frontend data loading that was causing empty folder display
+  - Forced cache refresh to ensure fresh data loads properly after refresh operations
+  - All 16 folders from bdaic-public-transform now correctly displayed: cdc_places, cdc_svi, cdc_wonder, census_acs5, census_acs5_profile, cms_medicare_disparities, county_health_rankings, epa_ejscreen, epa_smart_location, feeding_america, nashville_police_incidents, nashville_traffic_accidents, ndacan, state_specific, usda_census_agriculture, usda_food_access
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security
@@ -512,6 +515,77 @@ All endpoints return consistent error format:
 - **Intelligent Caching**: Variable TTL based on endpoint type for optimal performance
 - **Performance Monitoring**: Real-time tracking of response times, cache hit rates, and slow query detection
 - **Optimization Endpoints**: `/api/performance/stats` and `/api/performance/db-status` for monitoring and recommendations
+
+## User Authentication
+
+The application uses JWT-based authentication with role-based access control:
+
+### User Roles
+- **Admin**: Full access to all features including AWS configuration, user management, and dataset administration
+- **Editor**: Access to dataset exploration and modification capabilities  
+- **Viewer**: Read-only access to dataset exploration
+
+### Test Accounts
+- **Admin Account**: 
+  - Username: `admin`
+  - Email: `admin@example.com`
+  - Password: `admin`
+  - Role: Admin (full system access)
+
+- **User Account**:
+  - Username: `user` 
+  - Email: `user@example.com`
+  - Password: `user`
+  - Role: User (dataset exploration access)
+
+### Authentication Features
+- JWT token-based authentication with secure password hashing using bcrypt
+- Role-based navigation system with different tab access based on user role
+- Admin panel for user management with role editing and account status control
+- Current user protection prevents admins from deleting or modifying their own accounts
+- Automatic token refresh and storage using localStorage
+- Secure password validation and user registration system
+
+### Navigation by Role
+- **Regular Users**: Dataset Explorer, User Panel (2 tabs)
+- **Admin Users**: Dataset Explorer, User Panel, AWS Config, Admin Panel (4 tabs)
+
+## Current AWS Configuration
+
+The application is currently connected to the **bdaic-public-transform** S3 bucket with the following configuration:
+
+### Active Bucket Details
+- **Bucket Name**: `bdaic-public-transform`
+- **Region**: `us-east-1`
+- **Configuration Name**: `BDAIC Data Lake`
+- **Status**: Active and Connected
+- **Total Datasets**: 256 datasets across 16 folders
+- **Total Size**: 26.8 GB
+
+### Data Folders (16 active folders)
+1. **cdc_places** - 20 datasets (CDC PLACES health data)
+2. **cdc_svi** - 10 datasets (CDC Social Vulnerability Index)
+3. **cdc_wonder** - 4 datasets (CDC WONDER mortality data)
+4. **census_acs5** - 72 datasets (American Community Survey 5-year estimates)
+5. **census_acs5_profile** - 54 datasets (ACS profile data)
+6. **cms_medicare_disparities** - 11 datasets (Medicare health disparities)
+7. **county_health_rankings** - 2 datasets (Robert Wood Johnson Foundation data)
+8. **epa_ejscreen** - 8 datasets (EPA Environmental Justice screening)
+9. **epa_smart_location** - 1 dataset (EPA Smart Location Database)
+10. **feeding_america** - 4 datasets (Food insecurity data)
+11. **nashville_police_incidents** - 12 datasets (Nashville police incident reports)
+12. **nashville_traffic_accidents** - 11 datasets (Nashville traffic accident data)
+13. **ndacan** - 14 datasets (National Data Archive on Child Abuse and Neglect)
+14. **state_specific** - 2 datasets (State-specific datasets)
+15. **usda_census_agriculture** - 30 datasets (USDA Census of Agriculture)
+16. **usda_food_access** - 1 dataset (USDA Food Access Research Atlas)
+
+### Recent Sync Status
+- **Last Refresh**: Successfully completed with all 256 datasets synchronized
+- **Archive Folder**: Filtered out (contained 0 datasets)
+- **Frontend Display**: All 16 folders correctly displayed with proper dataset counts
+- **Folder Navigation**: Confirmed working - users can click folders to view datasets (e.g., cdc_places shows 20 datasets)
+- **Data Loading**: Fixed race condition issues and cache invalidation for real-time folder updates
 
 ## User Preferences
 
