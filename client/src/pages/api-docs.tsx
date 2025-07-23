@@ -109,6 +109,8 @@ For complete documentation, please check the project files or contact the develo
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Update URL hash without jumping
+      window.history.replaceState(null, '', `#${id}`);
     }
   };
 
@@ -180,10 +182,11 @@ For complete documentation, please check the project files or contact the develo
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Table of Contents */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-8">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-gray-900">
-                  Table of Contents
+            <Card className="sticky top-8 shadow-lg border-gray-200">
+              <CardHeader className="bg-gray-50 border-b border-gray-200">
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                  <List size={18} className="text-blue-600" />
+                  <span>Table of Contents</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -195,13 +198,14 @@ For complete documentation, please check the project files or contact the develo
                         variant="ghost"
                         size="sm"
                         onClick={() => scrollToSection(item.id)}
-                        className={`w-full justify-start text-left h-auto py-2 px-3 ${
-                          item.level === 1 ? 'font-medium' : 
-                          item.level === 2 ? 'pl-6 text-sm' :
-                          item.level === 3 ? 'pl-9 text-xs' : 'pl-12 text-xs'
+                        className={`w-full justify-start text-left h-auto py-2 px-3 hover:bg-blue-50 hover:text-blue-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          item.level === 1 ? 'font-medium text-gray-900' : 
+                          item.level === 2 ? 'pl-6 text-sm text-gray-700' :
+                          item.level === 3 ? 'pl-9 text-xs text-gray-600' : 'pl-12 text-xs text-gray-500'
                         }`}
+                        aria-label={`Navigate to ${item.title}`}
                       >
-                        <ChevronRight size={12} className="mr-2 flex-shrink-0" />
+                        <ChevronRight size={12} className="mr-2 flex-shrink-0 text-gray-400" />
                         <span className="truncate">{item.title}</span>
                       </Button>
                     ))}
@@ -213,8 +217,10 @@ For complete documentation, please check the project files or contact the develo
 
           {/* Documentation Content */}
           <div className="lg:col-span-3">
-            <Card>
-              <CardContent className="p-8">
+            <Card className="shadow-lg border-gray-200">
+              <CardContent className="p-8"
+                style={{ maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}
+              >
                 <div className="prose prose-slate max-w-none">
                   <ErrorBoundary>
                     <ReactMarkdown
@@ -224,7 +230,7 @@ For complete documentation, please check the project files or contact the develo
                         <h1 
                           {...props} 
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-3xl font-bold text-gray-900 mb-6 border-b pb-4"
+                          className="text-3xl font-bold text-gray-900 mb-6 border-b-2 border-blue-500 pb-4 scroll-mt-8"
                         >
                           {children}
                         </h1>
@@ -233,7 +239,7 @@ For complete documentation, please check the project files or contact the develo
                         <h2 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-2xl font-semibold text-gray-800 mt-8 mb-4"
+                          className="text-2xl font-semibold text-gray-800 mt-8 mb-4 border-b border-gray-300 pb-2 scroll-mt-8"
                         >
                           {children}
                         </h2>
@@ -242,7 +248,7 @@ For complete documentation, please check the project files or contact the develo
                         <h3 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-xl font-medium text-gray-700 mt-6 mb-3"
+                          className="text-xl font-medium text-gray-700 mt-6 mb-3 scroll-mt-8"
                         >
                           {children}
                         </h3>
@@ -251,7 +257,7 @@ For complete documentation, please check the project files or contact the develo
                         <h4 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-lg font-medium text-gray-600 mt-4 mb-2"
+                          className="text-lg font-medium text-gray-600 mt-4 mb-2 scroll-mt-8"
                         >
                           {children}
                         </h4>
@@ -260,62 +266,89 @@ For complete documentation, please check the project files or contact the develo
                         const isInline = !className;
                         if (isInline) {
                           return (
-                            <code className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                            <code className="bg-gray-100 text-gray-900 px-2 py-1 rounded text-sm font-mono border" {...props}>
                               {children}
                             </code>
                           );
                         }
                         return (
-                          <code className="block bg-foreground text-background p-4 rounded-lg overflow-x-auto text-sm font-mono" {...props}>
+                          <code className="block bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border" {...props}>
                             {children}
                           </code>
                         );
                       },
                       pre: ({ children }) => <>{children}</>,
                       table: ({ children, ...props }) => (
-                        <div className="overflow-x-auto my-6">
+                        <div className="overflow-x-auto my-6 border border-gray-200 rounded-lg">
                           <table className="min-w-full divide-y divide-gray-200" {...props}>
                             {children}
                           </table>
                         </div>
                       ),
                       th: ({ children, ...props }) => (
-                        <th className="px-6 py-3 bg-muted text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props}>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" {...props}>
                           {children}
                         </th>
                       ),
                       td: ({ children, ...props }) => (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground border-b border-border" {...props}>
+                        <td className="px-6 py-4 text-sm text-gray-900 border-b border-gray-200" {...props}>
                           {children}
                         </td>
                       ),
                       blockquote: ({ children, ...props }) => (
-                        <blockquote className="border-l-4 border-primary pl-4 py-2 my-6 bg-primary/5 text-foreground" {...props}>
+                        <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-6 bg-blue-50 text-gray-700 rounded-r" {...props}>
                           {children}
                         </blockquote>
                       ),
                       ul: ({ children, ...props }) => (
-                        <ul className="list-disc list-inside space-y-2 my-4" {...props}>
+                        <ul className="list-disc list-inside space-y-2 my-4 ml-4" {...props}>
                           {children}
                         </ul>
                       ),
                       ol: ({ children, ...props }) => (
-                        <ol className="list-decimal list-inside space-y-2 my-4" {...props}>
+                        <ol className="list-decimal list-inside space-y-2 my-4 ml-4" {...props}>
                           {children}
                         </ol>
                       ),
                       li: ({ children, ...props }) => (
-                        <li className="text-contrast-medium" {...props}>
+                        <li className="text-gray-700 leading-relaxed" {...props}>
                           {children}
                         </li>
                       ),
-                      a: ({ children, ...props }) => (
-                        <a className="text-info hover:text-primary underline" {...props}>
+                      a: ({ children, href, ...props }) => (
+                        <a 
+                          className="text-blue-600 hover:text-blue-800 underline hover:no-underline transition-colors" 
+                          href={href}
+                          onClick={(e) => {
+                            // Handle internal links to sections
+                            if (href && href.startsWith('#')) {
+                              e.preventDefault();
+                              const id = href.substring(1);
+                              scrollToSection(id);
+                            }
+                          }}
+                          {...props}
+                        >
                           {children}
                         </a>
                       ),
                       hr: ({ ...props }) => (
                         <Separator className="my-8" {...props} />
+                      ),
+                      p: ({ children, ...props }) => (
+                        <p className="text-gray-700 leading-relaxed my-4" {...props}>
+                          {children}
+                        </p>
+                      ),
+                      strong: ({ children, ...props }) => (
+                        <strong className="font-semibold text-gray-900" {...props}>
+                          {children}
+                        </strong>
+                      ),
+                      em: ({ children, ...props }) => (
+                        <em className="italic text-gray-700" {...props}>
+                          {children}
+                        </em>
                       )
                       }}
                     >

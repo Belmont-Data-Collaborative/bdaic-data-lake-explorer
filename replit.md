@@ -80,6 +80,17 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Enhanced API documentation page with improved readability and functional navigation
+  - Redesigned ReactMarkdown components with proper typography and contrast for better readability
+  - Enhanced Table of Contents with clickable navigation that updates URL hash and scrolls smoothly to sections
+  - Improved code syntax highlighting with gray background for inline code and dark theme for code blocks
+  - Added proper heading hierarchy with scroll margins (scroll-mt-8) for better navigation experience
+  - Enhanced table styling with bordered containers and proper gray-scale color scheme
+  - Improved list styling with proper indentation and consistent typography
+  - Added focus states and accessibility improvements for TOC navigation buttons
+  - Implemented sticky sidebar with enhanced visual design and shadow effects
+  - Made documentation content scrollable within viewport with proper overflow handling
+  - Enhanced link handling for internal section navigation with smooth scrolling behavior
 - July 23, 2025: Implemented smooth loading animations for folder/data source cards with skeleton placeholders
   - Created `SkeletonFolderCard` component with shimmer effects and realistic placeholder content
   - Added staggered card animations with 150ms delays using CSS `animation-delay` and `slideUp` keyframes
