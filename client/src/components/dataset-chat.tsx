@@ -171,13 +171,41 @@ What would you like to explore?`,
   const renderChart = (chart: ChartData) => {
     const commonOptions = {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: "top" as const,
+          labels: {
+            boxWidth: 12,
+            padding: 10,
+            font: {
+              size: 11,
+            },
+          },
         },
         title: {
           display: !!chart.title,
           text: chart.title || "",
+          font: {
+            size: 14,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            font: {
+              size: 10,
+            },
+            maxRotation: 45,
+          },
+        },
+        y: {
+          ticks: {
+            font: {
+              size: 10,
+            },
+          },
         },
       },
       ...chart.options,
@@ -236,30 +264,30 @@ What would you like to explore?`,
     >
       <div 
         ref={focusTrapRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col"
+        className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl modal-content animate-fade-in overflow-safe flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <Bot className="text-blue-600" size={20} />
+        <div className="flex items-center justify-between p-4 border-b border-border container-safe">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <MessageCircle className="text-primary-foreground" size={16} />
             </div>
-            <div>
-              <h2 id="chat-title" className="text-xl font-semibold text-gray-900">
-                AI Data Analyst
+            <div className="min-w-0 flex-1">
+              <h2 id="chat-title" className="font-semibold text-foreground text-ellipsis">
+                AI Chat: {dataset.name}
               </h2>
-              <p id="chat-description" className="text-sm text-gray-600 flex items-center space-x-1">
-                <BarChart3 className="h-3 w-3" />
-                <span>Analyzing: {dataset.name}</span>
+              <p id="chat-description" className="text-sm text-muted-foreground text-ellipsis">
+                Ask questions about this dataset
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
               onClick={downloadData}
               title="Download Dataset"
+              className="touch-target"
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -268,22 +296,23 @@ What would you like to explore?`,
               size="sm" 
               onClick={onClose}
               aria-label="Close dialog"
+              className="touch-target"
             >
-              <X size={20} />
+              <X size={16} />
             </Button>
           </div>
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-6">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 p-4 overflow-safe">
+          <div className="space-y-4 container-safe">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`flex items-start space-x-3 max-w-[80%] ${
+                  className={`flex items-start space-x-3 max-w-[85%] sm:max-w-[80%] overflow-safe ${
                     message.role === "user"
                       ? "flex-row-reverse space-x-reverse"
                       : ""
@@ -292,8 +321,8 @@ What would you like to explore?`,
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                       message.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-600"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {message.role === "user" ? (
@@ -303,10 +332,10 @@ What would you like to explore?`,
                     )}
                   </div>
                   <div
-                    className={`rounded-lg px-4 py-3 ${
+                    className={`rounded-lg px-4 py-3 overflow-safe text-break ${
                       message.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
                     }`}
                   >
                     {message.role === "assistant" ? (
@@ -339,7 +368,7 @@ What would you like to explore?`,
                               <li className="mb-1">{children}</li>
                             ),
                             code: ({ children }) => (
-                              <code className="bg-gray-200 px-1 py-0.5 rounded text-xs">
+                              <code className="bg-muted px-1 py-0.5 rounded text-xs">
                                 {children}
                               </code>
                             ),
@@ -363,8 +392,8 @@ What would you like to explore?`,
                           {message.content}
                         </ReactMarkdown>
                         {message.chart && (
-                          <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
-                            <div className="h-64 w-full">
+                          <div className="mt-4 p-4 bg-card border border-border rounded-lg chart-container">
+                            <div className="h-64 w-full chart-responsive">
                               {renderChart(message.chart)}
                             </div>
                           </div>
@@ -377,15 +406,15 @@ What would you like to explore?`,
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap">
+                      <p className="text-sm whitespace-pre-wrap text-break">
                         {message.content}
                       </p>
                     )}
                     <p
                       className={`text-xs mt-2 ${
                         message.role === "user"
-                          ? "text-blue-100"
-                          : "text-gray-500"
+                          ? "text-primary-foreground/80"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {message.timestamp.toLocaleTimeString()}
@@ -396,14 +425,14 @@ What would you like to explore?`,
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="flex items-start space-x-3 max-w-[80%]">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Bot size={16} className="text-gray-600" />
+                <div className="flex items-start space-x-3 max-w-[85%] sm:max-w-[80%] overflow-safe">
+                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot size={16} className="text-muted-foreground" />
                   </div>
-                  <div className="bg-gray-100 rounded-lg px-4 py-3">
+                  <div className="bg-muted rounded-lg px-4 py-3 text-break">
                     <div className="flex items-center space-x-2">
-                      <Loader2 className="animate-spin" size={16} />
-                      <span className="text-sm text-gray-600">
+                      <Loader2 className="animate-spin flex-shrink-0" size={16} />
+                      <span className="text-sm text-foreground">
                         AI is thinking...
                       </span>
                     </div>
@@ -416,27 +445,27 @@ What would you like to explore?`,
         </ScrollArea>
 
         {/* Input */}
-        <div className="p-6 border-t border-gray-200">
-          <div className="flex space-x-3">
+        <div className="p-4 border-t border-border container-safe">
+          <div className="flex space-x-3 gap-2">
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask a question about this dataset..."
-              className="flex-1"
+              className="flex-1 min-w-0"
               disabled={isLoading}
               aria-label="Ask a question about this dataset"
             />
             <Button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
-              className="px-6"
+              className="px-4 sm:px-6 flex-shrink-0 touch-target"
             >
               <Send size={16} />
             </Button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2 text-break">
             Press Enter to send • The AI has context about this dataset's
             structure and metadata
           </p>

@@ -225,38 +225,39 @@ export function DatasetCard({
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger 
-          className="w-full px-6 py-4 hover:bg-muted/50 transition-colors touch-target"
+          className="w-full px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors touch-target container-safe"
           aria-expanded={isOpen}
           aria-controls={`dataset-content-${dataset.id}`}
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} dataset details for ${dataset.name}`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
               <div
-                className={`w-10 h-10 ${iconColorClass} rounded-lg flex items-center justify-center`}
+                className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColorClass} rounded-lg flex items-center justify-center flex-shrink-0`}
                 aria-hidden="true"
               >
-                <Icon size={20} />
+                <Icon size={16} className="sm:hidden" />
+                <Icon size={20} className="hidden sm:block" />
               </div>
-              <div className="text-left">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="text-left min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground text-break">
                   {dataset.name}
                 </h3>
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                  <span className="flex items-center space-x-1">
-                    <FolderOpen size={12} aria-hidden="true" />
-                    <span>{dataset.source}</span>
+                <div className="flex items-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
+                  <span className="flex items-center space-x-1 flex-shrink-0">
+                    <FolderOpen size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
+                    <span className="text-ellipsis">{dataset.source}</span>
                   </span>
-                  <span className="flex items-center space-x-1">
-                    <FileText size={12} aria-hidden="true" />
+                  <span className="flex items-center space-x-1 flex-shrink-0">
+                    <FileText size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.format}</span>
                   </span>
-                  <span className="flex items-center space-x-1">
-                    <Weight size={12} aria-hidden="true" />
+                  <span className="flex items-center space-x-1 flex-shrink-0">
+                    <Weight size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.size}</span>
                   </span>
-                  <span className="flex items-center space-x-1">
-                    <Calendar size={12} aria-hidden="true" />
+                  <span className="flex items-center space-x-1 flex-shrink-0">
+                    <Calendar size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>
                       {new Date(dataset.lastModified).toLocaleDateString()}
                     </span>
@@ -264,13 +265,12 @@ export function DatasetCard({
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <Badge variant={getStatusColor(dataset.status)}>
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+              <Badge variant={getStatusColor(dataset.status)} className="text-xs">
                 {dataset.status}
               </Badge>
               <ChevronDown
-                className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                size={20}
+                className={`text-muted-foreground transition-transform duration-200 w-4 h-4 sm:w-5 sm:h-5 ${isOpen ? "rotate-180" : ""}`}
                 aria-hidden="true"
               />
             </div>
@@ -278,9 +278,9 @@ export function DatasetCard({
         </CollapsibleTrigger>
 
         <CollapsibleContent id={`dataset-content-${dataset.id}`}>
-          <div className="border-t border-border bg-muted/30">
-            <div className="px-6 py-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="border-t border-border bg-muted/30 overflow-safe">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 container-safe">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {/* Metadata Section */}
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center">
@@ -288,17 +288,17 @@ export function DatasetCard({
                     Metadata
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <span className="text-sm text-gray-600">
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">
                         Record Count
                       </span>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-foreground text-ellipsis">
                         {metadata?.recordCount || "Unknown"}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <span className="text-sm text-gray-600">File Size</span>
-                      <span className="text-sm font-medium text-gray-900">
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">File Size</span>
+                      <span className="text-sm font-medium text-foreground text-ellipsis">
                         {dataset.size}
                       </span>
                     </div>
