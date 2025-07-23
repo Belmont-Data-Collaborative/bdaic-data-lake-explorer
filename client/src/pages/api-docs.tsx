@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Book, FileText, Search, ChevronRight } from "lucide-react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -215,9 +216,10 @@ For complete documentation, please check the project files or contact the develo
             <Card>
               <CardContent className="p-8">
                 <div className="prose prose-slate max-w-none">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
+                  <ErrorBoundary>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
                       h1: ({ children, ...props }) => (
                         <h1 
                           {...props} 
@@ -315,10 +317,11 @@ For complete documentation, please check the project files or contact the develo
                       hr: ({ ...props }) => (
                         <Separator className="my-8" {...props} />
                       )
-                    }}
-                  >
-                    {filteredContent}
-                  </ReactMarkdown>
+                      }}
+                    >
+                      {filteredContent}
+                    </ReactMarkdown>
+                  </ErrorBoundary>
                 </div>
               </CardContent>
             </Card>

@@ -8,6 +8,7 @@ import { MainPageActions } from "@/components/main-page-actions";
 import { StatsCards } from "@/components/stats-cards";
 import { DatasetList } from "@/components/dataset-list";
 import { FolderCard } from "@/components/folder-card";
+import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset, AwsConfig } from "@shared/schema";
 
 interface Stats {
@@ -341,7 +342,9 @@ export default function Home() {
               </div>
             </div>
           )}
-          <StatsCards stats={stats} />
+          <ErrorBoundary>
+            <StatsCards stats={stats} />
+          </ErrorBoundary>
         </div>
 
         {selectedFolder ? (
@@ -412,12 +415,14 @@ export default function Home() {
                 </div>
               )}
 
-              <DatasetList
-                datasets={filteredDatasets}
-                isLoading={datasetsLoading || isRefreshing}
-                selectedDatasetId={selectedDatasetId}
-                showPagination={false}
-              />
+              <ErrorBoundary>
+                <DatasetList
+                  datasets={filteredDatasets}
+                  isLoading={datasetsLoading || isRefreshing}
+                  selectedDatasetId={selectedDatasetId}
+                  showPagination={false}
+                />
+              </ErrorBoundary>
             </div>
           </>
         ) : (
@@ -462,32 +467,34 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedFolders.map((folderName) => {
-                  // Use all datasets to find datasets for this folder
-                  const folderDatasets = allDatasets.filter(
-                    (dataset) => dataset.topLevelFolder === folderName,
-                  );
-                  // Find community data points for this folder
-                  const folderDataPointsEntry = folderDataPoints.find((entry) =>
-                    entry.folder_label
-                      .toLowerCase()
-                      .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
-                  );
+              <ErrorBoundary>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedFolders.map((folderName) => {
+                    // Use all datasets to find datasets for this folder
+                    const folderDatasets = allDatasets.filter(
+                      (dataset) => dataset.topLevelFolder === folderName,
+                    );
+                    // Find community data points for this folder
+                    const folderDataPointsEntry = folderDataPoints.find((entry) =>
+                      entry.folder_label
+                        .toLowerCase()
+                        .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
+                    );
 
-                  return (
-                    <FolderCard
-                      key={folderName}
-                      folderName={folderName}
-                      datasets={folderDatasets}
-                      onClick={() => handleFolderSelect(folderName)}
-                      totalCommunityDataPoints={
-                        folderDataPointsEntry?.total_community_data_points
-                      }
-                    />
-                  );
-                })}
-              </div>
+                    return (
+                      <FolderCard
+                        key={folderName}
+                        folderName={folderName}
+                        datasets={folderDatasets}
+                        onClick={() => handleFolderSelect(folderName)}
+                        totalCommunityDataPoints={
+                          folderDataPointsEntry?.total_community_data_points
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </ErrorBoundary>
             </div>
           </>
         )}

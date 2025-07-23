@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import { ConfigurationPanel } from "@/components/configuration-panel";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function AwsConfigPage() {
   return (
@@ -18,7 +19,9 @@ export default function AwsConfigPage() {
       </div>
 
       {/* Configuration Panel */}
-      <ConfigurationPanel onRefreshStateChange={() => {}} />
+      <ErrorBoundary>
+        <ConfigurationPanel onRefreshStateChange={() => {}} />
+      </ErrorBoundary>
     </div>
   );
 }

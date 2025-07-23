@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import ApiDocsPage from "@/pages/api-docs";
 import AwsConfigPage from "@/pages/aws-config";
 import { MainLayout } from "@/components/main-layout";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -63,12 +64,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
