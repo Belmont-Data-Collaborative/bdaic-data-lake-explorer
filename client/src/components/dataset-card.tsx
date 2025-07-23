@@ -76,7 +76,13 @@ export function DatasetCard({
   // Fetch download statistics
   const { data: downloadStats } = useQuery({
     queryKey: ['/api/datasets', dataset.id, 'download-stats'],
-    queryFn: () => apiRequest(`/api/datasets/${dataset.id}/download-stats`),
+    queryFn: async () => {
+      const response = await fetch(`/api/datasets/${dataset.id}/download-stats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch download stats');
+      }
+      return response.json();
+    },
     enabled: isOpen, // Only fetch when expanded
   });
 
