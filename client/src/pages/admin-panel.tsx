@@ -280,39 +280,76 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Select 
-                      value={user.role} 
-                      onValueChange={(newRole) => {
-                        updateUserMutation.mutate({
-                          userId: user.id,
-                          updates: { role: newRole }
-                        });
-                      }}
-                      disabled={updateUserMutation.isPending}
-                    >
-                      <SelectTrigger className="w-20 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">
-                          <div className="flex items-center space-x-2">
-                            <Shield className="h-3 w-3" />
-                            <span>Admin</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="user">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-3 w-3" />
-                            <span>User</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {currentUser?.id === user.id ? (
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                        {user.role}
+                      </Badge>
+                    ) : (
+                      <Select 
+                        value={user.role} 
+                        onValueChange={(newRole) => {
+                          updateUserMutation.mutate({
+                            userId: user.id,
+                            updates: { role: newRole }
+                          });
+                        }}
+                        disabled={updateUserMutation.isPending}
+                      >
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">
+                            <div className="flex items-center space-x-2">
+                              <Shield className="h-3 w-3" />
+                              <span>Admin</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="user">
+                            <div className="flex items-center space-x-2">
+                              <Users className="h-3 w-3" />
+                              <span>User</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(user.isActive)}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    {currentUser?.id === user.id ? (
+                      <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    ) : (
+                      <Select 
+                        value={user.isActive ? 'active' : 'inactive'} 
+                        onValueChange={(newStatus) => {
+                          updateUserMutation.mutate({
+                            userId: user.id,
+                            updates: { isActive: newStatus === 'active' }
+                          });
+                        }}
+                        disabled={updateUserMutation.isPending}
+                      >
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">
+                            <div className="flex items-center space-x-2">
+                              <UserCheck className="h-3 w-3" />
+                              <span>Active</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="inactive">
+                            <div className="flex items-center space-x-2">
+                              <UserX className="h-3 w-3" />
+                              <span>Inactive</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                   <TableCell>
                     {format(new Date(user.createdAt), 'MMM dd, yyyy')}
