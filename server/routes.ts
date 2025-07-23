@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
@@ -71,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { username, email, passwordHash, role = "user" } = validation.data;
+      const { username, email, password, role = "user" } = validation.data;
 
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -83,6 +84,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingEmail) {
         return res.status(409).json({ message: "Email already exists" });
       }
+
+      // Hash the password
+      const passwordHash = await bcrypt.hash(password, 10);
 
       // Create new user
       const newUser = await storage.createUser({

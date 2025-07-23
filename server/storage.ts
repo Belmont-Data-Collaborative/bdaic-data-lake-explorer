@@ -257,15 +257,11 @@ export class DatabaseStorage implements IStorage {
 
   // User management methods
   async createUser(userData: InsertUser): Promise<User> {
-    // Hash the password
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(userData.passwordHash, saltRounds);
-    
+    // Password should already be hashed by the caller
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
-        passwordHash,
       })
       .returning();
     return user;

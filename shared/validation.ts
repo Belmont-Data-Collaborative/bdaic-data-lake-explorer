@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
-import { awsConfig } from './schema';
+import { awsConfig, users } from './schema';
 
 // Base validation schemas
 export const passwordSchema = z.string()
@@ -24,6 +24,23 @@ export const loginSchema = z.object({
 export const setPasswordSchema = z.object({
   currentPassword: passwordSchema.optional(),
   newPassword: passwordSchema
+});
+
+// User authentication schemas
+export const registerUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(1, "Password is required"),
+  confirmPassword: z.string().min(1, "Password confirmation is required"),
+  role: z.enum(["admin", "user"]).default("user"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export const loginUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
 // AWS Configuration schemas

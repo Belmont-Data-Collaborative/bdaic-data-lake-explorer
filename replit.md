@@ -90,6 +90,9 @@ The build process creates optimized static assets for the frontend while bundlin
   - Enhanced landing page with registration support and JWT token-based authentication
   - Integrated authentication system into existing application while maintaining backward compatibility
   - Added user verification endpoints and secure token storage with localStorage
+  - Created test accounts: admin (admin/admin) and user (user/user) with proper JWT authentication
+  - Fixed authentication schema validation to properly handle password hashing server-side
+  - Enhanced main layout to display user information and role-based navigation (admin panel for admin users only)
 - July 23, 2025: Implemented comprehensive download tracking system for monitoring dataset usage
   - Added downloads table to PostgreSQL database with foreign key relationships and proper indexing
   - Added download count columns (downloadCountSample, downloadCountFull, downloadCountMetadata) to datasets table

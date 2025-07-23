@@ -141,9 +141,13 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 // Registration schema with password confirmation
-export const registerUserSchema = insertUserSchema.extend({
-  confirmPassword: z.string(),
-}).refine((data) => data.passwordHash === data.confirmPassword, {
+export const registerUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(1, "Password is required"),
+  confirmPassword: z.string().min(1, "Password confirmation is required"),
+  role: z.enum(["admin", "user"]).default("user"),
+}).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
