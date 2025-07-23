@@ -42,14 +42,14 @@ export function DatasetList({
 
   if (datasets.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center" role="status" aria-live="polite">
+        <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4" aria-hidden="true">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-1 1m0 0l-1 1m2-2h2M9 7l1 1m0 0l1 1M7 7h2" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No datasets found</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-2">No datasets found</h3>
+        <p className="text-muted-foreground mb-4">
           Configure your AWS S3 settings and refresh to load datasets from your bucket.
         </p>
       </div>
@@ -57,16 +57,15 @@ export function DatasetList({
   }
 
   return (
-    <div className="space-y-4">
-      {datasets.map((dataset) => (
+    <section className="space-y-4" role="main" aria-label={`${datasets.length} datasets`}>
+      <h2 className="sr-only">Dataset Results</h2>
+      {datasets.map((dataset, index) => (
         <DatasetCard 
           key={dataset.id} 
           dataset={dataset} 
           initiallyOpen={selectedDatasetId === dataset.id}
         />
       ))}
-      
-
-    </div>
+    </section>
   );
 }
