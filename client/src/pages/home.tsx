@@ -58,8 +58,8 @@ export default function Home() {
       const response = await fetch(`/api/datasets?${params}`);
       return response.json();
     },
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Force fresh data
+    gcTime: 0, // No cache
   });
 
   // Query for filtered datasets (when folder is selected)
@@ -325,11 +325,17 @@ export default function Home() {
     setSelectedFolder(folderName);
   };
 
-  // Show all folders without filtering (since we know all folders have datasets from the API)
-  const foldersWithDatasets = folders;
+  // Filter folders to only show those with datasets
+  const foldersWithDatasets = folders.filter(folder => {
+    const datasetCount = allDatasets.filter(d => d.topLevelFolder === folder).length;
+    return datasetCount > 0;
+  });
 
-  // Show all folders (no pagination)
+  // Show all folders with datasets (no pagination)
   const paginatedFolders = foldersWithDatasets;
+  
+  // Additional debug logging for filtered folders
+  console.log("Folders after filtering:", foldersWithDatasets);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
