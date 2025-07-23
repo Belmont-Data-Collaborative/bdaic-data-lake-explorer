@@ -444,7 +444,17 @@ All endpoints return consistent error format:
 - Dataset queries: 1-minute cache
 - Statistics: 5-minute cache
 - Quick stats: 1-minute cache
+- Folder lists: 10-minute cache
+- AWS config: 1-minute private cache
 - Automatic cache invalidation on data refresh
+
+### Performance Optimizations
+- **Database Indexes**: Comprehensive indexing on frequently queried columns including top_level_folder, format, status, name, source, lastModified, and sizeBytes
+- **Composite Indexes**: Optimized for common query patterns like folder + format filtering
+- **API Compression**: Enhanced gzip compression with 1KB threshold and level 9 compression
+- **Intelligent Caching**: Variable TTL based on endpoint type for optimal performance
+- **Performance Monitoring**: Real-time tracking of response times, cache hit rates, and slow query detection
+- **Optimization Endpoints**: `/api/performance/stats` and `/api/performance/db-status` for monitoring and recommendations
 
 ## User Preferences
 

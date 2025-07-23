@@ -1,6 +1,6 @@
 # Data Lake Explorer
 
-A full-stack web application for exploring AWS S3 data lakes with AI-powered insights and conversational dataset analysis. Built with React, Express.js, PostgreSQL, and OpenAI integration.
+A high-performance, comprehensive full-stack web application for exploring AWS S3 data lakes with AI-powered insights, conversational dataset analysis, and advanced performance optimizations. Built with React, Express.js, PostgreSQL, and OpenAI integration.
 
 ## Features
 
@@ -43,23 +43,29 @@ A full-stack web application for exploring AWS S3 data lakes with AI-powered ins
 ## Technology Stack
 
 ### Frontend
-- **React 18** with TypeScript
-- **TanStack Query** for data fetching and caching
-- **Tailwind CSS** with shadcn/ui components
+- **React 18** with TypeScript and strict mode
+- **TanStack Query** for data fetching and intelligent caching
+- **Tailwind CSS** with shadcn/ui components and WCAG AA compliance
 - **Wouter** for client-side routing
 - **React Hook Form** with Zod validation
+- **Comprehensive error boundaries** for graceful failure handling
+- **Custom hooks** for dataset filtering, API mutations, and loading states
 
 ### Backend
-- **Express.js** with TypeScript
-- **PostgreSQL** with Drizzle ORM
-- **AWS SDK v3** for S3 integration
-- **OpenAI API** for AI features
-- **Neon Database** for serverless PostgreSQL
+- **Express.js** with TypeScript and performance monitoring
+- **PostgreSQL** with Drizzle ORM and comprehensive indexing
+- **AWS SDK v3** for S3 integration with presigned URLs
+- **OpenAI API** for AI features and conversational analysis
+- **Neon Database** for serverless PostgreSQL hosting
+- **Advanced compression** with gzip optimization and intelligent caching
+- **Performance monitoring** with response time tracking and slow query detection
 
 ### Infrastructure
-- **Vite** for development and building
-- **Node.js 20** runtime
-- **Environment-based configuration**
+- **Vite** for development and optimized building
+- **Node.js 20** runtime with ES modules
+- **Environment-based configuration** with secure credential management
+- **Database indexing** for optimal query performance
+- **API response compression** and intelligent cache headers
 
 ## Prerequisites
 
@@ -214,39 +220,55 @@ The application requires a password to access the data lake:
 - `POST /api/aws-configs/:id/activate` - Set active configuration
 
 ### Statistics
-- `GET /api/stats` - Get dataset statistics
-- `GET /api/folders` - Get list of top-level folders
+- `GET /api/stats` - Get dataset statistics (5-minute cache)
+- `GET /api/folders` - Get list of top-level folders (10-minute cache)
+- `GET /api/folders/community-data-points` - Get community data calculations
+- `GET /api/datasets/quick-stats` - Get quick dataset statistics (1-minute cache)
+
+### Performance Monitoring
+- `GET /api/performance/stats` - Get performance metrics and statistics
+- `GET /api/performance/db-status` - Get database optimization status and recommendations
 
 ### Authentication
 - `POST /api/auth/login` - User login
 - `POST /api/auth/set-password` - Set or change password
 - `GET /api/auth/status` - Check authentication status
 
-## Database Schema
+### Documentation
+- `GET /api/docs/markdown` - Get API documentation from replit.md
 
-### Datasets Table
+## Database Schema & Optimizations
+
+### Datasets Table (Optimized with Indexes)
 - `id` - Primary key
-- `name` - Dataset name
-- `source` - Source directory path
-- `topLevelFolder` - Top-level folder for filtering
-- `format` - File format (CSV, JSON, etc.)
+- `name` - Dataset name (indexed for fast search)
+- `source` - Source directory path (indexed for filtering)
+- `topLevelFolder` - Top-level folder for filtering (indexed)
+- `format` - File format (CSV, JSON, etc.) (indexed)
 - `size` - Human-readable file size
-- `sizeBytes` - File size in bytes (BIGINT for large files)
-- `lastModified` - Last modification date
+- `sizeBytes` - File size in bytes (BIGINT, indexed for sorting)
+- `lastModified` - Last modification date (indexed for date sorting)
 - `createdDate` - Creation date
-- `status` - Dataset status
+- `status` - Dataset status (indexed for filtering)
 - `metadata` - JSON metadata (columns, encoding, completeness score, etc.)
 - `insights` - AI-generated insights (JSON)
 
-### AWS Config Table
+**Performance Indexes:**
+- Single column indexes on: `top_level_folder`, `format`, `status`, `name`, `source`, `lastModified`, `sizeBytes`
+- Composite index on: `(top_level_folder, format)` for common filtering patterns
+
+### AWS Config Table (Optimized)
 - `id` - Primary key
 - `name` - Configuration name
 - `bucketName` - S3 bucket name
 - `region` - AWS region
-- `isConnected` - Connection status
+- `isConnected` - Connection status (indexed)
 - `lastConnected` - Last connection timestamp
-- `isActive` - Active configuration flag
+- `isActive` - Active configuration flag (indexed)
 - `createdAt` - Creation timestamp
+
+**Performance Indexes:**
+- Single column indexes on: `isActive`, `isConnected`
 
 ### Auth Config Table
 - `id` - Primary key
@@ -254,11 +276,37 @@ The application requires a password to access the data lake:
 - `createdAt` - Creation timestamp
 - `updatedAt` - Last update timestamp
 
-### Refresh Log Table
+### Refresh Log Table (Optimized)
 - `id` - Primary key
-- `refreshTime` - Timestamp of refresh operation
+- `lastRefreshTime` - Timestamp of refresh operation (indexed)
 - `datasetsCount` - Number of datasets refreshed
-- `createdAt` - Creation timestamp
+
+**Performance Indexes:**
+- Single column index on: `lastRefreshTime` for finding recent refreshes
+
+## Performance Features
+
+### Database Optimizations
+- **Comprehensive Indexing**: All frequently queried columns have dedicated indexes
+- **Composite Indexes**: Optimized for common query patterns (folder + format filtering)
+- **Query Performance**: Significant improvement in dataset filtering and search operations
+- **Slow Query Detection**: Automatic logging of queries taking over 2 seconds
+
+### API Response Optimizations
+- **Enhanced Compression**: Gzip compression with 1KB threshold and level 9 compression
+- **Intelligent Caching**: Variable TTL based on endpoint type:
+  - Statistics: 5-minute cache
+  - Folder lists: 10-minute cache
+  - Dataset queries: 1-minute cache
+  - AWS config: 1-minute private cache
+- **Compression Hints**: Content-encoding hints for large responses
+- **Cache Invalidation**: Automatic cache clearing on data refresh
+
+### Performance Monitoring
+- **Real-time Metrics**: Response time tracking, cache hit rates, and request counting
+- **Slow Query Alerts**: Automatic detection and logging of performance issues
+- **Performance Endpoints**: `/api/performance/stats` and `/api/performance/db-status`
+- **Optimization Recommendations**: Automatic suggestions based on performance data
 
 ## Development
 
@@ -281,10 +329,15 @@ The application requires a password to access the data lake:
 ```
 
 ### Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run db:push` - Push database schema changes
-- `npm run db:studio` - Open Drizzle Studio
+- `npm run dev` - Start development server with performance monitoring
+- `npm run build` - Build for production with optimizations
+- `npm run db:push` - Push database schema changes and create indexes
+- `npm run db:studio` - Open Drizzle Studio for database management
+
+### Performance Monitoring
+Access performance insights at:
+- `/api/performance/stats` - View response times, cache hit rates, and slow queries
+- `/api/performance/db-status` - Check database optimization status and recommendations
 
 ### Adding New Features
 
@@ -338,4 +391,20 @@ For issues and questions:
 
 ---
 
-**Data Lake Explorer** - Empowering data teams with AI-driven insights and intuitive S3 exploration.
+**Data Lake Explorer** - High-performance, AI-driven data lake exploration with comprehensive optimizations for large-scale datasets.
+
+## Recent Updates (July 2025)
+
+### Performance Optimizations
+- ✅ **Database Indexing**: Comprehensive indexes on all frequently queried columns
+- ✅ **API Compression**: Enhanced gzip compression with optimized settings
+- ✅ **Intelligent Caching**: Variable TTL based on endpoint characteristics
+- ✅ **Performance Monitoring**: Real-time tracking and slow query detection
+- ✅ **Query Optimization**: Composite indexes for common filtering patterns
+
+### Architecture Improvements
+- ✅ **Error Boundaries**: Comprehensive error handling throughout the application
+- ✅ **Custom Hooks**: Centralized logic for dataset filtering and API mutations
+- ✅ **TypeScript Strict Mode**: Enhanced type safety and development experience
+- ✅ **Accessibility**: WCAG AA compliance with proper ARIA labels and keyboard navigation
+- ✅ **Loading States**: Centralized loading state management with Zustand
