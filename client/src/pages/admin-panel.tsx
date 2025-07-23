@@ -33,15 +33,29 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const queryClient = useQueryClient();
 
   // Fetch all users
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error } = useQuery({
     queryKey: ['/api/admin/users'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
       const res = await apiRequest('GET', '/api/admin/users', null, {
         'Authorization': `Bearer ${token}`
       });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch users: ${res.status}`);
+      }
       return res.json();
     },
+    enabled: !!localStorage.getItem('authToken'),
+    retry: (failureCount, error) => {
+      // Don't retry on auth errors
+      if (error?.message?.includes('401') || error?.message?.includes('authentication')) {
+        return false;
+      }
+      return failureCount < 3;
+    }
   });
 
   // Update user mutation
@@ -125,6 +139,22 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <span className="ml-2">Loading users...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive mb-4">Authentication Error</h2>
+          <p className="text-muted-foreground mb-4">
+            {error?.message || 'Failed to load user data. Please try logging in again.'}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Reload Page
+          </Button>
         </div>
       </div>
     );

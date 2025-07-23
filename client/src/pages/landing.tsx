@@ -34,7 +34,7 @@ interface GlobalStatsResponse {
 }
 
 interface LandingPageProps {
-  onLogin: () => void;
+  onLogin: (userData?: { token: string; user: any }) => void;
 }
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
@@ -209,14 +209,15 @@ For detailed API specifications, please contact the system administrator.`;
           title: "Login successful",
           description: `Welcome back, ${data.user.username}!`,
         });
+        onLogin({ token: data.token, user: data.user });
       } else {
         // Legacy password-based authentication
         toast({
           title: "Login successful",
           description: "Welcome to the Data Lake Explorer!",
         });
+        onLogin();
       }
-      onLogin();
     },
     onError: (error: any) => {
       toast({
@@ -254,7 +255,7 @@ For detailed API specifications, please contact the system administrator.`;
       title: "Registration successful",
       description: `Welcome, ${user.username}!`,
     });
-    onLogin();
+    onLogin({ token, user });
   };
 
   return (

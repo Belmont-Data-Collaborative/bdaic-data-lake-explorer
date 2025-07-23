@@ -76,9 +76,17 @@ function Router() {
     }
   }, [verificationData]);
 
-  const handleLogin = () => {
+  const handleLogin = (userData?: { token: string; user: User }) => {
     setIsAuthenticated(true);
-    localStorage.setItem('authenticated', 'true');
+    if (userData) {
+      // JWT-based login
+      localStorage.setItem('authToken', userData.token);
+      localStorage.setItem('currentUser', JSON.stringify(userData.user));
+      setCurrentUser(userData.user);
+    } else {
+      // Legacy login fallback
+      localStorage.setItem('authenticated', 'true');
+    }
   };
 
   const handleLogout = () => {
