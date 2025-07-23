@@ -80,6 +80,15 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented comprehensive download tracking system for monitoring dataset usage
+  - Added downloads table to PostgreSQL database with foreign key relationships and proper indexing
+  - Added download count columns (downloadCountSample, downloadCountFull, downloadCountMetadata) to datasets table
+  - Created download tracking API endpoints for recording and retrieving download statistics
+  - Enhanced all download endpoints (sample, full, metadata) to record downloads with IP address and user agent
+  - Added download statistics display to dataset cards showing breakdown by type (sample/full/metadata) and total count
+  - Implemented atomic download count incrementing using Drizzle ORM with SQL expressions
+  - Added cache invalidation for download statistics after successful downloads to ensure real-time updates
+  - Download statistics are fetched only when dataset cards are expanded for performance optimization
 - July 23, 2025: Implemented comprehensive database and API optimization for enhanced performance
   - Added database indexes on frequently queried columns (top_level_folder, format, status, name, source, lastModified, sizeBytes)
   - Created composite indexes for common query patterns (folder + format filtering)

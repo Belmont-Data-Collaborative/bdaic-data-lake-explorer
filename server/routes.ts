@@ -653,6 +653,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to download sample content" });
       }
 
+      // Record the download
+      await storage.recordDownload(
+        id, 
+        'sample', 
+        req.ip || req.connection.remoteAddress, 
+        req.get('User-Agent')
+      );
+
       // Set appropriate headers for file download
       const fileName = `${dataset.name}-sample.${dataset.format.toLowerCase()}`;
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -691,6 +699,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!fileInfo) {
         return res.status(404).json({ message: "File not found or failed to download" });
       }
+
+      // Record the download
+      await storage.recordDownload(
+        id, 
+        'full', 
+        req.ip || req.connection.remoteAddress, 
+        req.get('User-Agent')
+      );
 
       // Set appropriate headers for file download
       const fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
@@ -751,6 +767,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Record the download
+      await storage.recordDownload(
+        id, 
+        'metadata', 
+        req.ip || req.connection.remoteAddress, 
+        req.get('User-Agent')
+      );
+
       // Set appropriate headers for file download
       const fileName = `${dataset.name}.yaml`;
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -778,6 +802,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!res.headersSent) {
         res.status(500).json({ message: "Failed to download metadata file" });
       }
+    }
+  });
+
+  // Get download statistics for a dataset
+  app.get("/api/datasets/:id/download-stats", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid dataset ID" });
+      }
+      
+      const stats = await storage.getDownloadStats(id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching download stats:", error);
+      res.status(500).json({ message: "Failed to fetch download statistics" });
     }
   });
 

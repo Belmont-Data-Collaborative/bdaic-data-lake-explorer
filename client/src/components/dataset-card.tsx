@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Popover,
   PopoverTrigger,
@@ -72,6 +72,13 @@ export function DatasetCard({
 
   const metadata = dataset.metadata as DatasetMetadata | null;
   const insights = dataset.insights as DatasetInsights | null;
+
+  // Fetch download statistics
+  const { data: downloadStats } = useQuery({
+    queryKey: ['/api/datasets', dataset.id, 'download-stats'],
+    queryFn: () => apiRequest(`/api/datasets/${dataset.id}/download-stats`),
+    enabled: isOpen, // Only fetch when expanded
+  });
 
   // Filter and paginate columns
   const filteredColumns = useMemo(() => {
@@ -174,6 +181,11 @@ export function DatasetCard({
         title: "Download started",
         description: `Sample file ${data.fileName} (10% of original) is downloading.`,
       });
+
+      // Invalidate download stats cache
+      queryClient.invalidateQueries({
+        queryKey: ['/api/datasets', dataset.id, 'download-stats']
+      });
     },
     onError: (error: any) => {
       toast({
@@ -224,6 +236,11 @@ export function DatasetCard({
         title: "Download started",
         description: `Full file ${data.fileName} is downloading.`,
       });
+
+      // Invalidate download stats cache
+      queryClient.invalidateQueries({
+        queryKey: ['/api/datasets', dataset.id, 'download-stats']
+      });
     },
     onError: (error: any) => {
       toast({
@@ -273,6 +290,11 @@ export function DatasetCard({
       toast({
         title: "Download started",
         description: `Metadata file ${data.fileName} is downloading.`,
+      });
+
+      // Invalidate download stats cache
+      queryClient.invalidateQueries({
+        queryKey: ['/api/datasets', dataset.id, 'download-stats']
       });
     },
     onError: (error: any) => {
@@ -436,6 +458,44 @@ export function DatasetCard({
                         </span>
                       </div>
                     )}
+                    
+                    {/* Download Statistics */}
+                    {downloadStats && (
+                      <div className="py-2 border-b border-border">
+                        <span className="text-sm text-muted-foreground flex items-center mb-2">
+                          Download Statistics
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer">
+                                <Info size={16} />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64">
+                              <p>Number of times this dataset has been downloaded</p>
+                            </PopoverContent>
+                          </Popover>
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-muted/50 p-2 rounded">
+                            <div className="font-medium text-foreground">Sample</div>
+                            <div className="text-muted-foreground">{downloadStats.sample || 0} downloads</div>
+                          </div>
+                          <div className="bg-muted/50 p-2 rounded">
+                            <div className="font-medium text-foreground">Full File</div>
+                            <div className="text-muted-foreground">{downloadStats.full || 0} downloads</div>
+                          </div>
+                          <div className="bg-muted/50 p-2 rounded">
+                            <div className="font-medium text-foreground">Metadata</div>
+                            <div className="text-muted-foreground">{downloadStats.metadata || 0} downloads</div>
+                          </div>
+                          <div className="bg-muted/50 p-2 rounded">
+                            <div className="font-medium text-foreground">Total</div>
+                            <div className="text-muted-foreground">{downloadStats.total || 0} downloads</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {metadata?.recordCount &&
                       metadata?.columnCount &&
                       metadata?.completenessScore && (

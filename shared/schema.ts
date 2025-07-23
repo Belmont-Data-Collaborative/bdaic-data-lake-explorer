@@ -15,6 +15,9 @@ export const datasets = pgTable("datasets", {
   status: text("status").notNull().default("active"),
   metadata: jsonb("metadata"),
   insights: jsonb("insights"),
+  downloadCountSample: integer("download_count_sample").notNull().default(0),
+  downloadCountFull: integer("download_count_full").notNull().default(0),
+  downloadCountMetadata: integer("download_count_metadata").notNull().default(0),
 }, (table) => ({
   // Index on top_level_folder for fast folder filtering
   topLevelFolderIdx: index("idx_datasets_top_level_folder").on(table.topLevelFolder),
@@ -66,8 +69,31 @@ export const refreshLog = pgTable("refresh_log", {
   lastRefreshTimeIdx: index("idx_refresh_log_last_refresh_time").on(table.lastRefreshTime),
 }));
 
+export const downloads = pgTable("downloads", {
+  id: serial("id").primaryKey(),
+  datasetId: integer("dataset_id").notNull().references(() => datasets.id, { onDelete: "cascade" }),
+  downloadType: text("download_type").notNull(), // 'sample', 'full', 'metadata'
+  downloadedAt: timestamp("downloaded_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+}, (table) => ({
+  // Index on datasetId for fast lookups by dataset
+  datasetIdIdx: index("idx_downloads_dataset_id").on(table.datasetId),
+  // Index on downloadType for filtering by type
+  downloadTypeIdx: index("idx_downloads_download_type").on(table.downloadType),
+  // Index on downloadedAt for date-based queries
+  downloadedAtIdx: index("idx_downloads_downloaded_at").on(table.downloadedAt),
+  // Composite index for dataset + type queries
+  datasetTypeIdx: index("idx_downloads_dataset_type").on(table.datasetId, table.downloadType),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
+});
+
+export const insertDownloadSchema = createInsertSchema(downloads).omit({
+  id: true,
+  downloadedAt: true,
 });
 
 export const insertAwsConfigSchema = createInsertSchema(awsConfig).omit({
@@ -139,3 +165,15 @@ export const datasetMetadata = z.object({
 
 export type DatasetInsights = z.infer<typeof datasetInsights>;
 export type DatasetMetadata = z.infer<typeof datasetMetadata>;
+
+// Type definitions
+export type Dataset = typeof datasets.$inferSelect;
+export type InsertDataset = z.infer<typeof insertDatasetSchema>;
+export type AwsConfig = typeof awsConfig.$inferSelect;
+export type InsertAwsConfig = z.infer<typeof insertAwsConfigSchema>;
+export type AuthConfig = typeof authConfig.$inferSelect;
+export type InsertAuthConfig = z.infer<typeof insertAuthConfigSchema>;
+export type RefreshLog = typeof refreshLog.$inferSelect;
+export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
+export type Download = typeof downloads.$inferSelect;
+export type InsertDownload = z.infer<typeof insertDownloadSchema>;

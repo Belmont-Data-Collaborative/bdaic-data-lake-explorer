@@ -1,6 +1,6 @@
-import { datasets, awsConfig, authConfig, refreshLog, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog } from "@shared/schema";
+import { datasets, awsConfig, authConfig, refreshLog, downloads, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and } from "drizzle-orm";
+import { eq, desc, asc, and, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -30,6 +30,11 @@ export interface IStorage {
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
+  
+  // Download tracking operations
+  recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
+  incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void>;
+  getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }>;
   
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
@@ -247,6 +252,64 @@ export class DatabaseStorage implements IStorage {
         lastRefreshTime: new Date(),
         datasetsCount,
       });
+  }
+
+  async recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download> {
+    const [download] = await db
+      .insert(downloads)
+      .values({
+        datasetId,
+        downloadType,
+        ipAddress,
+        userAgent,
+      })
+      .returning();
+    
+    // Also increment the counter in the datasets table
+    await this.incrementDownloadCount(datasetId, downloadType);
+    
+    return download;
+  }
+
+  async incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void> {
+    if (downloadType === 'sample') {
+      await db
+        .update(datasets)
+        .set({ downloadCountSample: sql`${datasets.downloadCountSample} + 1` })
+        .where(eq(datasets.id, datasetId));
+    } else if (downloadType === 'full') {
+      await db
+        .update(datasets)
+        .set({ downloadCountFull: sql`${datasets.downloadCountFull} + 1` })
+        .where(eq(datasets.id, datasetId));
+    } else if (downloadType === 'metadata') {
+      await db
+        .update(datasets)
+        .set({ downloadCountMetadata: sql`${datasets.downloadCountMetadata} + 1` })
+        .where(eq(datasets.id, datasetId));
+    }
+  }
+
+  async getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }> {
+    const [dataset] = await db
+      .select({
+        sample: datasets.downloadCountSample,
+        full: datasets.downloadCountFull,
+        metadata: datasets.downloadCountMetadata,
+      })
+      .from(datasets)
+      .where(eq(datasets.id, datasetId));
+    
+    if (!dataset) {
+      return { sample: 0, full: 0, metadata: 0, total: 0 };
+    }
+    
+    return {
+      sample: dataset.sample,
+      full: dataset.full,
+      metadata: dataset.metadata,
+      total: dataset.sample + dataset.full + dataset.metadata,
+    };
   }
 
   async query(sql: string): Promise<any[]> {
