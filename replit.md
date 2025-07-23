@@ -106,6 +106,8 @@ The build process creates optimized static assets for the frontend while bundlin
   - Prevented current user from editing their own role for security
   - Made status column directly editable with Active/Inactive dropdown selection
   - Protected current user from changing their own active status
+  - Fixed dataset refresh endpoint to require authentication and properly refresh from current AWS bucket configuration
+  - Debugged issue where dataset explorer was showing cached data instead of data from bdaic-public-transform bucket
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security

@@ -633,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/datasets/refresh", async (req, res) => {
+  app.post("/api/datasets/refresh", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const config = await storage.getAwsConfig();
       
