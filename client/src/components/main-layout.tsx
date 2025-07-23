@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Database, Book, Cloud, LogOut, Settings, Shield, User } from "lucide-react";
+import { Database, Cloud, LogOut, Settings, Shield, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,8 +27,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
     queryKey: ["/api/aws-config"],
   });
 
-  const currentTab = location === "/api-docs" ? "api-docs" : 
-                    location === "/aws-config" ? "aws-config" : 
+  const currentTab = location === "/aws-config" ? "aws-config" : 
                     location === "/admin" ? "admin" : "home";
 
   const handleTabChange = (value: string) => {
@@ -36,8 +35,6 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
       navigate("/");
     } else if (value === "aws-config") {
       navigate("/aws-config");
-    } else if (value === "api-docs") {
-      navigate("/api-docs");
     } else if (value === "admin") {
       navigate("/admin");
     }
@@ -45,8 +42,8 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
 
   // Keyboard navigation for tab switching
   const availableTabs = currentUser?.role === 'admin' 
-    ? ["home", "aws-config", "api-docs", "admin"]
-    : ["home", "aws-config", "api-docs"];
+    ? ["home", "aws-config", "admin"]
+    : ["home", "aws-config"];
 
   useKeyboardNavigation({
     onArrowLeft: () => {
@@ -134,7 +131,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           {/* Navigation Tabs */}
           <div id="navigation" className="border-t border-border overflow-x-auto">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full" role="navigation" aria-label="Main navigation">
-              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} sm:max-w-3xl bg-transparent h-auto p-0`}>
+              <TabsList className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} sm:max-w-2xl bg-transparent h-auto p-0`}>
                 <TabsTrigger 
                   value="home" 
                   className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
@@ -148,13 +145,6 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                 >
                   <Settings size={16} />
                   <span className="text-responsive-sm">AWS Configuration</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="api-docs" 
-                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
-                >
-                  <Book size={16} />
-                  <span className="text-responsive-sm">API Docs</span>
                 </TabsTrigger>
                 {currentUser?.role === 'admin' && (
                   <TabsTrigger 

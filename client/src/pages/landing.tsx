@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCards } from "@/components/stats-cards";
@@ -6,11 +6,14 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Register from "./register";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Dataset } from "@shared/schema";
 
 interface Stats {
@@ -39,6 +42,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [markdownContent, setMarkdownContent] = useState<string>("");
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [docsError, setDocsError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Fetch global statistics for public display
@@ -63,6 +69,71 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   });
 
   const allDatasets = datasetsResponse?.datasets || [];
+
+  // Fetch API documentation
+  useEffect(() => {
+    const fetchApiDocs = async () => {
+      try {
+        setIsLoadingDocs(true);
+        setDocsError(null);
+        
+        const response = await fetch("/api/docs/markdown");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch documentation: ${response.status}`);
+        }
+        
+        const content = await response.text();
+        setMarkdownContent(content);
+      } catch (err) {
+        console.error("Error fetching API documentation:", err);
+        setDocsError(err instanceof Error ? err.message : "Failed to load documentation");
+        
+        // Fallback content for API documentation
+        const fallbackContent = `# 📘 API Documentation
+
+## Overview
+This is the API documentation for the Data Lake Explorer application.
+
+**Note**: The full documentation content could not be loaded. Please ensure you have proper access.
+
+## Available Endpoints
+
+### Authentication
+- \`POST /api/auth/login\` - Authenticate with credentials
+- \`POST /api/auth/register\` - Register a new user account
+- \`GET /api/auth/verify\` - Verify JWT token
+
+### AWS Configuration  
+- \`GET /api/aws-config\` - Get active AWS configuration
+- \`POST /api/aws-config\` - Create/update AWS configuration
+- \`GET /api/aws-configs\` - Get all AWS configurations
+
+### Datasets
+- \`GET /api/datasets\` - List datasets with pagination and filtering
+- \`POST /api/datasets/refresh\` - Refresh datasets from S3
+- \`GET /api/datasets/:id\` - Get specific dataset details
+- \`POST /api/datasets/:id/insights\` - Generate AI insights for dataset
+- \`GET /api/datasets/:id/download\` - Download dataset file
+- \`GET /api/datasets/:id/download-sample\` - Download sample of dataset
+
+### Statistics
+- \`GET /api/stats\` - Get comprehensive application statistics
+- \`GET /api/folders\` - Get list of dataset folders
+- \`GET /api/folders/community-data-points\` - Get community data points by folder
+
+For detailed API specifications, please contact the system administrator.`;
+        
+        setMarkdownContent(fallbackContent);
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    };
+
+    // Only fetch when API docs tab is active
+    if (activeTab === "api-docs" && !markdownContent) {
+      fetchApiDocs();
+    }
+  }, [activeTab, markdownContent]);
 
   // Helper functions
   const formatFileSize = (bytes: number): string => {
@@ -204,10 +275,11 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
+            <TabsTrigger value="api-docs">API Documentation</TabsTrigger>
             <TabsTrigger value="login">Access Portal</TabsTrigger>
           </TabsList>
 
@@ -366,6 +438,128 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="api-docs" className="space-y-6">
+            <div className="text-center py-8">
+              <h2 className="text-3xl font-bold text-foreground mb-4">
+                API Documentation
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Comprehensive API reference for integrating with the Data Lake Explorer
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Book className="text-primary" size={24} />
+                  <span>API Reference</span>
+                </CardTitle>
+                <CardDescription>
+                  Complete documentation for all available endpoints and data models
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingDocs ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-2 text-muted-foreground">Loading documentation...</span>
+                  </div>
+                ) : docsError ? (
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Documentation Error</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{docsError}</p>
+                    <Button 
+                      onClick={() => {
+                        setDocsError(null);
+                        setMarkdownContent("");
+                      }} 
+                      variant="outline"
+                    >
+                      Retry Loading
+                    </Button>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[600px] w-full rounded-md border p-4">
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-2xl font-bold text-foreground mb-4 border-b border-border pb-2">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-lg font-medium text-foreground mt-6 mb-2">
+                              {children}
+                            </h3>
+                          ),
+                          code: ({ children, className }) => {
+                            const isInline = !className;
+                            return isInline ? (
+                              <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
+                                {children}
+                              </code>
+                            ) : (
+                              <code className="block bg-muted p-3 rounded-md text-sm font-mono overflow-x-auto">
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre: ({ children }) => (
+                            <pre className="bg-muted p-4 rounded-md overflow-x-auto">
+                              {children}
+                            </pre>
+                          ),
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse border border-border">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          th: ({ children }) => (
+                            <th className="border border-border px-3 py-2 bg-muted font-medium text-left">
+                              {children}
+                            </th>
+                          ),
+                          td: ({ children }) => (
+                            <td className="border border-border px-3 py-2">
+                              {children}
+                            </td>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                              {children}
+                            </ul>
+                          ),
+                          li: ({ children }) => (
+                            <li className="text-muted-foreground">
+                              {children}
+                            </li>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-muted-foreground mb-4 leading-relaxed">
+                              {children}
+                            </p>
+                          ),
+                        }}
+                      >
+                        {markdownContent}
+                      </ReactMarkdown>
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="login" className="space-y-6">

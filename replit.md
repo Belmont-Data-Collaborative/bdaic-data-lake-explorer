@@ -80,6 +80,13 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Moved API documentation from authenticated interface to public landing page
+  - Removed API documentation tab from authenticated user interface (MainLayout)
+  - Added new "API Documentation" tab to public landing page for better accessibility
+  - Updated navigation system to have 2 tabs for regular users (Dataset Explorer, AWS Configuration) and 3 tabs for admins (adds Admin Panel)
+  - API documentation now publicly accessible without requiring authentication
+  - Enhanced landing page with comprehensive API reference using ReactMarkdown and proper styling
+  - Fixed registration page navigation flow with proper prop mapping between login and registration components
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security

@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
-import ApiDocsPage from "@/pages/api-docs";
 import AwsConfigPage from "@/pages/aws-config";
 import AdminPanel from "@/pages/admin-panel";
 import { MainLayout } from "@/components/main-layout";
@@ -111,7 +110,6 @@ function Router() {
       <Switch>
         <Route path="/" component={() => <Home />} />
         <Route path="/aws-config" component={() => <AwsConfigPage />} />
-        <Route path="/api-docs" component={() => <ApiDocsPage />} />
         <Route path="/admin" component={() => {
           // Role-based access control for admin panel
           if (currentUser?.role !== 'admin') {
