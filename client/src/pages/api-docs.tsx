@@ -230,7 +230,7 @@ For complete documentation, please check the project files or contact the develo
                         <h1 
                           {...props} 
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-3xl font-bold text-gray-900 mb-6 border-b-2 border-blue-500 pb-4 scroll-mt-8"
+                          className="text-3xl font-bold text-slate-900 mb-6 border-b-2 border-blue-600 pb-4 scroll-mt-8"
                         >
                           {children}
                         </h1>
@@ -239,7 +239,7 @@ For complete documentation, please check the project files or contact the develo
                         <h2 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-2xl font-semibold text-gray-800 mt-8 mb-4 border-b border-gray-300 pb-2 scroll-mt-8"
+                          className="text-2xl font-semibold text-slate-800 mt-8 mb-4 border-b border-slate-400 pb-2 scroll-mt-8"
                         >
                           {children}
                         </h2>
@@ -248,7 +248,7 @@ For complete documentation, please check the project files or contact the develo
                         <h3 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-xl font-medium text-gray-700 mt-6 mb-3 scroll-mt-8"
+                          className="text-xl font-semibold text-slate-700 mt-6 mb-3 scroll-mt-8"
                         >
                           {children}
                         </h3>
@@ -257,7 +257,7 @@ For complete documentation, please check the project files or contact the develo
                         <h4 
                           {...props}
                           id={String(children).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}
-                          className="text-lg font-medium text-gray-600 mt-4 mb-2 scroll-mt-8"
+                          className="text-lg font-semibold text-slate-600 mt-4 mb-2 scroll-mt-8"
                         >
                           {children}
                         </h4>
@@ -266,13 +266,13 @@ For complete documentation, please check the project files or contact the develo
                         const isInline = !className;
                         if (isInline) {
                           return (
-                            <code className="bg-gray-100 text-gray-900 px-2 py-1 rounded text-sm font-mono border" {...props}>
+                            <code className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-sm font-mono border border-blue-200" {...props}>
                               {children}
                             </code>
                           );
                         }
                         return (
-                          <code className="block bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border" {...props}>
+                          <code className="block bg-slate-800 text-green-400 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-slate-600 whitespace-pre-wrap" {...props}>
                             {children}
                           </code>
                         );
@@ -286,17 +286,17 @@ For complete documentation, please check the project files or contact the develo
                         </div>
                       ),
                       th: ({ children, ...props }) => (
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" {...props}>
+                        <th className="px-6 py-3 bg-slate-100 text-left text-sm font-semibold text-slate-700 uppercase tracking-wider" {...props}>
                           {children}
                         </th>
                       ),
                       td: ({ children, ...props }) => (
-                        <td className="px-6 py-4 text-sm text-gray-900 border-b border-gray-200" {...props}>
+                        <td className="px-6 py-4 text-sm text-slate-800 border-b border-slate-200" {...props}>
                           {children}
                         </td>
                       ),
                       blockquote: ({ children, ...props }) => (
-                        <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-6 bg-blue-50 text-gray-700 rounded-r" {...props}>
+                        <blockquote className="border-l-4 border-blue-500 pl-4 py-3 my-6 bg-blue-50 text-slate-800 rounded-r font-medium" {...props}>
                           {children}
                         </blockquote>
                       ),
@@ -311,7 +311,7 @@ For complete documentation, please check the project files or contact the develo
                         </ol>
                       ),
                       li: ({ children, ...props }) => (
-                        <li className="text-gray-700 leading-relaxed" {...props}>
+                        <li className="text-slate-700 leading-relaxed text-base" {...props}>
                           {children}
                         </li>
                       ),
@@ -336,17 +336,17 @@ For complete documentation, please check the project files or contact the develo
                         <Separator className="my-8" {...props} />
                       ),
                       p: ({ children, ...props }) => (
-                        <p className="text-gray-700 leading-relaxed my-4" {...props}>
+                        <p className="text-slate-700 leading-relaxed my-4 text-base" {...props}>
                           {children}
                         </p>
                       ),
                       strong: ({ children, ...props }) => (
-                        <strong className="font-semibold text-gray-900" {...props}>
+                        <strong className="font-semibold text-slate-900" {...props}>
                           {children}
                         </strong>
                       ),
                       em: ({ children, ...props }) => (
-                        <em className="italic text-gray-700" {...props}>
+                        <em className="italic text-slate-700" {...props}>
                           {children}
                         </em>
                       )
