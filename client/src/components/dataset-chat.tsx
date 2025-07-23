@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import { apiRequest } from "@/lib/queryClient";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -63,7 +65,17 @@ export function DatasetChat({ dataset, isOpen, onClose }: DatasetChatProps) {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Focus management
+  const focusTrapRef = useFocusTrap({ isActive: isOpen });
+  
+  // Keyboard navigation
+  useKeyboardNavigation({
+    onEscape: onClose,
+    isActive: isOpen,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,6 +84,15 @@ export function DatasetChat({ dataset, isOpen, onClose }: DatasetChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -205,8 +226,18 @@ What would you like to explore?`,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chat-title"
+      aria-describedby="chat-description"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div 
+        ref={focusTrapRef}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -214,10 +245,10 @@ What would you like to explore?`,
               <Bot className="text-blue-600" size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 id="chat-title" className="text-xl font-semibold text-gray-900">
                 AI Data Analyst
               </h2>
-              <p className="text-sm text-gray-600 flex items-center space-x-1">
+              <p id="chat-description" className="text-sm text-gray-600 flex items-center space-x-1">
                 <BarChart3 className="h-3 w-3" />
                 <span>Analyzing: {dataset.name}</span>
               </p>
@@ -232,7 +263,12 @@ What would you like to explore?`,
             >
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose}
+              aria-label="Close dialog"
+            >
               <X size={20} />
             </Button>
           </div>
@@ -383,12 +419,14 @@ What would you like to explore?`,
         <div className="p-6 border-t border-gray-200">
           <div className="flex space-x-3">
             <Input
+              ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask a question about this dataset..."
               className="flex-1"
               disabled={isLoading}
+              aria-label="Ask a question about this dataset"
             />
             <Button
               onClick={handleSendMessage}

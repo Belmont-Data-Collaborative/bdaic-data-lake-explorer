@@ -4,6 +4,7 @@ import { Database, Book, Cloud, LogOut, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import type { AwsConfig } from "@shared/schema";
 
 interface MainLayoutProps {
@@ -31,8 +32,35 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
     }
   };
 
+  // Keyboard navigation for tab switching
+  useKeyboardNavigation({
+    onArrowLeft: () => {
+      const tabs = ["home", "aws-config", "api-docs"];
+      const currentIndex = tabs.indexOf(currentTab);
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
+      handleTabChange(tabs[prevIndex]);
+    },
+    onArrowRight: () => {
+      const tabs = ["home", "aws-config", "api-docs"];
+      const currentIndex = tabs.indexOf(currentTab);
+      const nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
+      handleTabChange(tabs[nextIndex]);
+    },
+    isActive: true,
+  });
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Skip Links for Screen Readers */}
+      <div className="sr-only">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50">
+          Skip to main content
+        </a>
+        <a href="#navigation" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-32 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50">
+          Skip to navigation
+        </a>
+      </div>
+      
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,8 +102,8 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
           </div>
           
           {/* Navigation Tabs */}
-          <div className="border-t border-border">
-            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+          <div id="navigation" className="border-t border-border">
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full" role="navigation" aria-label="Main navigation">
               <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="home" 
@@ -105,7 +133,7 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main>
+      <main id="main-content" role="main">
         {children}
       </main>
     </div>

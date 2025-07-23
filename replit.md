@@ -80,6 +80,15 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented comprehensive focus management and keyboard navigation for accessibility
+  - Created useFocusTrap hook with automatic focus restoration and tab cycling within modals
+  - Added useKeyboardNavigation hook for customizable keyboard shortcuts and navigation
+  - Enhanced dataset chat modal with proper focus trapping, ARIA attributes, and escape key handling
+  - Implemented arrow key navigation for main tabs (left/right arrow keys to switch tabs)
+  - Added skip links for screen readers (Skip to main content, Skip to navigation)
+  - Enhanced modal accessibility with role="dialog", aria-modal="true", and proper labeling
+  - Added screen reader utility classes (.sr-only) for accessible content structure
+  - Improved input focus management with automatic focusing when modals open
 - July 23, 2025: Implemented WCAG AA color contrast compliance for accessibility
   - Updated all CSS color variables to meet 4.5:1 contrast ratio requirements for text
   - Replaced low-contrast gray colors with semantic design tokens (foreground, muted-foreground, etc.)
