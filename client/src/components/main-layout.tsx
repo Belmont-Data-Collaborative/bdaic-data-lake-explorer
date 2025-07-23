@@ -27,14 +27,14 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
     queryKey: ["/api/aws-config"],
   });
 
-  const currentTab = location === "/aws-config" ? "aws-config" : 
+  const currentTab = location === "/user-panel" ? "user-panel" : 
                     location === "/admin" ? "admin" : "home";
 
   const handleTabChange = (value: string) => {
     if (value === "home") {
       navigate("/");
-    } else if (value === "aws-config") {
-      navigate("/aws-config");
+    } else if (value === "user-panel") {
+      navigate("/user-panel");
     } else if (value === "admin") {
       navigate("/admin");
     }
@@ -42,8 +42,8 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
 
   // Keyboard navigation for tab switching
   const availableTabs = currentUser?.role === 'admin' 
-    ? ["home", "aws-config", "admin"]
-    : ["home", "aws-config"];
+    ? ["home", "user-panel", "admin"]
+    : ["home", "user-panel"];
 
   useKeyboardNavigation({
     onArrowLeft: () => {
@@ -140,11 +140,11 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   <span className="text-responsive-sm">Dataset Explorer</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="aws-config" 
+                  value="user-panel" 
                   className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap"
                 >
-                  <Settings size={16} />
-                  <span className="text-responsive-sm">AWS Configuration</span>
+                  <User size={16} />
+                  <span className="text-responsive-sm">User Panel</span>
                 </TabsTrigger>
                 {currentUser?.role === 'admin' && (
                   <TabsTrigger 
