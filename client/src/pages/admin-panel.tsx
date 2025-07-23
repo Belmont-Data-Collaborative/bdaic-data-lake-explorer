@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 interface User {
@@ -162,9 +162,26 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
 
   return (
     <div className="container mx-auto py-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
-        <p className="text-muted-foreground">Manage users and system settings</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Panel</h1>
+          <p className="text-muted-foreground">Manage users and system settings</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+            toast({
+              title: "Refreshing data",
+              description: "User data is being refreshed...",
+            });
+          }}
+          className="flex items-center space-x-2"
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <span>Reload</span>
+        </Button>
       </div>
 
       {/* Statistics Cards */}

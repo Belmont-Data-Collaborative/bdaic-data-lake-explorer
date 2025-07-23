@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Cloud, Edit, Trash2, Play, AlertTriangle } from "lucide-react";
+import { Plus, Cloud, Edit, Trash2, Play, AlertTriangle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 interface AwsConfig {
@@ -216,7 +216,24 @@ export default function AwsConfiguration() {
           <h1 className="text-3xl font-bold">AWS Configuration</h1>
           <p className="text-muted-foreground">Manage AWS S3 connections and bucket configurations</p>
         </div>
-        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/aws-configs'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/aws-config'] });
+              toast({
+                title: "Refreshing configurations",
+                description: "AWS configuration data is being refreshed...",
+              });
+            }}
+            className="flex items-center space-x-2"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Reload</span>
+          </Button>
+          <Dialog open={isCreating} onOpenChange={setIsCreating}>
           <DialogTrigger asChild>
             <Button className="flex items-center space-x-2">
               <Plus size={16} />
@@ -263,22 +280,23 @@ export default function AwsConfiguration() {
                   variant="outline"
                   onClick={() => handleTestConnection({ 
                     bucketName: newConfig.bucketName, 
-                    region: newConfig.region 
+                    region: newConfig.region
                   })}
-                  disabled={!newConfig.bucketName || !newConfig.region || testConnectionMutation.isPending}
+                  disabled={testConnectionMutation.isPending}
                 >
-                  {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+                  {testConnectionMutation.isPending ? 'Testing...' : 'Test Connection'}
                 </Button>
                 <Button
                   onClick={handleCreateConfig}
-                  disabled={!newConfig.name || !newConfig.bucketName || !newConfig.region || createConfigMutation.isPending}
+                  disabled={createConfigMutation.isPending}
                 >
-                  {createConfigMutation.isPending ? "Creating..." : "Create Configuration"}
+                  {createConfigMutation.isPending ? 'Creating...' : 'Create Configuration'}
                 </Button>
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Configurations Table */}
