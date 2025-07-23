@@ -304,209 +304,677 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## API Documentation
 
+### Table of Contents
+
+1. [Overview](#overview)
+2. [Authentication](#authentication)
+3. [Base URL and Request Format](#base-url-and-request-format)
+4. [Rate Limiting and Caching](#rate-limiting-and-caching)
+5. [Authentication Endpoints](#authentication-endpoints)
+6. [User Management Endpoints](#user-management-endpoints)
+7. [AWS Configuration Endpoints](#aws-configuration-endpoints)
+8. [Dataset Endpoints](#dataset-endpoints)
+9. [Folder and Statistics Endpoints](#folder-and-statistics-endpoints)
+10. [Performance Monitoring](#performance-monitoring)
+11. [Data Models](#data-models)
+12. [Error Handling](#error-handling)
+13. [Examples](#examples)
+
+### Overview
+
+The Data Lake Explorer API provides comprehensive access to AWS S3 data lake management, dataset discovery, AI-powered insights, and user authentication. This RESTful API supports JWT-based authentication with role-based access control and features intelligent caching for optimal performance.
+
+**API Version**: v1.0  
+**Base URL**: `https://your-domain.replit.app/api`  
+**Content Type**: `application/json`
+
+### Authentication
+
+All API requests except public endpoints require JWT authentication. Include the token in the Authorization header:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+**Token Acquisition**: Use the `/api/auth/login` endpoint to obtain a JWT token.  
+**Token Expiration**: Tokens are valid for 24 hours.  
+**Role-Based Access**: Different endpoints require different user roles (admin, editor, viewer).
+
+### Base URL and Request Format
+
+**Production**: `https://your-domain.replit.app/api`  
+**Development**: `http://localhost:5000/api`
+
+All requests must include:
+- `Content-Type: application/json` header for POST/PUT requests
+- `Authorization: Bearer <token>` header for protected endpoints
+
+### Rate Limiting and Caching
+
+- **Rate Limits**: 1000 requests per hour per user
+- **Caching Strategy**:
+  - Dataset queries: 1-minute cache
+  - Statistics: 5-minute cache
+  - Folder lists: 10-minute cache
+  - Performance data: Real-time, no cache
+
 ### Authentication Endpoints
 
 #### POST /api/auth/login
-Authenticate with the application password.
-- **Body**: `{ "password": "string" }`
-- **Success**: `{ "success": true }`
-- **Error**: `401` Invalid password, `400` Password required
+Authenticate user and receive JWT token.
 
-#### POST /api/auth/set-password
-Set or change the application password.
-- **Body**: `{ "currentPassword": "string", "newPassword": "string" }`
-- **Success**: `{ "message": "Password updated successfully" }`
-- **Error**: `400` Invalid password length, `401` Current password incorrect
+**Request Body**:
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
 
-#### GET /api/auth/status
-Check if a password is configured.
-- **Success**: `{ "hasPassword": boolean }`
+**Success Response (200)**:
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
+```
+
+**Error Responses**:
+- `400`: Missing username or password
+- `401`: Invalid credentials
+- `403`: Account inactive
+
+#### POST /api/auth/register
+Register a new user account.
+
+**Request Body**:
+```json
+{
+  "username": "string",
+  "email": "string",
+  "password": "string",
+  "role": "admin" | "editor" | "viewer"
+}
+```
+
+**Success Response (201)**:
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": 2,
+    "username": "newuser",
+    "email": "user@example.com",
+    "role": "viewer"
+  }
+}
+```
+
+#### GET /api/auth/verify
+Verify JWT token validity.
+
+**Headers**: `Authorization: Bearer <token>`
+
+**Success Response (200)**:
+```json
+{
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
+```
+
+### User Management Endpoints
+
+#### GET /api/admin/users
+Get all users (admin only).
+
+**Headers**: `Authorization: Bearer <admin-token>`
+
+**Success Response (200)**:
+```json
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2025-01-15T10:30:00Z",
+    "lastLogin": "2025-01-20T14:22:00Z"
+  }
+]
+```
+
+#### PUT /api/admin/users/:id
+Update user details (admin only).
+
+**Request Body**:
+```json
+{
+  "role": "admin" | "editor" | "viewer",
+  "isActive": true | false
+}
+```
+
+#### DELETE /api/admin/users/:id
+Delete user account (admin only).
+
+**Success Response (200)**:
+```json
+{
+  "message": "User deleted successfully"
+}
+```
 
 ### AWS Configuration Endpoints
 
 #### GET /api/aws-config
 Get the active AWS S3 configuration.
-- **Success**: `AwsConfig` object or `null`
 
-#### POST /api/aws-config
-Create or update AWS S3 configuration.
-- **Body**: `{ "bucketName": "string", "region": "string", "name": "string" }`
-- **Success**: `AwsConfig` object
-- **Error**: `400` Validation errors
+**Headers**: `Authorization: Bearer <token>`
 
-#### GET /api/aws-configs
-Get all AWS configurations.
-- **Success**: Array of `AwsConfig` objects
-
-#### POST /api/aws-configs
-Create a new AWS configuration.
-- **Body**: `{ "bucketName": "string", "region": "string", "name": "string" }`
-- **Success**: `AwsConfig` object
-
-#### PUT /api/aws-configs/:id
-Update an existing AWS configuration.
-- **Body**: Partial `AwsConfig` object
-- **Success**: Updated `AwsConfig` object
-- **Error**: `404` Configuration not found
-
-#### DELETE /api/aws-configs/:id
-Delete an AWS configuration.
-- **Success**: `{ "message": "Configuration deleted successfully" }`
-- **Error**: `404` Configuration not found
-
-#### POST /api/aws-configs/:id/activate
-Set a configuration as active and refresh datasets.
-- **Success**: `AwsConfig` object
-- **Error**: `404` Configuration not found
+**Success Response (200)**:
+```json
+{
+  "id": 1,
+  "name": "Production Data Lake",
+  "bucketName": "my-data-lake",
+  "region": "us-east-1",
+  "isConnected": true,
+  "isActive": true,
+  "lastConnected": "2025-01-20T10:30:00Z",
+  "createdAt": "2025-01-15T08:00:00Z"
+}
+```
 
 #### POST /api/aws-config/test
-Test connection to AWS S3 bucket.
-- **Body**: `{ "bucketName": "string", "region": "string" }`
-- **Success**: `{ "connected": boolean }`
+Test AWS S3 connection.
+
+**Request Body**:
+```json
+{
+  "bucketName": "my-test-bucket",
+  "region": "us-west-2"
+}
+```
+
+**Success Response (200)**:
+```json
+{
+  "connected": true,
+  "message": "Successfully connected to S3 bucket"
+}
+```
+
+#### GET /api/aws-configs
+Get all AWS configurations (admin only).
+
+**Success Response (200)**:
+```json
+[
+  {
+    "id": 1,
+    "name": "Production",
+    "bucketName": "prod-bucket",
+    "region": "us-east-1",
+    "isActive": true,
+    "isConnected": true
+  },
+  {
+    "id": 2,
+    "name": "Development",
+    "bucketName": "dev-bucket",
+    "region": "us-west-2",
+    "isActive": false,
+    "isConnected": false
+  }
+]
+```
+
+#### POST /api/aws-configs/:id/activate
+Activate AWS configuration and refresh datasets.
+
+**Success Response (200)**:
+```json
+{
+  "message": "Configuration activated successfully",
+  "config": { /* AwsConfig object */ },
+  "datasetsRefreshed": 256
+}
+```
 
 ### Dataset Endpoints
 
 #### GET /api/datasets
-List datasets with pagination and filtering.
-- **Query Parameters**:
-  - `page`: Page number (default: 1)
-  - `limit`: Items per page (default: 50, max: 10000)
-  - `folder`: Filter by top-level folder
-  - `search`: Search in dataset names and sources
-  - `format`: Filter by file format
-- **Success**: `{ "datasets": Dataset[], "totalCount": number, "page": number, "limit": number, "totalPages": number }`
+List datasets with advanced filtering and pagination.
 
-#### GET /api/datasets/quick-stats
-Get quick dataset statistics (cached).
-- **Success**: `{ "totalCount": number, "folders": string[], "lastUpdated": string }`
+**Query Parameters**:
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 50, max: 10000)
+- `folder`: Filter by top-level folder
+- `search`: Search in names, sources, descriptions
+- `format`: Filter by file format (csv, json, parquet)
+- `minSize`: Minimum file size in bytes
+- `maxSize`: Maximum file size in bytes
 
-#### POST /api/datasets/refresh
-Refresh datasets from S3 (requires active AWS config).
-- **Success**: `{ "message": string, "datasets": Dataset[] }`
-- **Error**: `400` No AWS configuration
+**Example Request**:
+```
+GET /api/datasets?folder=cdc_places&format=csv&search=health&page=1&limit=20
+```
+
+**Success Response (200)**:
+```json
+{
+  "datasets": [
+    {
+      "id": 1,
+      "name": "cdc_places_health_data_2023",
+      "source": "cdc_places/2023",
+      "topLevelFolder": "cdc_places",
+      "format": "csv",
+      "size": "45.2 MB",
+      "sizeBytes": 47390720,
+      "lastModified": "2023-12-15T10:30:00Z",
+      "status": "active",
+      "metadata": {
+        "recordCount": 125000,
+        "columnCount": 34,
+        "completenessScore": 92,
+        "description": "CDC PLACES health outcome data"
+      },
+      "downloadCounts": {
+        "sample": 15,
+        "full": 3,
+        "metadata": 8
+      }
+    }
+  ],
+  "totalCount": 156,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 8,
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
 
 #### GET /api/datasets/:id
-Get a specific dataset by ID.
-- **Success**: `Dataset` object
-- **Error**: `404` Dataset not found
+Get detailed dataset information.
+
+**Success Response (200)**:
+```json
+{
+  "id": 1,
+  "name": "health_outcomes_2023",
+  "source": "cdc_places/2023",
+  "topLevelFolder": "cdc_places",
+  "format": "csv",
+  "size": "45.2 MB",
+  "sizeBytes": 47390720,
+  "metadata": {
+    "title": "CDC PLACES Health Outcomes",
+    "description": "Community health indicators and outcomes",
+    "recordCount": 125000,
+    "columnCount": 34,
+    "completenessScore": 92,
+    "dataSource": "Centers for Disease Control and Prevention",
+    "intendedUseCase": "Public health research and policy analysis",
+    "columns": [
+      {
+        "name": "StateAbbr",
+        "dataType": "string",
+        "description": "State abbreviation"
+      },
+      {
+        "name": "CountyFIPS",
+        "dataType": "string",
+        "description": "County FIPS code"
+      }
+    ],
+    "tags": ["health", "cdc", "community", "outcomes"]
+  },
+  "insights": {
+    "summary": "This dataset contains community health outcome indicators...",
+    "patterns": [
+      "Health outcomes vary significantly by geographic region",
+      "Strong correlation between socioeconomic factors and health"
+    ],
+    "useCases": [
+      "Public health policy development",
+      "Community health assessment",
+      "Research on health disparities"
+    ]
+  }
+}
+```
+
+#### POST /api/datasets/refresh
+Refresh all datasets from the active S3 configuration.
+
+**Headers**: `Authorization: Bearer <admin-token>`
+
+**Success Response (200)**:
+```json
+{
+  "message": "Datasets refreshed successfully",
+  "datasetsProcessed": 256,
+  "newDatasets": 12,
+  "updatedDatasets": 8,
+  "removedDatasets": 3,
+  "processingTime": "45.2 seconds"
+}
+```
 
 #### POST /api/datasets/:id/insights
-Generate AI insights for a dataset.
-- **Success**: `{ "insights": DatasetInsights }`
-- **Error**: `404` Dataset not found
+Generate AI insights for a specific dataset.
 
-#### POST /api/datasets/bulk-insights
-Generate AI insights for all datasets.
-- **Success**: `{ "message": string, "insights": object }`
+**Request Body**:
+```json
+{
+  "regenerate": false
+}
+```
 
-#### GET /api/datasets/:id/download
-Download dataset (redirects to presigned URL).
-- **Success**: Redirects to download URL
-- **Error**: `404` Dataset/file not found, `501` Not implemented
+**Success Response (200)**:
+```json
+{
+  "insights": {
+    "summary": "This CDC PLACES dataset provides comprehensive health outcome data...",
+    "patterns": [
+      "Geographic clustering of health outcomes",
+      "Seasonal variations in certain health indicators"
+    ],
+    "useCases": [
+      "Epidemiological research",
+      "Health policy planning",
+      "Community intervention targeting"
+    ],
+    "generatedAt": "2025-01-20T15:30:00Z"
+  }
+}
+```
 
 #### GET /api/datasets/:id/download-sample
 Download a 10% sample of the dataset.
-- **Success**: Binary file download
-- **Error**: `404` Dataset not found
+
+**Success Response (200)**:
+- Content-Type: `application/octet-stream`
+- Content-Disposition: `attachment; filename="dataset_sample.csv"`
+- Binary file content (10% of original size)
 
 #### POST /api/datasets/:id/chat
-Chat with AI about a specific dataset.
-- **Body**: `{ "message": "string", "conversationHistory": array, "enableVisualization": boolean }`
-- **Success**: `{ "response": "string", "conversationHistory": array }`
-- **Error**: `404` Dataset not found
+Interactive AI chat about a specific dataset.
 
-### Folder Endpoints
+**Request Body**:
+```json
+{
+  "message": "What are the key health indicators in this dataset?",
+  "conversationHistory": [
+    {
+      "role": "user",
+      "content": "Tell me about this dataset"
+    },
+    {
+      "role": "assistant", 
+      "content": "This is a CDC PLACES dataset containing..."
+    }
+  ],
+  "enableVisualization": true
+}
+```
+
+**Success Response (200)**:
+```json
+{
+  "response": "The key health indicators in this dataset include...",
+  "conversationHistory": [
+    /* Updated conversation history */
+  ],
+  "visualizations": [
+    {
+      "type": "bar",
+      "title": "Health Outcomes by State",
+      "data": {
+        "labels": ["Alabama", "Alaska", "Arizona"],
+        "datasets": [{
+          "label": "Health Score",
+          "data": [72, 78, 74],
+          "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56"]
+        }]
+      }
+    }
+  ]
+}
+```
+
+### Folder and Statistics Endpoints
 
 #### GET /api/folders
 Get list of unique top-level folders.
-- **Success**: Array of folder names
 
-#### GET /api/folders/community-data-points
-Get community data points calculation by folder.
-- **Success**: Array of `{ "folder_label": string, "total_community_data_points": number }`
-
-### Statistics Endpoints
+**Success Response (200)**:
+```json
+[
+  "cdc_places",
+  "cdc_svi", 
+  "census_acs5",
+  "epa_ejscreen",
+  "usda_food_access"
+]
+```
 
 #### GET /api/stats
-Get comprehensive application statistics (cached 5 minutes).
-- **Success**: 
+Get comprehensive application statistics.
+
+**Success Response (200)**:
 ```json
 {
-  "totalDatasets": number,
-  "totalSize": string,
-  "dataSources": number,
-  "lastUpdated": string,
-  "lastRefreshTime": string,
-  "totalCommunityDataPoints": number
+  "totalDatasets": 256,
+  "totalSize": "26.8 GB",
+  "dataSources": 16,
+  "lastUpdated": "2 hours ago",
+  "lastRefreshTime": "2025-01-20T13:30:00Z",
+  "totalCommunityDataPoints": 15420000,
+  "folderBreakdown": [
+    {
+      "folder": "census_acs5",
+      "count": 72,
+      "size": "8.2 GB"
+    },
+    {
+      "folder": "cdc_places", 
+      "count": 20,
+      "size": "2.1 GB"
+    }
+  ],
+  "formatBreakdown": {
+    "csv": 240,
+    "json": 12,
+    "parquet": 4
+  }
 }
 ```
 
-#### GET /api/community-data-points
-Get detailed community data points for all datasets.
-- **Success**: Array of dataset community data point calculations
+### Performance Monitoring
+
+#### GET /api/performance/stats
+Get performance metrics and statistics.
+
+**Success Response (200)**:
+```json
+{
+  "averageResponseTime": 245,
+  "slowQueries": [
+    {
+      "query": "GET /api/datasets",
+      "averageTime": 1200,
+      "count": 45
+    }
+  ],
+  "cacheHitRate": 0.78,
+  "databaseConnections": {
+    "active": 3,
+    "idle": 5,
+    "total": 8
+  },
+  "recommendations": [
+    "Consider adding index on datasets.topLevelFolder",
+    "Cache frequently accessed folder statistics"
+  ]
+}
+```
 
 ### Data Models
 
-#### Dataset
+#### User
 ```typescript
-{
-  id: number,
-  name: string,
-  source: string,
-  topLevelFolder: string,
-  format: string,
-  size: string,
-  sizeBytes: number,
-  lastModified: Date,
-  createdDate: Date,
-  status: string,
-  metadata: DatasetMetadata,
-  insights: DatasetInsights
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  isActive: boolean;
+  createdAt: Date;
+  lastLogin?: Date;
 }
 ```
 
-#### AwsConfig
+#### Dataset
 ```typescript
-{
-  id: number,
-  name: string,
-  bucketName: string,
-  region: string,
-  isConnected: boolean,
-  lastConnected: Date,
-  isActive: boolean,
-  createdAt: Date
+interface Dataset {
+  id: number;
+  name: string;
+  source: string;
+  topLevelFolder: string;
+  format: string;
+  size: string;
+  sizeBytes: number;
+  lastModified: Date;
+  createdDate: Date;
+  status: string;
+  metadata: DatasetMetadata;
+  insights?: DatasetInsights;
+  downloadCounts?: {
+    sample: number;
+    full: number;
+    metadata: number;
+  };
 }
 ```
 
 #### DatasetMetadata
-Includes fields like `recordCount`, `columnCount`, `completenessScore`, `title`, `description`, `dataSource`, `columns`, `tags`, etc.
-
-#### DatasetInsights
 ```typescript
-{
-  summary: string,
-  patterns: string[],
-  useCases: string[]
+interface DatasetMetadata {
+  title?: string;
+  description?: string;
+  recordCount?: number;
+  columnCount?: number;
+  completenessScore?: number;
+  dataSource?: string;
+  intendedUseCase?: string;
+  targetAudiences?: string[];
+  columns?: Column[];
+  tags?: string[];
+  license?: string;
+  version?: string;
 }
 ```
 
-### Error Responses
-All endpoints return consistent error format:
+#### Column
+```typescript
+interface Column {
+  name: string;
+  dataType: string;
+  description?: string;
+  nullable?: boolean;
+  unique?: boolean;
+}
+```
+
+### Error Handling
+
+All API endpoints return consistent error responses:
+
+**Error Response Format**:
 ```json
 {
   "message": "Error description",
-  "errors": [] // Optional validation errors
+  "code": "ERROR_CODE",
+  "details": "Additional error details",
+  "errors": [
+    {
+      "field": "fieldName",
+      "message": "Field-specific error message"
+    }
+  ],
+  "timestamp": "2025-01-20T15:30:00Z"
 }
 ```
 
-### Caching Strategy
-- Dataset queries: 1-minute cache
-- Statistics: 5-minute cache
-- Quick stats: 1-minute cache
-- Folder lists: 10-minute cache
-- AWS config: 1-minute private cache
-- Automatic cache invalidation on data refresh
+**Common HTTP Status Codes**:
+- `200`: Success
+- `201`: Created successfully
+- `400`: Bad Request (validation errors)
+- `401`: Unauthorized (missing or invalid token)
+- `403`: Forbidden (insufficient permissions)
+- `404`: Not Found
+- `429`: Too Many Requests (rate limited)
+- `500`: Internal Server Error
+
+### Examples
+
+#### Complete Authentication Flow
+
+1. **Login**:
+```bash
+curl -X POST https://your-domain.replit.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin"}'
+```
+
+2. **Use Token**:
+```bash
+curl -X GET https://your-domain.replit.app/api/datasets \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+#### Search and Filter Datasets
+
+```bash
+# Search for health-related datasets in CDC folders
+curl -X GET "https://your-domain.replit.app/api/datasets?search=health&folder=cdc_places&format=csv&limit=10" \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Download Dataset Sample
+
+```bash
+curl -X GET https://your-domain.replit.app/api/datasets/123/download-sample \
+  -H "Authorization: Bearer <token>" \
+  -o dataset_sample.csv
+```
+
+#### AI Chat with Dataset
+
+```bash
+curl -X POST https://your-domain.replit.app/api/datasets/123/chat \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What are the main health indicators in this dataset?",
+    "enableVisualization": true
+  }'
+```
 
 ### Performance Optimizations
 - **Database Indexes**: Comprehensive indexing on frequently queried columns including top_level_folder, format, status, name, source, lastModified, and sizeBytes
