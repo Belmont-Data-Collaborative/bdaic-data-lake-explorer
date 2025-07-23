@@ -890,6 +890,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.get('User-Agent')
       );
 
+      // Invalidate download stats cache
+      invalidateCache(`download-stats-${id}`);
+
       // Set appropriate headers for file download
       const fileName = `${dataset.name}-sample.${dataset.format.toLowerCase()}`;
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -936,6 +939,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.ip || req.connection.remoteAddress, 
         req.get('User-Agent')
       );
+
+      // Invalidate download stats cache
+      invalidateCache(`download-stats-${id}`);
 
       // Set appropriate headers for file download
       const fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
@@ -1003,6 +1009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.ip || req.connection.remoteAddress, 
         req.get('User-Agent')
       );
+
+      // Invalidate download stats cache
+      invalidateCache(`download-stats-${id}`);
 
       // Set appropriate headers for file download
       const fileName = `${dataset.name}.yaml`;

@@ -78,10 +78,7 @@ export function DatasetCard({
   const { data: downloadStats } = useQuery({
     queryKey: ['/api/datasets', dataset.id, 'download-stats'],
     queryFn: async () => {
-      const response = await fetch(`/api/datasets/${dataset.id}/download-stats`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch download stats');
-      }
+      const response = await apiRequest('GET', `/api/datasets/${dataset.id}/download-stats`);
       return response.json();
     },
     // Always fetch stats for header display

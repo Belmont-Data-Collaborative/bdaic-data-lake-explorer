@@ -80,6 +80,12 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Fixed download statistics tracking system to properly update in real-time
+  - Fixed authentication issue in frontend download stats query by switching from fetch() to apiRequest()
+  - Added cache invalidation to all download endpoints (sample, full, metadata) to ensure real-time stats updates
+  - Verified download tracking system works correctly with proper database recording and counter incrementing
+  - Download statistics now show accurate counts immediately after downloads are completed
+  - Each download type (sample, full, metadata) is tracked separately with total count calculation
 - July 23, 2025: Implemented comprehensive WCAG AA accessibility compliance across entire application
   - Enhanced all major components (main-layout.tsx, folder-card.tsx, dataset-card.tsx, dataset-chat.tsx) with complete accessibility infrastructure
   - Added comprehensive ARIA labels, semantic HTML structure (article, section, nav, header, main), and proper role attributes
