@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Animation utilities for counting effects */
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Custom pulse animation for counting stats */
+  @keyframes stat-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.02);
+    }
+  }
+  
+  .animate-stat-pulse {
+    animation: stat-pulse 1.5s ease-in-out infinite;
+  }
+  
+  /* Smooth transition for numbers changing */
+  .stat-number {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-stat-pulse,
+    .animate-pulse {
+      animation: none;
+    }
+    
+    .stat-number {
+      transition: none;
+    }
+  }
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(0, 0%, 9%);

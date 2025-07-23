@@ -80,6 +80,15 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented smooth animated counting effects for statistics cards
+  - Created reusable `useCountAnimation` hook with easeOutQuart easing and requestAnimationFrame optimization
+  - Added staggered animations for different stats (datasets, data sources, community data points) with varying durations and delays  
+  - Enhanced loading state with animated placeholder values that count up to realistic targets
+  - Added custom CSS animations (`animate-stat-pulse`) for visual polish during counting
+  - Implemented `tabular-nums` font variant and smooth transitions for consistent number display
+  - Added `prefers-reduced-motion` support for accessibility compliance
+  - Statistics now animate from 0 to final values on load and from current to new values on data updates
+  - Icons pulse subtly during counting animations for enhanced visual feedback
 - July 23, 2025: Fixed download statistics tracking system to properly update in real-time
   - Fixed authentication issue in frontend download stats query by switching from fetch() to apiRequest()
   - Added cache invalidation to all download endpoints (sample, full, metadata) to ensure real-time stats updates

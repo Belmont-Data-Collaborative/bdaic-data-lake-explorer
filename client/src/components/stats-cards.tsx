@@ -1,5 +1,6 @@
 import { Folder, HardDrive, Map, Clock, BarChart3 } from "lucide-react";
 import { useDynamicTime } from "@/hooks/use-dynamic-time";
+import { useCountAnimation, useStaggeredCountAnimation } from "@/hooks/use-count-animation";
 
 interface Stats {
   totalDatasets: number;
@@ -17,17 +18,97 @@ interface StatsCardsProps {
 export function StatsCards({ stats }: StatsCardsProps) {
   const dynamicLastUpdated = useDynamicTime(stats?.lastRefreshTime || null);
   
+  // Animated counting for numeric stats
+  const animatedDatasets = useCountAnimation({
+    target: stats?.totalDatasets || 0,
+    duration: 1800,
+    delay: 100,
+  });
+  
+  const animatedDataSources = useCountAnimation({
+    target: stats?.dataSources || 0,
+    duration: 1600,
+    delay: 300,
+  });
+  
+  const animatedCommunityPoints = useCountAnimation({
+    target: stats?.totalCommunityDataPoints || 0,
+    duration: 2200,
+    delay: 500,
+  });
+
+  // Loading state with animated placeholders
   if (!stats) {
+    const placeholderDatasets = useCountAnimation({ target: 250, duration: 2000 });
+    const placeholderSources = useCountAnimation({ target: 15, duration: 1800, delay: 200 });
+    const placeholderPoints = useCountAnimation({ target: 15000000, duration: 2500, delay: 400 });
+    
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+        {/* Total Datasets Placeholder */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Datasets</p>
+              <p className="text-2xl font-bold text-gray-900">{placeholderDatasets.value}</p>
+            </div>
+            <div className={`w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center ${placeholderDatasets.isAnimating ? 'animate-stat-pulse' : ''}`}>
+              <Folder className="text-primary-600" size={24} />
             </div>
           </div>
-        ))}
+        </div>
+        
+        {/* Total Size Placeholder */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Size</p>
+              <p className="text-2xl font-bold text-gray-900">Loading...</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center animate-pulse">
+              <HardDrive className="text-green-600" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        {/* Data Sources Placeholder */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Data Sources</p>
+              <p className="text-2xl font-bold text-gray-900">{placeholderSources.value}</p>
+            </div>
+            <div className={`w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center ${placeholderSources.isAnimating ? 'animate-stat-pulse' : ''}`}>
+              <Map className="text-accent-600" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        {/* Last Updated Placeholder */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Last Updated</p>
+              <p className="text-2xl font-bold text-gray-900">Loading...</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center animate-pulse">
+              <Clock className="text-orange-600" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        {/* Community Data Points Placeholder */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Community Data Points</p>
+              <p className="text-2xl font-bold text-gray-900">{placeholderPoints.value.toLocaleString()}</p>
+            </div>
+            <div className={`w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center ${placeholderPoints.isAnimating ? 'animate-stat-pulse' : ''}`}>
+              <BarChart3 className="text-blue-600" size={24} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -35,10 +116,11 @@ export function StatsCards({ stats }: StatsCardsProps) {
   const statItems = [
     {
       title: "Total Datasets",
-      value: stats.totalDatasets.toString(),
+      value: animatedDatasets.value.toString(),
       icon: Folder,
       bgColor: "bg-primary-100",
       iconColor: "text-primary-600",
+      isAnimating: animatedDatasets.isAnimating,
     },
     {
       title: "Total Size",
@@ -46,13 +128,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
       icon: HardDrive,
       bgColor: "bg-green-100",
       iconColor: "text-green-600",
+      isAnimating: false, // Size doesn't animate
     },
     {
       title: "Data Sources",
-      value: stats.dataSources.toString(),
+      value: animatedDataSources.value.toString(),
       icon: Map,
       bgColor: "bg-accent-100",
       iconColor: "text-accent-600",
+      isAnimating: animatedDataSources.isAnimating,
     },
     {
       title: "Last Updated",
@@ -60,13 +144,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
       icon: Clock,
       bgColor: "bg-orange-100",
       iconColor: "text-orange-600",
+      isAnimating: false, // Time doesn't animate
     },
     {
       title: "Community Data Points",
-      value: stats.totalCommunityDataPoints ? stats.totalCommunityDataPoints.toLocaleString() : "0",
+      value: animatedCommunityPoints.value.toLocaleString(),
       icon: BarChart3,
       bgColor: "bg-blue-100",
       iconColor: "text-blue-600",
+      isAnimating: animatedCommunityPoints.isAnimating,
     },
   ];
 
@@ -77,9 +163,11 @@ export function StatsCards({ stats }: StatsCardsProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">{item.title}</p>
-              <p className="text-2xl font-bold text-gray-900">{item.value}</p>
+              <p className="text-2xl font-bold text-gray-900 tabular-nums stat-number">{item.value}</p>
             </div>
-            <div className={`w-12 h-12 ${item.bgColor} rounded-lg flex items-center justify-center`}>
+            <div className={`w-12 h-12 ${item.bgColor} rounded-lg flex items-center justify-center ${
+              item.isAnimating ? 'animate-stat-pulse' : ''
+            }`}>
               <item.icon className={`${item.iconColor} text-xl`} size={24} />
             </div>
           </div>

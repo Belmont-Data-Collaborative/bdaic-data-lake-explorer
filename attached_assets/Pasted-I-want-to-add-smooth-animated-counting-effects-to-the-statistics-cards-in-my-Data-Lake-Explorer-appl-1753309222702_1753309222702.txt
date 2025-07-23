@@ -1,0 +1,45 @@
+I want to add smooth animated counting effects to the statistics cards in my Data Lake Explorer application. The goal is to create an engaging user experience where numbers animate from 0 (or 1) up to their final values when the data loads, rather than just appearing instantly.
+
+**Requirements:**
+
+1. **Target Component**: Update the `StatsCards` component (`client/src/components/stats-cards.tsx`) to include animated counting
+
+2. **Animation Behavior**:
+   - When stats data is loading, show animated counting from 0 (or 1) up to reasonable intermediate values
+   - Once real data arrives, animate from current displayed value to the actual final value
+   - Use smooth easing transitions (not linear counting)
+   - Different stats should animate at slightly different speeds for visual interest
+
+3. **Specific Stats to Animate**:
+   - Total Datasets (e.g., animate to 259)
+   - Data Sources (e.g., animate to 16) 
+   - Community Data Points (e.g., animate to large numbers with comma formatting)
+   - Keep "Total Size" and "Last Updated" as text without counting animation
+
+4. **Technical Implementation**:
+   - Create a reusable `useCountAnimation` hook for the counting logic
+   - Use `requestAnimationFrame` or a smooth animation library for performance
+   - Ensure numbers are properly formatted (e.g., `toLocaleString()` for large numbers)
+   - Handle edge cases like when stats are undefined or 0
+
+5. **Animation Timing**:
+   - Loading state: Animate to placeholder values over 2-3 seconds
+   - Data loaded state: Animate from current value to final value over 1-2 seconds
+   - Use easing functions like `easeOutQuart` for natural feel
+
+6. **Visual Polish**:
+   - Ensure the animated numbers don't cause layout shifts
+   - Maintain consistent text alignment during animation
+   - Consider adding a subtle pulsing effect to the icons during counting
+
+7. **Performance Considerations**:
+   - Stop animations when component unmounts
+   - Don't animate if `prefers-reduced-motion` is set
+   - Optimize for mobile performance
+
+8. **Integration Points**:
+   - Works with existing loading states from `useLoadingStore`
+   - Maintains current responsive grid layout
+   - Preserves accessibility features
+
+Please implement this animated counting system while maintaining the existing component structure and design. The animation should feel smooth and professional, enhancing the user experience without being distracting.
