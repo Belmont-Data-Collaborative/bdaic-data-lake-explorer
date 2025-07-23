@@ -1,0 +1,43 @@
+I want to add smooth loading animations to the folder/data source cards in my Data Lake Explorer application. Currently, the folder cards appear instantly when data loads, but I want to create an engaging loading experience.
+
+**Requirements:**
+
+1. **Target Components**: Update the `FolderCard` component (`client/src/components/folder-card.tsx`) to include loading animations
+
+2. **Animation Behavior**:
+   - While folder data is loading, show skeleton placeholder cards with subtle animations
+   - Cards should appear with a staggered animation (each card appears 100-200ms after the previous)
+   - Use a shimmer or pulse effect on the skeleton cards to indicate active loading
+   - Once data loads, smoothly transition from skeleton to actual content
+
+3. **Skeleton Card Design**:
+   - Maintain the same card dimensions and layout structure
+   - Show animated placeholder rectangles for folder name, dataset count, and description areas
+   - Include a pulsing folder icon placeholder
+   - Use subtle shimmer effects across the placeholder content
+
+4. **Staggered Animation**:
+   - First card appears immediately
+   - Subsequent cards appear with 150ms delays
+   - Use smooth fade-in or slide-up transitions for card appearance
+   - Total stagger time should not exceed 1.5 seconds for all cards
+
+5. **Technical Implementation**:
+   - Create a `SkeletonFolderCard` component for loading states
+   - Use CSS animations for shimmer effects (`@keyframes shimmer`)
+   - Implement staggered delays using CSS `animation-delay` or JavaScript timeouts
+   - Ensure animations respect `prefers-reduced-motion` for accessibility
+
+6. **Integration Points**:
+   - Work with existing loading states from folder data queries
+   - Maintain responsive grid layout during loading
+   - Smooth transition when switching from loading to loaded state
+   - Show 8-12 skeleton cards as placeholders before real data arrives
+
+7. **Visual Polish**:
+   - Use consistent border radius and spacing matching real cards
+   - Implement subtle hover effects even on skeleton cards
+   - Ensure loading animations don't cause layout shift
+   - Add gentle easing functions for smooth transitions
+
+Please implement this skeleton loading system with staggered card animations while maintaining the existing folder card design and functionality. The loading experience should feel smooth and professional, giving users clear feedback that data is being fetched.

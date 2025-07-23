@@ -80,6 +80,16 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 23, 2025: Implemented smooth loading animations for folder/data source cards with skeleton placeholders
+  - Created `SkeletonFolderCard` component with shimmer effects and realistic placeholder content
+  - Added staggered card animations with 150ms delays using CSS `animation-delay` and `slideUp` keyframes
+  - Implemented 12 skeleton cards displayed during data loading with varied placeholder widths for realism
+  - Enhanced real folder cards with staggered slide-up animations when data loads (opacity 0 to 1 transition)
+  - Added comprehensive CSS animations: `shimmer` effect for placeholders, `slideUp` for card entrance
+  - Created 12 stagger classes (`stagger-0` through `stagger-11`) with delays from 0ms to 1650ms
+  - Added accessibility support with `prefers-reduced-motion` to disable animations when requested
+  - Skeleton cards maintain same layout structure as real cards ensuring no layout shift
+  - Loading experience now provides clear visual feedback during data fetching with professional polish
 - July 23, 2025: Implemented smooth animated counting effects for statistics cards
   - Created reusable `useCountAnimation` hook with easeOutQuart easing and requestAnimationFrame optimization
   - Added staggered animations for different stats (datasets, data sources, community data points) with varying durations and delays  

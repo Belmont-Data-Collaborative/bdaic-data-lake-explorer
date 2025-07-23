@@ -29,15 +29,69 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
+  /* Shimmer effect for skeleton loading */
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+  
+  .shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  /* Staggered card animations */
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+  
+  /* Staggered delays for cards */
+  .stagger-0 { animation-delay: 0ms; }
+  .stagger-1 { animation-delay: 150ms; }
+  .stagger-2 { animation-delay: 300ms; }
+  .stagger-3 { animation-delay: 450ms; }
+  .stagger-4 { animation-delay: 600ms; }
+  .stagger-5 { animation-delay: 750ms; }
+  .stagger-6 { animation-delay: 900ms; }
+  .stagger-7 { animation-delay: 1050ms; }
+  .stagger-8 { animation-delay: 1200ms; }
+  .stagger-9 { animation-delay: 1350ms; }
+  .stagger-10 { animation-delay: 1500ms; }
+  .stagger-11 { animation-delay: 1650ms; }
+
   /* Reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     .animate-stat-pulse,
-    .animate-pulse {
+    .animate-pulse,
+    .shimmer,
+    .animate-slide-up {
       animation: none;
     }
     
     .stat-number {
       transition: none;
+    }
+    
+    /* Show content immediately for reduced motion */
+    [class*="stagger-"] {
+      opacity: 1 !important;
+      transform: none !important;
     }
   }
 }

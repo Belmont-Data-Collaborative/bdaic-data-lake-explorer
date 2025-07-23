@@ -8,6 +8,7 @@ import { MainPageActions } from "@/components/main-page-actions";
 import { StatsCards } from "@/components/stats-cards";
 import { DatasetList } from "@/components/dataset-list";
 import { FolderCard } from "@/components/folder-card";
+import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset, AwsConfig } from "@shared/schema";
 
@@ -475,30 +476,38 @@ export default function Home() {
 
               <ErrorBoundary>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {paginatedFolders.map((folderName) => {
-                    // Use all datasets to find datasets for this folder
-                    const folderDatasets = allDatasets.filter(
-                      (dataset) => dataset.topLevelFolder === folderName,
-                    );
-                    // Find community data points for this folder
-                    const folderDataPointsEntry = folderDataPoints.find((entry) =>
-                      entry.folder_label
-                        .toLowerCase()
-                        .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
-                    );
+                  {allDatasetsLoading ? (
+                    // Show skeleton cards while loading
+                    Array.from({ length: 12 }, (_, index) => (
+                      <SkeletonFolderCard key={`skeleton-${index}`} index={index} />
+                    ))
+                  ) : (
+                    paginatedFolders.map((folderName, index) => {
+                      // Use all datasets to find datasets for this folder
+                      const folderDatasets = allDatasets.filter(
+                        (dataset) => dataset.topLevelFolder === folderName,
+                      );
+                      // Find community data points for this folder
+                      const folderDataPointsEntry = folderDataPoints.find((entry) =>
+                        entry.folder_label
+                          .toLowerCase()
+                          .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
+                      );
 
-                    return (
-                      <FolderCard
-                        key={folderName}
-                        folderName={folderName}
-                        datasets={folderDatasets}
-                        onClick={() => handleFolderSelect(folderName)}
-                        totalCommunityDataPoints={
-                          folderDataPointsEntry?.total_community_data_points
-                        }
-                      />
-                    );
-                  })}
+                      return (
+                        <div key={folderName} className={`opacity-0 animate-slide-up stagger-${Math.min(index, 11)}`}>
+                          <FolderCard
+                            folderName={folderName}
+                            datasets={folderDatasets}
+                            onClick={() => handleFolderSelect(folderName)}
+                            totalCommunityDataPoints={
+                              folderDataPointsEntry?.total_community_data_points
+                            }
+                          />
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </ErrorBoundary>
             </div>
