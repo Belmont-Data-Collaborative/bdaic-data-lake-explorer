@@ -51,12 +51,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         
         console.log('API response status:', res.status);
         
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.log('API error response:', errorText);
-          throw new Error(`Authentication failed (${res.status}). Please log in again.`);
-        }
-        
         const data = await res.json();
         console.log('Users data received:', data.length, 'users');
         return data;
