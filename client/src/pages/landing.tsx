@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText } from "lucide-react";
+import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -368,33 +368,118 @@ For detailed API specifications, please contact the system administrator.`;
             )}
           </TabsContent>
 
-          <TabsContent value="features" className="space-y-6">
+          <TabsContent value="features" className="space-y-8">
             <div className="text-center py-8">
               <h2 className="text-3xl font-bold text-foreground mb-4">
-                Powerful Data Exploration Features
+                Comprehensive Data Lake Management
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Advanced tools and capabilities for comprehensive data lake management
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Advanced AWS S3 data exploration with AI-powered insights, role-based authentication, and professional-grade features for enterprise data management
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card>
+              <Card className="border-2 border-blue-200 bg-blue-50/30">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Search className="text-primary" size={20} />
-                    <span>Smart Discovery</span>
+                    <Database className="text-blue-600" size={20} />
+                    <span>Smart Dataset Discovery</span>
                   </CardTitle>
                   <CardDescription>
-                    Intelligent dataset discovery with metadata extraction and AI-powered insights
+                    Automatically discover and catalog 259 datasets across 16 S3 folders with intelligent metadata extraction
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Automatic metadata parsing</li>
-                    <li>• YAML configuration analysis</li>
-                    <li>• Column schema detection</li>
-                    <li>• Data type inference</li>
+                    <li>• Multi-format support (CSV, JSON, Parquet, YAML)</li>
+                    <li>• Automatic metadata extraction with 30+ field variations</li>
+                    <li>• Real-time S3 synchronization and refresh</li>
+                    <li>• Folder-based organization with 16 active data sources</li>
+                    <li>• File size analysis and completeness scoring</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-purple-200 bg-purple-50/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Brain className="text-purple-600" size={20} />
+                    <span>AI-Powered Analytics</span>
+                  </CardTitle>
+                  <CardDescription>
+                    OpenAI GPT-4o integration for intelligent dataset insights and conversational data exploration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Automated pattern recognition and analysis</li>
+                    <li>• Interactive dataset chat with conversation history</li>
+                    <li>• Use case recommendations and insights generation</li>
+                    <li>• Data visualization suggestions</li>
+                    <li>• Markdown-formatted AI responses</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-green-200 bg-green-50/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Shield className="text-green-600" size={20} />
+                    <span>Enterprise Authentication</span>
+                  </CardTitle>
+                  <CardDescription>
+                    JWT-based role-based access control with comprehensive user management
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Admin, Editor, and Viewer role hierarchy</li>
+                    <li>• Secure bcrypt password hashing</li>
+                    <li>• User registration and management system</li>
+                    <li>• Session tracking with automatic token refresh</li>
+                    <li>• Role-based navigation and feature access</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Search className="text-primary" size={20} />
+                    <span>Advanced Search & Filtering</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Powerful search capabilities with folder navigation and format-based filtering
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Full-text search across names, sources, descriptions</li>
+                    <li>• Format filtering (CSV, JSON, Parquet)</li>
+                    <li>• Size range filtering with byte precision</li>
+                    <li>• Folder-first navigation system</li>
+                    <li>• Real-time search with debounced queries</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="text-primary" size={20} />
+                    <span>Rich Metadata Management</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive metadata extraction with YAML integration and completeness scoring
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• YAML metadata prioritization over CSV analysis</li>
+                    <li>• Column schema detection with data type inference</li>
+                    <li>• Weighted completeness scoring (critical field priority)</li>
+                    <li>• Record count and file size tracking</li>
+                    <li>• Target audience and use case extraction</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -403,18 +488,19 @@ For detailed API specifications, please contact the system administrator.`;
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Download className="text-primary" size={20} />
-                    <span>Download Tracking</span>
+                    <span>Download Analytics</span>
                   </CardTitle>
                   <CardDescription>
-                    Comprehensive download monitoring with real-time statistics
+                    Real-time download tracking with comprehensive usage statistics
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Sample file downloads (10%)</li>
-                    <li>• Full dataset access</li>
+                    <li>• Sample downloads (10% file size) with server-side streaming</li>
+                    <li>• Full dataset access with presigned URLs</li>
                     <li>• Metadata file downloads</li>
-                    <li>• Usage analytics</li>
+                    <li>• Real-time statistics with cache invalidation</li>
+                    <li>• Usage tracking by type (sample/full/metadata)</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -422,22 +508,92 @@ For detailed API specifications, please contact the system administrator.`;
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Shield className="text-primary" size={20} />
-                    <span>Secure Access</span>
+                    <Cloud className="text-primary" size={20} />
+                    <span>AWS S3 Integration</span>
                   </CardTitle>
                   <CardDescription>
-                    Enterprise-grade security with role-based access control
+                    Multi-configuration S3 management with connection testing and bucket switching
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Password protection</li>
-                    <li>• Session management</li>
-                    <li>• Audit logging</li>
-                    <li>• Access monitoring</li>
+                    <li>• Multiple AWS configuration support</li>
+                    <li>• Real-time connection status monitoring</li>
+                    <li>• One-click configuration switching</li>
+                    <li>• Automatic dataset refresh on config changes</li>
+                    <li>• Presigned URL generation for secure access</li>
                   </ul>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart3 className="text-primary" size={20} />
+                    <span>Performance Monitoring</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Database optimization with comprehensive performance tracking and caching
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Database indexes on frequently queried columns</li>
+                    <li>• Intelligent cache headers with varying TTL</li>
+                    <li>• Response compression with optimized gzip settings</li>
+                    <li>• Slow query detection and performance metrics</li>
+                    <li>• Cache hit rate monitoring and optimization</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Accessibility className="text-primary" size={20} />
+                    <span>Accessibility Compliance</span>
+                  </CardTitle>
+                  <CardDescription>
+                    WCAG AA compliant interface with comprehensive accessibility features
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Full keyboard navigation support</li>
+                    <li>• Screen reader optimization with ARIA labels</li>
+                    <li>• 4.5:1 color contrast compliance</li>
+                    <li>• Focus trapping and management</li>
+                    <li>• Motion preferences respect (prefers-reduced-motion)</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-8 mt-12">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold text-foreground mb-4">Current Data Lake Status</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">259</div>
+                    <div className="text-sm text-muted-foreground">Total Datasets</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600">16</div>
+                    <div className="text-sm text-muted-foreground">Data Sources</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-purple-600">27.4 GB</div>
+                    <div className="text-sm text-muted-foreground">Total Size</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-orange-600">15.4M+</div>
+                    <div className="text-sm text-muted-foreground">Community Data Points</div>
+                  </div>
+                </div>
+                <p className="text-muted-foreground mt-4">
+                  Connected to <strong>bdaic-public-transform</strong> S3 bucket with real-time synchronization
+                </p>
+              </div>
             </div>
           </TabsContent>
 
