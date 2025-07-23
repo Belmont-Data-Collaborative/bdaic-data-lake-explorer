@@ -239,6 +239,117 @@ export class AwsS3Service {
     return groups;
   }
 
+  // New method to fetch CSV sample data for chart generation
+  async getSampleData(bucketName: string, datasetSource: string, maxRows: number = 5): Promise<any[] | null> {
+    try {
+      // Find CSV file in the dataset source
+      const listCommand = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: datasetSource,
+        MaxKeys: 10,
+      });
+
+      const listResponse = await this.s3Client.send(listCommand);
+      
+      if (!listResponse.Contents) {
+        return null;
+      }
+
+      // Find the CSV file
+      const csvFile = listResponse.Contents.find(obj => 
+        obj.Key && obj.Key.toLowerCase().endsWith('.csv')
+      );
+
+      if (!csvFile || !csvFile.Key) {
+        return null;
+      }
+
+      // Download first part of the CSV file
+      const getCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: csvFile.Key,
+        Range: 'bytes=0-32768', // First 32KB should be enough for sample
+      });
+
+      const response = await this.s3Client.send(getCommand);
+      
+      if (!response.Body) {
+        return null;
+      }
+
+      // Convert stream to string
+      const csvContent = await this.streamToString(response.Body);
+      
+      // Parse CSV content
+      return this.parseCSVSample(csvContent, maxRows);
+      
+    } catch (error) {
+      console.error("Error fetching sample data:", error);
+      return null;
+    }
+  }
+
+  private async streamToString(stream: any): Promise<string> {
+    const chunks: Uint8Array[] = [];
+    
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    
+    const buffer = Buffer.concat(chunks);
+    return buffer.toString('utf-8');
+  }
+
+  private parseCSVSample(csvContent: string, maxRows: number): any[] {
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return [];
+    }
+
+    // Parse header
+    const headers = this.parseCSVLine(lines[0]);
+    const rows: any[] = [];
+
+    // Parse data rows (skip header, limit to maxRows)
+    for (let i = 1; i <= Math.min(maxRows, lines.length - 1); i++) {
+      if (lines[i] && lines[i].trim()) {
+        const values = this.parseCSVLine(lines[i]);
+        const row: any = {};
+        
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        
+        rows.push(row);
+      }
+    }
+
+    return rows;
+  }
+
+  private parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  }
+
   private extractDatasetName(key: string, prefix?: string): string {
     const baseName = key.split("/").pop() || key;
     const nameWithoutExt = baseName.replace(/\.[^/.]+$/, "");

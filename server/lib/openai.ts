@@ -185,8 +185,36 @@ ${conversationHistory.length > 0 ? `Previous conversation:\n${conversationHistor
 User question: ${message}
 
 ${shouldGenerateChart ? `
-IMPORTANT: If this question would benefit from a chart, include a JSON object at the end of your response in this exact format:
-CHART_DATA: {"type": "bar|pie|line", "data": {"labels": [...], "datasets": [{"label": "...", "data": [...], "backgroundColor": [...]}]}, "title": "Chart Title"}
+IMPORTANT: If this question would benefit from a chart, include a JSON object at the end of your response in this exact format. Use the actual data provided to create meaningful charts:
+
+CHART_DATA: {
+  "type": "bar" | "pie" | "line",
+  "title": "Descriptive Chart Title",
+  "data": {
+    "labels": ["label1", "label2", "label3"],
+    "datasets": [{
+      "label": "Data Series Name",
+      "data": [value1, value2, value3],
+      "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"]
+    }]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "legend": { "position": "top" },
+      "title": { "display": true, "text": "Chart Title" }
+    }
+  }
+}
+
+Chart Guidelines:
+- Use "bar" for comparisons, rankings, categorical data
+- Use "pie" for proportions, percentages, parts of a whole  
+- Use "line" for trends over time, continuous data
+- Base data on the actual sample data provided
+- Use meaningful labels from the real column names
+- Include proper colors and formatting
+- Make sure all numbers are valid (no null/undefined)
 ` : ''}`;
 
       const response = await openai.chat.completions.create({
@@ -210,13 +238,24 @@ CHART_DATA: {"type": "bar|pie|line", "data": {"labels": [...], "datasets": [{"la
 
       // Extract chart data if present
       if (shouldGenerateChart && responseText.includes('CHART_DATA:')) {
-        const chartMatch = responseText.match(/CHART_DATA:\s*({.*})/);
+        // More robust regex to capture complete JSON objects
+        const chartMatch = responseText.match(/CHART_DATA:\s*(\{[\s\S]*?\})\s*$/m);
         if (chartMatch) {
           try {
-            chartData = JSON.parse(chartMatch[1]);
-            responseText = responseText.replace(/CHART_DATA:\s*{.*}/, '').trim();
+            const jsonStr = chartMatch[1];
+            chartData = JSON.parse(jsonStr);
+            
+            // Validate chart data structure
+            if (chartData.type && chartData.data && chartData.data.labels && chartData.data.datasets) {
+              console.log("Successfully parsed chart data:", chartData.type);
+              responseText = responseText.replace(/CHART_DATA:\s*\{[\s\S]*?\}\s*$/m, '').trim();
+            } else {
+              console.warn("Invalid chart data structure");
+              chartData = null;
+            }
           } catch (error) {
             console.error("Error parsing chart data:", error);
+            chartData = null;
           }
         }
       }
@@ -237,15 +276,44 @@ CHART_DATA: {"type": "bar|pie|line", "data": {"labels": [...], "datasets": [{"la
 
   private async getSampleDataForAnalysis(dataset: Dataset): Promise<any[] | null> {
     try {
-      // This would ideally fetch actual data samples from S3
-      // For now, we'll use metadata to simulate data access
+      // Import storage to get AWS config
+      const { storage } = await import("../storage");
+      const { createAwsS3Service } = await import("./aws");
+      
+      const config = await storage.getAwsConfig();
+      if (!config || !config.bucketName) {
+        console.log("No AWS config found, using simulated data");
+        const metadata = dataset.metadata as any;
+        if (metadata?.columns && metadata?.recordCount) {
+          return this.generateSimulatedSampleData(metadata);
+        }
+        return null;
+      }
+
+      // Create S3 service and fetch real data
+      const s3Service = createAwsS3Service(config.region);
+      const sampleData = await s3Service.getSampleData(config.bucketName, dataset.source, 10);
+      
+      if (sampleData && sampleData.length > 0) {
+        console.log(`Loaded ${sampleData.length} rows of real data for analysis`);
+        return sampleData;
+      }
+
+      // Fallback to simulated data if real data unavailable
+      console.log("Could not load real data, using simulated data");
       const metadata = dataset.metadata as any;
       if (metadata?.columns && metadata?.recordCount) {
         return this.generateSimulatedSampleData(metadata);
       }
+      
       return null;
     } catch (error) {
       console.error("Error getting sample data:", error);
+      // Fallback to simulated data
+      const metadata = dataset.metadata as any;
+      if (metadata?.columns && metadata?.recordCount) {
+        return this.generateSimulatedSampleData(metadata);
+      }
       return null;
     }
   }
