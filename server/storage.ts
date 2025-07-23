@@ -30,6 +30,9 @@ export interface IStorage {
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
+  
+  // Raw query method for optimization checks
+  query(sql: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -244,6 +247,12 @@ export class DatabaseStorage implements IStorage {
         lastRefreshTime: new Date(),
         datasetsCount,
       });
+  }
+
+  async query(sql: string): Promise<any[]> {
+    // Execute raw SQL query for performance monitoring
+    const result = await db.execute(sql as any);
+    return result.rows || [];
   }
 }
 

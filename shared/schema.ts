@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, bigint, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,7 +15,24 @@ export const datasets = pgTable("datasets", {
   status: text("status").notNull().default("active"),
   metadata: jsonb("metadata"),
   insights: jsonb("insights"),
-});
+}, (table) => ({
+  // Index on top_level_folder for fast folder filtering
+  topLevelFolderIdx: index("idx_datasets_top_level_folder").on(table.topLevelFolder),
+  // Index on format for format filtering
+  formatIdx: index("idx_datasets_format").on(table.format),
+  // Index on status for active/inactive filtering
+  statusIdx: index("idx_datasets_status").on(table.status),
+  // Composite index for folder + format filtering (common query pattern)
+  folderFormatIdx: index("idx_datasets_folder_format").on(table.topLevelFolder, table.format),
+  // Index on name for text search and sorting
+  nameIdx: index("idx_datasets_name").on(table.name),
+  // Index on source for search and filtering
+  sourceIdx: index("idx_datasets_source").on(table.source),
+  // Index on lastModified for date sorting
+  lastModifiedIdx: index("idx_datasets_last_modified").on(table.lastModified),
+  // Index on sizeBytes for size-based sorting and filtering
+  sizeBytesIdx: index("idx_datasets_size_bytes").on(table.sizeBytes),
+}));
 
 export const awsConfig = pgTable("aws_config", {
   id: serial("id").primaryKey(),
@@ -26,7 +43,12 @@ export const awsConfig = pgTable("aws_config", {
   lastConnected: timestamp("last_connected"),
   isActive: boolean("is_active").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index on isActive for finding active configuration
+  isActiveIdx: index("idx_aws_config_is_active").on(table.isActive),
+  // Index on isConnected for connection status filtering
+  isConnectedIdx: index("idx_aws_config_is_connected").on(table.isConnected),
+}));
 
 export const authConfig = pgTable("auth_config", {
   id: serial("id").primaryKey(),
@@ -39,7 +61,10 @@ export const refreshLog = pgTable("refresh_log", {
   id: serial("id").primaryKey(),
   lastRefreshTime: timestamp("last_refresh_time").notNull().defaultNow(),
   datasetsCount: integer("datasets_count").notNull().default(0),
-});
+}, (table) => ({
+  // Index on lastRefreshTime for finding most recent refreshes
+  lastRefreshTimeIdx: index("idx_refresh_log_last_refresh_time").on(table.lastRefreshTime),
+}));
 
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,

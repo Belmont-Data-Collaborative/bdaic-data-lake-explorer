@@ -35,6 +35,29 @@ function invalidateCache(pattern?: string): void {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Add cache headers and compression hints for API responses
+  app.use("/api", (req, res, next) => {
+    // Set cache headers for GET requests
+    if (req.method === "GET") {
+      // Different cache durations based on endpoint
+      if (req.path.includes('/stats') || req.path.includes('/quick-stats')) {
+        res.set("Cache-Control", "public, max-age=300"); // 5 minutes for stats
+      } else if (req.path.includes('/folders') && !req.path.includes('/community-data-points')) {
+        res.set("Cache-Control", "public, max-age=600"); // 10 minutes for folder lists
+      } else if (req.path.includes('/aws-config')) {
+        res.set("Cache-Control", "private, max-age=60"); // 1 minute for config
+      } else {
+        res.set("Cache-Control", "public, max-age=60"); // 1 minute default
+      }
+    }
+    
+    // Add compression hints for large responses
+    if (req.path.includes('/datasets') || req.path.includes('/community-data-points')) {
+      res.set("Content-Encoding-Hint", "gzip");
+    }
+    
+    next();
+  });
   // Authentication endpoints
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -838,6 +861,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error reading API documentation:", error);
       res.status(500).json({ message: "Failed to load API documentation" });
+    }
+  });
+
+  // Performance monitoring endpoint
+  app.get("/api/performance/stats", async (req, res) => {
+    try {
+      const { performanceMonitor } = await import("./lib/performance-monitor");
+      const stats = performanceMonitor.getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching performance stats:", error);
+      res.status(500).json({ message: "Failed to fetch performance statistics" });
+    }
+  });
+
+  // Database optimization status endpoint
+  app.get("/api/performance/db-status", async (req, res) => {
+    try {
+      // Check if indexes exist by querying information_schema
+      const indexInfo = await storage.query(`
+        SELECT 
+          indexname,
+          tablename,
+          schemaname
+        FROM pg_indexes 
+        WHERE schemaname = 'public' 
+        AND tablename IN ('datasets', 'aws_config', 'refresh_log')
+        ORDER BY tablename, indexname;
+      `);
+
+      const optimizationStatus = {
+        indexesCreated: indexInfo.length > 3, // More than just primary keys
+        compressionEnabled: true,
+        cachingEnabled: true,
+        performanceMonitoring: true,
+        indexes: indexInfo,
+        recommendations: []
+      };
+
+      // Add recommendations based on performance data
+      const { performanceMonitor } = await import("./lib/performance-monitor");
+      const slowQueries = performanceMonitor.getSlowQueries(1000);
+      
+      if (slowQueries.length > 5) {
+        optimizationStatus.recommendations.push("Consider adding more specific indexes for slow queries");
+      }
+
+      const cacheHitRate = performanceMonitor.getCacheHitRate();
+      if (cacheHitRate < 80) {
+        optimizationStatus.recommendations.push("Consider increasing cache TTL for better performance");
+      }
+
+      res.json(optimizationStatus);
+    } catch (error) {
+      console.error("Error checking database optimization status:", error);
+      res.status(500).json({ message: "Failed to check optimization status" });
     }
   });
 
