@@ -367,10 +367,6 @@ export function DatasetCard({
                 </h3>
                 <div className="flex items-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
                   <span className="flex items-center space-x-1 flex-shrink-0">
-                    <FolderOpen size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
-                    <span className="text-ellipsis">{dataset.source}</span>
-                  </span>
-                  <span className="flex items-center space-x-1 flex-shrink-0">
                     <FileText size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.format}</span>
                   </span>
@@ -380,9 +376,7 @@ export function DatasetCard({
                   </span>
                   <span className="flex items-center space-x-1 flex-shrink-0">
                     <Calendar size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
-                    <span>
-                      {new Date(dataset.lastModified).toLocaleDateString()}
-                    </span>
+                    <span>Last modified: {new Date(dataset.lastModified).toLocaleDateString()}</span>
                   </span>
                 </div>
               </div>
