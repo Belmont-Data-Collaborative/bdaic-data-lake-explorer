@@ -633,6 +633,65 @@ export class AwsS3Service {
     }
   }
 
+  async downloadMetadataFile(
+    bucketName: string,
+    source: string,
+    datasetName: string,
+  ): Promise<{ stream: any; key: string; size?: number } | null> {
+    try {
+      // Find the YAML metadata file for this dataset
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: source ? `${source}/` : "",
+        MaxKeys: 100,
+      });
+
+      const response = await this.s3Client.send(command);
+      if (!response.Contents) return null;
+
+      // Find the YAML metadata file that matches the dataset name
+      const metadataFile = response.Contents.find((file) => {
+        if (!file.Key) return false;
+        const fileName = file.Key.split("/").pop() || "";
+        const baseName = fileName.replace(/\.[^/.]+$/, "");
+        const extension = fileName.split(".").pop()?.toLowerCase();
+
+        return (
+          baseName === datasetName &&
+          (extension === "yaml" || extension === "yml")
+        );
+      });
+
+      if (!metadataFile?.Key) {
+        console.error(`No metadata file found for dataset: ${datasetName}`);
+        return null;
+      }
+
+      console.log(`Preparing metadata file stream for ${datasetName}: ${metadataFile.Key}`);
+
+      // Download the metadata file
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: metadataFile.Key,
+      });
+
+      const downloadResponse = await this.s3Client.send(getObjectCommand);
+
+      if (!downloadResponse.Body) return null;
+
+      console.log(`Successfully prepared metadata file stream: ${metadataFile.Size || 'unknown'} bytes`);
+      
+      return {
+        stream: downloadResponse.Body,
+        key: metadataFile.Key,
+        size: metadataFile.Size || undefined
+      };
+    } catch (error) {
+      console.error(`Error preparing metadata file stream for ${datasetName}:`, error);
+      return null;
+    }
+  }
+
   private async extractEnhancedMetadata(
     bucketName: string,
     files: any[],

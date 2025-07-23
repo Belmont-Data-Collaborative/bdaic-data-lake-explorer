@@ -234,6 +234,56 @@ export function DatasetCard({
     },
   });
 
+  const downloadMetadataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `/api/datasets/${dataset.id}/download-metadata`,
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Download failed");
+      }
+
+      // Get filename from Content-Disposition header or create one
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let fileName = `${dataset.name}.yaml`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      return { blob, fileName };
+    },
+    onSuccess: (data: { blob: Blob; fileName: string }) => {
+      // Create a temporary link and trigger download
+      const url = window.URL.createObjectURL(data.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download started",
+        description: `Metadata file ${data.fileName} is downloading.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Download failed",
+        description: error.message || "Failed to download full file",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getIconForFormat = (format: string) => {
     const formatLower = format.toLowerCase();
     if (formatLower.includes("csv")) return Table;
@@ -836,6 +886,26 @@ export function DatasetCard({
                       <>
                         <Download className="mr-2" size={16} aria-hidden="true" />
                         <span>Download Full File</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => downloadMetadataMutation.mutate(dataset.id)}
+                    disabled={downloadMetadataMutation.isPending}
+                    className="touch-target"
+                    aria-label={`Download metadata file for ${dataset.name}`}
+                  >
+                    {downloadMetadataMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                        <span>Downloading...</span>
+                        <span className="sr-only">Downloading metadata file</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2" size={16} aria-hidden="true" />
+                        <span>Download Metadata</span>
                       </>
                     )}
                   </Button>

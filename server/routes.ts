@@ -722,6 +722,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download metadata file endpoint
+  app.get("/api/datasets/:id/download-metadata", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const dataset = await storage.getDataset(id);
+      
+      if (!dataset) {
+        return res.status(404).json({ message: "Dataset not found" });
+      }
+
+      const config = await storage.getAwsConfig();
+      
+      if (!config || !config.bucketName) {
+        return res.status(400).json({ message: "AWS configuration not found" });
+      }
+
+      const s3Service = createAwsS3Service(config.region);
+      
+      // Get metadata file stream from S3
+      const fileInfo = await s3Service.downloadMetadataFile(config.bucketName, dataset.source, dataset.name);
+      
+      if (!fileInfo) {
+        return res.status(404).json({ message: "Metadata file not found or failed to download" });
+      }
+
+      // Set appropriate headers for file download
+      const fileName = `${dataset.name}.yaml`;
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'application/x-yaml');
+      
+      // Set content length if available
+      if (fileInfo.size) {
+        res.setHeader('Content-Length', fileInfo.size);
+      }
+      
+      // Pipe the stream directly to the response to avoid memory issues
+      const stream = fileInfo.stream as any;
+      stream.pipe(res);
+      
+      // Handle stream errors
+      stream.on('error', (error: any) => {
+        console.error('Stream error during metadata download:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to download metadata file" });
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error downloading metadata file:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to download metadata file" });
+      }
+    }
+  });
+
   // Get community data points calculation
   app.get("/api/community-data-points", async (req, res) => {
     try {
