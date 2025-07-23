@@ -98,6 +98,9 @@ The build process creates optimized static assets for the frontend while bundlin
   - Added AWS Configuration tab exclusively for admin users with full S3 bucket management
   - Restored AWS configuration interface as admin-only functionality with connection testing and activation
   - Updated navigation system for admins to have 4 tabs: Dataset Explorer, User Panel, AWS Config, Admin Panel
+  - Added reload buttons to both Admin Panel and AWS Configuration for independent module refresh
+  - Enhanced admin panel authentication with clear error messages and logout functionality
+  - Fixed authentication flow issues and provided clear login instructions for JWT-based authentication
 - July 23, 2025: Implemented comprehensive JWT-based user authentication system with role-based access control
   - Created full users table with email, passwordHash, role (admin/user), isActive status, and timestamps
   - Added JWT token authentication with bcrypt password hashing for security

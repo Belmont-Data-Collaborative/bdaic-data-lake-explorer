@@ -37,25 +37,36 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     queryKey: ['/api/admin/users'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
+      console.log('Admin panel - checking token:', token ? 'Token exists' : 'No token');
+      console.log('Current user:', currentUser);
+      
       if (!token) {
-        throw new Error('No authentication token found');
+        throw new Error('No authentication token found. Please log in again.');
       }
-      const res = await apiRequest('GET', '/api/admin/users', null, {
-        'Authorization': `Bearer ${token}`
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to fetch users: ${res.status}`);
+      
+      try {
+        const res = await apiRequest('GET', '/api/admin/users', null, {
+          'Authorization': `Bearer ${token}`
+        });
+        
+        console.log('API response status:', res.status);
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.log('API error response:', errorText);
+          throw new Error(`Authentication failed (${res.status}). Please log in again.`);
+        }
+        
+        const data = await res.json();
+        console.log('Users data received:', data.length, 'users');
+        return data;
+      } catch (err) {
+        console.error('Admin API error:', err);
+        throw err;
       }
-      return res.json();
     },
-    enabled: !!localStorage.getItem('authToken'),
-    retry: (failureCount, error) => {
-      // Don't retry on auth errors
-      if (error?.message?.includes('401') || error?.message?.includes('authentication')) {
-        return false;
-      }
-      return failureCount < 3;
-    }
+    enabled: !!localStorage.getItem('authToken') && !!currentUser,
+    retry: false, // Don't retry auth errors
   });
 
   // Update user mutation
@@ -152,9 +163,29 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           <p className="text-muted-foreground mb-4">
             {error?.message || 'Failed to load user data. Please try logging in again.'}
           </p>
-          <Button onClick={() => window.location.reload()}>
-            Reload Page
-          </Button>
+          <div className="space-y-2 mb-4">
+            <p className="text-sm text-muted-foreground">
+              Please log out and log back in with your credentials:
+            </p>
+            <p className="text-sm font-mono bg-muted p-2 rounded">
+              Username: admin<br />
+              Password: admin
+            </p>
+          </div>
+          <div className="space-x-2">
+            <Button onClick={() => {
+              // Clear all authentication data
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('authenticated');
+              window.location.href = '/';
+            }}>
+              Log Out & Return to Login
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
         </div>
       </div>
     );
