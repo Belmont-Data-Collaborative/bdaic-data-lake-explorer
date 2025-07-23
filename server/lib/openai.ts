@@ -238,25 +238,87 @@ Chart Guidelines:
 
       // Extract chart data if present
       if (shouldGenerateChart && responseText.includes('CHART_DATA:')) {
-        // More robust regex to capture complete JSON objects
-        const chartMatch = responseText.match(/CHART_DATA:\s*(\{[\s\S]*?\})\s*$/m);
-        if (chartMatch) {
-          try {
-            const jsonStr = chartMatch[1];
-            chartData = JSON.parse(jsonStr);
-            
-            // Validate chart data structure
-            if (chartData.type && chartData.data && chartData.data.labels && chartData.data.datasets) {
-              console.log("Successfully parsed chart data:", chartData.type);
-              responseText = responseText.replace(/CHART_DATA:\s*\{[\s\S]*?\}\s*$/m, '').trim();
-            } else {
-              console.warn("Invalid chart data structure");
-              chartData = null;
+        try {
+          // Find the CHART_DATA: line
+          const lines = responseText.split('\n');
+          let chartDataIndex = -1;
+          
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].trim().startsWith('CHART_DATA:')) {
+              chartDataIndex = i;
+              break;
             }
-          } catch (error) {
-            console.error("Error parsing chart data:", error);
-            chartData = null;
           }
+          
+          if (chartDataIndex !== -1) {
+            // Extract everything after CHART_DATA: on that line and subsequent lines
+            let jsonStr = lines[chartDataIndex].replace(/^.*CHART_DATA:\s*/, '').trim();
+            
+            // If the JSON continues on multiple lines, collect them
+            let braceCount = 0;
+            let foundOpenBrace = false;
+            let completeJson = '';
+            
+            for (let char of jsonStr) {
+              completeJson += char;
+              if (char === '{') {
+                braceCount++;
+                foundOpenBrace = true;
+              } else if (char === '}') {
+                braceCount--;
+              }
+              
+              // If we've closed all braces, we have complete JSON
+              if (foundOpenBrace && braceCount === 0) {
+                break;
+              }
+            }
+            
+            // If JSON is incomplete, check next lines
+            let lineIndex = chartDataIndex + 1;
+            while (foundOpenBrace && braceCount > 0 && lineIndex < lines.length) {
+              const nextLine = lines[lineIndex].trim();
+              for (let char of nextLine) {
+                completeJson += char;
+                if (char === '{') {
+                  braceCount++;
+                } else if (char === '}') {
+                  braceCount--;
+                }
+                
+                if (braceCount === 0) {
+                  break;
+                }
+              }
+              lineIndex++;
+            }
+            
+            if (completeJson && foundOpenBrace && braceCount === 0) {
+              try {
+                chartData = JSON.parse(completeJson);
+                
+                // Validate chart data structure
+                if (chartData && chartData.type && chartData.data && chartData.data.labels && chartData.data.datasets) {
+                  console.log("Successfully parsed chart data:", chartData.type);
+                  
+                  // Remove the CHART_DATA section from the response
+                  const beforeChart = lines.slice(0, chartDataIndex);
+                  const afterChart = lines.slice(lineIndex);
+                  responseText = [...beforeChart, ...afterChart].join('\n').trim();
+                } else {
+                  console.warn("Invalid chart data structure:", chartData);
+                  chartData = null;
+                }
+              } catch (parseError) {
+                console.error("Error parsing chart JSON:", parseError);
+                console.error("JSON string was:", completeJson);
+                chartData = null;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error extracting chart data:", error);
+          chartData = null;
         }
       }
 
