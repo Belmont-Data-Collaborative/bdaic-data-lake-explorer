@@ -11,7 +11,6 @@ import {
   Table,
   BarChart3,
   Users,
-  FolderOpen,
   FileText,
   Weight,
   Calendar,
@@ -25,7 +24,6 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
-  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,12 +40,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DatasetChat } from "@/components/dataset-chat";
@@ -83,7 +76,7 @@ export function DatasetCard({
       }
       return response.json();
     },
-    enabled: isOpen, // Only fetch when expanded
+    // Always fetch stats for header display
   });
 
   // Filter and paginate columns
@@ -379,6 +372,10 @@ export function DatasetCard({
                   <span className="flex items-center space-x-1 flex-shrink-0">
                     <Weight size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
                     <span>{dataset.size}</span>
+                  </span>
+                  <span className="flex items-center space-x-1 flex-shrink-0">
+                    <Download size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
+                    <span>Downloads: {downloadStats ? (downloadStats.sample + downloadStats.full + downloadStats.metadata) : 0}</span>
                   </span>
                   <span className="flex items-center space-x-1 flex-shrink-0">
                     <Calendar size={10} aria-hidden="true" className="sm:w-3 sm:h-3" />
