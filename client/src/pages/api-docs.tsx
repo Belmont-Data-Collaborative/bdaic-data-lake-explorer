@@ -272,15 +272,15 @@ For complete documentation, please check the project files or contact the develo
                           );
                         }
                         return (
-                          <code className="block bg-slate-800 text-green-400 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-slate-600 whitespace-pre-wrap" {...props}>
+                          <code className="block bg-gray-800 text-white p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-600 whitespace-pre-wrap" {...props}>
                             {children}
                           </code>
                         );
                       },
                       pre: ({ children }) => <>{children}</>,
                       table: ({ children, ...props }) => (
-                        <div className="overflow-x-auto my-6 border border-gray-200 rounded-lg">
-                          <table className="min-w-full divide-y divide-gray-200" {...props}>
+                        <div className="overflow-x-auto my-6 border border-slate-300 rounded-lg">
+                          <table className="min-w-full divide-y divide-slate-300" {...props}>
                             {children}
                           </table>
                         </div>
