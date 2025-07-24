@@ -80,6 +80,13 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 24, 2025: Enhanced AI chat window with improved scrolling functionality and mobile responsiveness
+  - Increased modal height to 95vh on mobile (90vh on desktop) with max-height of 900px for better content visibility
+  - Added proper flex layout with min-h-0 to ensure ScrollArea works correctly within flexbox constraints
+  - Improved mobile padding (p-2 on mobile, p-4 on desktop) for better screen utilization
+  - Added custom CSS for smooth scrolling behavior and enhanced scrollbar styling
+  - Enhanced ScrollArea with proper height calculations and smooth scroll behavior
+  - Chat messages now properly scroll with improved visual feedback and accessibility
 - July 24, 2025: Successfully implemented comprehensive RAG system with intelligent progressive scanning for large datasets
   - **Major Achievement**: System now performs fresh RAG retrieval for every question, scanning entire 440MB files to find specific county data
   - **Fresh Data Retrieval**: Each question triggers new progressive file scanning (5MB chunks, 20 chunks total) with question-specific filters

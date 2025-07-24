@@ -262,7 +262,7 @@ What would you like to explore?`,
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="chat-title"
@@ -271,7 +271,7 @@ What would you like to explore?`,
     >
       <div 
         ref={focusTrapRef}
-        className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl modal-content animate-fade-in overflow-safe flex flex-col"
+        className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl h-[95vh] sm:h-[90vh] max-h-[900px] modal-content animate-fade-in overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border container-safe">
@@ -311,9 +311,9 @@ What would you like to explore?`,
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-hidden" style={{ height: "60vh" }}>
+        <div className="flex-1 overflow-hidden min-h-0">
           <ScrollArea className="h-full">
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 p-4 pb-6">
               {messages.map((message) => (
               <div
                 key={message.id}

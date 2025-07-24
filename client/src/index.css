@@ -273,6 +273,33 @@
     font-size: clamp(0.875rem, 2.5vw, 1rem);
   }
 
+  /* Chat modal scrolling improvements */
+  .modal-content {
+    /* Ensure proper height calculation */
+    contain: layout;
+  }
+  
+  /* Smooth scrolling for chat messages */
+  .scroll-area-viewport {
+    scroll-behavior: smooth;
+  }
+  
+  /* Improved scrollbar styling for chat */
+  .scroll-area-scrollbar {
+    width: 8px;
+  }
+  
+  .scroll-area-thumb {
+    background-color: hsl(var(--muted-foreground));
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  
+  .scroll-area-thumb:hover {
+    opacity: 0.8;
+  }
+
   .text-responsive-sm {
     font-size: clamp(0.75rem, 2vw, 0.875rem);
   }
