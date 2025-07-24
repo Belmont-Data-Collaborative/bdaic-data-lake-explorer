@@ -457,16 +457,26 @@ export default function Home() {
           </>
         ) : (
           <>
-            {/* Main Page Actions */}
-            <MainPageActions
-              folders={folders}
-              onRefresh={() => {
-                refetchAllDatasets();
-                setIsRefreshing(false);
-              }}
-              onSelectDataset={handleSelectDataset}
-              isRefreshing={isRefreshing}
-            />
+            {/* Main Page Actions with Tag Filtering */}
+            <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <SearchFilters
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                formatFilter={formatFilter}
+                onFormatChange={setFormatFilter}
+                tagFilter={tagFilter}
+                onTagChange={setTagFilter}
+                folders={folders}
+                onRefresh={() => {
+                  refetchAllDatasets();
+                  setIsRefreshing(false);
+                }}
+                onSelectDataset={handleSelectDataset}
+                isRefreshing={isRefreshing}
+                showFolderFilter={false}
+                currentFolder={undefined}
+              />
+            </div>
 
             {/* Folder Cards */}
             <div className="space-y-4 relative">

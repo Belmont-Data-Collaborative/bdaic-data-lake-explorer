@@ -80,6 +80,14 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 24, 2025: Implemented hierarchical tag filtering system for top-level folder filtering
+  - **Major Enhancement**: Tag filtering now available on main page to filter which folders are shown
+  - Added global tag dropdown (100+ tags) on top-level view for filtering folders by tag presence
+  - When tag is selected, only folders containing datasets with that tag are displayed
+  - Tag filter persists when navigating into folders, showing only matching datasets within the folder
+  - API endpoints enhanced: `/api/folders?tag=X` filters folders, `/api/datasets?tag=X&folder=Y` filters datasets
+  - Server-side filtering with proper logging: "health" tag shows only `ndacan` folder, "census" tag shows 6 folders
+  - Complete hierarchical workflow: select tag → see relevant folders → enter folder → see filtered datasets
 - July 24, 2025: Enhanced AI chat window with improved scrolling functionality and mobile responsiveness
   - Increased modal height to 95vh on mobile (90vh on desktop) with max-height of 900px for better content visibility
   - Added proper flex layout with min-h-0 to ensure ScrollArea works correctly within flexbox constraints
