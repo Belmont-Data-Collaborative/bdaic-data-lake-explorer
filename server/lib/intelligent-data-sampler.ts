@@ -1,5 +1,7 @@
 import type { Dataset } from '@shared/schema';
 import { AwsS3Service } from './aws';
+import { storage } from '../storage';
+import { RAGDataRetriever, type QueryFilter } from './rag-data-retriever';
 
 export interface DataSampleStrategy {
   name: string;
@@ -40,6 +42,8 @@ export interface DataQualityMetrics {
 }
 
 export class IntelligentDataSampler {
+  private ragRetriever?: RAGDataRetriever;
+  
   // Different sampling strategies based on dataset size and type
   private readonly strategies: DataSampleStrategy[] = [
     {
@@ -76,8 +80,36 @@ export class IntelligentDataSampler {
     const selectedStrategy = this.selectOptimalStrategy(dataset, strategy, questionContext);
     
     try {
-      // Get raw sample data from S3
-      const sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+      let sampleData: any[];
+      
+      // If we have a question context, try to use RAG for more targeted data retrieval
+      if (questionContext && this.ragRetriever) {
+        const query = this.ragRetriever.extractQueryFromQuestion(questionContext);
+        
+        if (Object.keys(query).length > 0) {
+          console.log('Using RAG retrieval with query:', query);
+          const ragResult = await this.ragRetriever.queryDatasetWithFilters(
+            dataset,
+            query,
+            selectedStrategy.sampleRows
+          );
+          
+          if (ragResult.data.length > 0) {
+            console.log(`RAG returned ${ragResult.data.length} rows matching filters:`, ragResult.matchedFilters);
+            sampleData = ragResult.data;
+          } else {
+            // Fallback to regular sampling if no matches
+            console.log('No RAG matches, falling back to regular sampling');
+            sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+          }
+        } else {
+          // No specific filters extracted, use regular sampling
+          sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+        }
+      } else {
+        // No question context or RAG not initialized, use regular sampling
+        sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+      }
       
       // Analyze the sample for quality and representativeness
       const columnStats = this.analyzeColumns(sampleData);
@@ -157,9 +189,21 @@ export class IntelligentDataSampler {
     try {
       console.log(`Fetching ${maxRows} rows sample for dataset ${dataset.name}`);
       
+      // Get AWS configuration to properly initialize the service
+      const awsConfig = await storage.getAwsConfig();
+      if (!awsConfig) {
+        throw new Error('No active AWS configuration found');
+      }
+      
       // Use the existing AWS service to get actual data from S3
-      const awsService = new AwsS3Service();
-      const sampleData = await awsService.getDataSample(dataset.source, maxRows);
+      const awsService = new AwsS3Service(awsConfig.region);
+      
+      // Initialize RAG retriever if not already done
+      if (!this.ragRetriever) {
+        this.ragRetriever = new RAGDataRetriever(awsService, awsConfig.bucketName);
+      }
+      
+      const sampleData = await awsService.getSampleData(awsConfig.bucketName, dataset.source, maxRows);
       
       if (!sampleData || sampleData.length === 0) {
         console.warn(`No sample data available for dataset ${dataset.name}`);
