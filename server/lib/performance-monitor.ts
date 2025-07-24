@@ -89,28 +89,13 @@ export function performanceMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     const start = Date.now();
     let responseSize = 0;
-    let responseCaptured = false;
+    let metricsRecorded = false;
 
-    // Capture response size without overriding send method
-    const originalJson = res.json;
-    res.json = function(body: any) {
-      if (!responseCaptured && body) {
-        responseSize = JSON.stringify(body).length;
-        responseCaptured = true;
-      }
-      return originalJson.call(this, body);
-    };
-
-    const originalSend = res.send;
-    res.send = function(body: any) {
-      if (!responseCaptured && body) {
-        responseSize = typeof body === 'string' ? body.length : JSON.stringify(body).length;
-        responseCaptured = true;
-      }
-      return originalSend.call(this, body);
-    };
-
-    res.on('finish', () => {
+    // Track metrics on response finish to avoid header conflicts
+    const recordMetrics = () => {
+      if (metricsRecorded) return;
+      metricsRecorded = true;
+      
       const duration = Date.now() - start;
       
       // Only track API endpoints
@@ -130,7 +115,11 @@ export function performanceMiddleware() {
           console.warn(`Slow query detected: ${req.method} ${req.path} took ${duration}ms`);
         }
       }
-    });
+    };
+
+    // Use multiple event listeners to ensure we capture metrics
+    res.on('finish', recordMetrics);
+    res.on('close', recordMetrics);
 
     next();
   };
