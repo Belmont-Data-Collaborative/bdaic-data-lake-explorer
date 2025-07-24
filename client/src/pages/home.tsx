@@ -144,7 +144,7 @@ export default function Home() {
     gcTime: 600000, // 10 minutes garbage collection
   });
 
-  const { data: folders = [] } = useQuery<string[]>({
+  const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -483,8 +483,19 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">
                   Data Sources
+                  {tagFilter !== "all" && (
+                    <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                      Filtered by: {tagFilter.replace(/_/g, " ")}
+                    </span>
+                  )}
                 </h2>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  {foldersLoading && (
+                    <div className="flex items-center space-x-2 text-blue-600">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span>Filtering folders...</span>
+                    </div>
+                  )}
                   {isRefreshing && (
                     <div className="flex items-center space-x-2 text-blue-600">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -496,12 +507,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {isRefreshing && (
+              {(isRefreshing || foldersLoading) && (
                 <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                   <div className="bg-white rounded-lg shadow-lg p-6 flex items-center space-x-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <span className="text-gray-700">
-                      Refreshing datasets from S3...
+                      {foldersLoading ? 'Filtering folders by tag...' : 'Refreshing datasets from S3...'}
                     </span>
                   </div>
                 </div>
