@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Database, Settings, Cloud, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { DatasetList } from "@/components/dataset-list";
 import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { usePerformanceMonitor } from "@/hooks/use-performance-monitor";
 import type { Dataset, AwsConfig } from "@shared/schema";
 
 interface Stats {
@@ -32,8 +33,15 @@ export default function Home() {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Monitor performance for optimization insights
+  const performanceMetrics = usePerformanceMonitor();
+
+  // Preload critical data for faster initial load
+  const { data: preloadData, isLoading: preloadLoading } = usePreloadData();
+
   const { data: awsConfig } = useQuery<AwsConfig>({
     queryKey: ["/api/aws-config"],
+    staleTime: 300000, // 5 minutes
   });
 
   // Query for all datasets (used for folder cards and when no folder selected)
@@ -59,8 +67,8 @@ export default function Home() {
       const response = await fetch(`/api/datasets?${params}`);
       return response.json();
     },
-    staleTime: 0, // Force fresh data
-    gcTime: 0, // No cache
+    staleTime: 60000, // 1 minute cache
+    gcTime: 300000, // 5 minutes garbage collection
   });
 
   // Query for filtered datasets (when folder is selected)
@@ -117,26 +125,27 @@ export default function Home() {
     }
   };
 
+  // Use direct API queries with enhanced caching for maximum performance
   const { data: globalStats } = useQuery<Stats>({
     queryKey: ["/api/stats"],
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 1800000, // 30 minutes cache
+    gcTime: 3600000, // 1 hour garbage collection
   });
 
   const { data: quickStats } = useQuery<{
     totalCount: number;
-    folders: string[];
+    folders: string[];  
     lastUpdated: string;
   }>({
     queryKey: ["/api/datasets/quick-stats"],
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 300000, // 5 minutes cache
+    gcTime: 600000, // 10 minutes garbage collection
   });
 
   const { data: folders = [] } = useQuery<string[]>({
     queryKey: ["/api/folders"],
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 3600000, // 1 hour cache
+    gcTime: 7200000, // 2 hours garbage collection
   });
 
   // Debug logging

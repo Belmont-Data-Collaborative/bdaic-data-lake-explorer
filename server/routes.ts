@@ -36,43 +36,68 @@ function invalidateCache(pattern?: string): void {
   }
 }
 
-// Cache warming function
+// Enhanced cache warming with performance optimizations
 async function warmCache(): Promise<void> {
   try {
-    console.log('Warming cache...');
+    console.log('Warming cache with performance optimizations...');
+    const startTime = Date.now();
     
-    // Warm up critical endpoints
-    const datasets = await storage.getDatasets();
-    setCache('datasets-all', datasets, 300000); // 5 minutes
+    // Warm up critical endpoints with parallel execution
+    const [datasets, lastRefreshTime] = await Promise.all([
+      storage.getDatasets(),
+      storage.getLastRefreshTime(),
+    ]);
     
+    // Pre-compute all critical data structures
     const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
-    setCache('folders', folders, 3600000); // 1 hour
-    
-    // Pre-compute stats
     const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
     const uniqueDataSources = new Set();
+    const folderStats = new Map<string, { count: number; size: number }>();
     
+    // Single pass through datasets for all computations
     datasets.forEach(d => {
+      // Data sources computation
       if (d.metadata && (d.metadata as any).dataSource) {
         (d.metadata as any).dataSource
           .split(',')
           .map((s: string) => s.trim())
           .forEach((s: string) => uniqueDataSources.add(s));
       }
+      
+      // Folder statistics
+      const folder = d.topLevelFolder;
+      if (folder) {
+        const current = folderStats.get(folder) || { count: 0, size: 0 };
+        folderStats.set(folder, {
+          count: current.count + 1,
+          size: current.size + Number(d.sizeBytes || 0),
+        });
+      }
     });
     
-    const lastRefreshTime = await storage.getLastRefreshTime();
-    const precomputedStats = {
-      totalDatasets: datasets.length,
-      totalSize: formatFileSize(totalSize),
-      dataSources: uniqueDataSources.size,
-      lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
-      lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
-    };
+    // Set multiple cache entries with optimized TTL
+    const cacheOps = [
+      ['datasets-all', datasets, 300000], // 5 minutes
+      ['folders', folders, 3600000], // 1 hour
+      ['folder-stats', Object.fromEntries(folderStats), 1800000], // 30 minutes
+      ['quick-stats', {
+        totalCount: datasets.length,
+        folders,
+        lastUpdated: new Date().toISOString()
+      }, 300000], // 5 minutes
+      ['precomputed-stats', {
+        totalDatasets: datasets.length,
+        totalSize: formatFileSize(totalSize),
+        dataSources: uniqueDataSources.size,
+        lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+        lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+      }, 1800000], // 30 minutes
+    ] as const;
     
-    setCache('precomputed-stats', precomputedStats, 1800000); // 30 minutes
+    cacheOps.forEach(([key, data, ttl]) => setCache(key, data, ttl));
     
-    console.log('Cache warmed successfully');
+    const elapsedTime = Date.now() - startTime;
+    console.log(`Cache warmed successfully in ${elapsedTime}ms - preloaded ${datasets.length} datasets, ${folders.length} folders`);
   } catch (error) {
     console.error('Error warming cache:', error);
   }
@@ -583,15 +608,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Request params - page: ${page}, limit: ${limit}`);
       console.log(`Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
 
-      // Cache key for datasets query
-      const cacheKey = `datasets-all`;
-      let allDatasets = getCached<any[]>(cacheKey);
+      // Use preloaded cached datasets for maximum performance
+      let allDatasets = getCached<any[]>('datasets-all');
       
       if (!allDatasets) {
+        console.log('Cache miss - loading datasets from storage');
         allDatasets = await storage.getDatasets();
-        setCache(cacheKey, allDatasets, 60000); // 1 minute cache
+        setCache('datasets-all', allDatasets, 300000); // 5 minutes cache
       }
-      console.log(`Total datasets from storage: ${allDatasets.length}`);
       
       // Apply filters
       if (folder && folder !== "all") {
@@ -631,11 +655,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalCount = allDatasets.length;
       const paginatedDatasets = allDatasets.slice(offset, offset + limitNum);
 
-      // Add no-cache headers to prevent caching issues
+      // Set optimized cache headers for performance
       res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Cache-Control': 'public, max-age=60', // 1 minute browser cache
+        'ETag': `"datasets-${totalCount}-${pageNum}-${limitNum}"`,
       });
 
       res.json({
@@ -651,30 +674,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Quick stats endpoint for faster loading
+  // Optimized quick stats endpoint using precomputed cache
   app.get("/api/datasets/quick-stats", async (req, res) => {
     try {
-      const cacheKey = 'quick-stats';
-      let stats = getCached<any>(cacheKey);
+      let stats = getCached<any>('quick-stats');
       
       if (!stats) {
-        const datasets = await storage.getDatasets();
-        const totalCount = datasets.length;
-        const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
+        const datasets = getCached<any[]>('datasets-all') || await storage.getDatasets();
+        const folders = getCached<string[]>('folders') || Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
         
         stats = {
-          totalCount,
+          totalCount: datasets.length,
           folders,
           lastUpdated: new Date().toISOString()
         };
         
-        setCache(cacheKey, stats, 60000); // 1 minute cache
+        setCache('quick-stats', stats, 300000); // 5 minutes cache
       }
       
+      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes browser cache
       res.json(stats);
     } catch (error) {
       console.error("Error fetching quick stats:", error);
       res.status(500).json({ message: "Failed to fetch quick stats" });
+    }
+  });
+
+  // Preload endpoint for critical data
+  app.get("/api/preload", async (req, res) => {
+    try {
+      const [stats, folders, quickStats] = await Promise.all([
+        getCached<any>('precomputed-stats') || storage.getDatasets().then(async datasets => {
+          const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+          const uniqueDataSources = new Set();
+          datasets.forEach(d => {
+            if (d.metadata && (d.metadata as any).dataSource) {
+              (d.metadata as any).dataSource
+                .split(',')
+                .map((s: string) => s.trim())
+                .forEach((s: string) => uniqueDataSources.add(s));
+            }
+          });
+          const lastRefreshTime = await storage.getLastRefreshTime();
+          return {
+            totalDatasets: datasets.length,
+            totalSize: formatFileSize(totalSize),
+            dataSources: uniqueDataSources.size,
+            lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+            lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+          };
+        }),
+        getCached<string[]>('folders') || storage.getDatasets().then(datasets => 
+          Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)))
+        ),
+        getCached<any>('quick-stats') || { totalCount: 0, folders: [], lastUpdated: new Date().toISOString() }
+      ]);
+
+      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes browser cache
+      res.json({
+        stats,
+        folders,
+        quickStats,
+        preloadTime: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error preloading data:", error);
+      res.status(500).json({ message: "Failed to preload data" });
     }
   });
 
@@ -1243,12 +1308,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/stats", async (req, res) => {
     try {
-      // Check pre-computed cache first
+      // Use precomputed stats from cache for maximum performance
       let stats = getCached<any>('precomputed-stats');
       
-      if (stats) {
-        return res.json(stats);
+      if (!stats) {
+        stats = await storage.getStats();
+        setCache('precomputed-stats', stats, 1800000); // 30 minutes cache
       }
+      
+      res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+      res.json(stats);
 
       // Fallback to legacy cache check
       if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
