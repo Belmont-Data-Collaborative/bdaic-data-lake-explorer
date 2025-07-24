@@ -141,7 +141,15 @@ For complete documentation, please check the project files or contact the develo
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <style>{`
+        .api-docs-content pre code,
+        .api-docs-content pre,
+        .api-docs-content code {
+          color: #000000 !important;
+        }
+      `}</style>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 api-docs-content">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center space-x-3 mb-4">
@@ -272,12 +280,16 @@ For complete documentation, please check the project files or contact the develo
                           );
                         }
                         return (
-                          <code className="block bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-300 whitespace-pre-wrap" style={{ color: '#000000' }} {...props}>
+                          <code className="block text-sm font-mono whitespace-pre" style={{ color: '#000000 !important', backgroundColor: 'transparent' }} {...props}>
                             {children}
                           </code>
                         );
                       },
-                      pre: ({ children }) => <>{children}</>,
+                      pre: ({ children, ...props }) => (
+                        <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto my-4 border border-gray-300" style={{ color: '#000000' }} {...props}>
+                          {children}
+                        </pre>
+                      ),
                       table: ({ children, ...props }) => (
                         <div className="overflow-x-auto my-6 border border-slate-300 rounded-lg">
                           <table className="min-w-full divide-y divide-slate-300" {...props}>
@@ -361,5 +373,6 @@ For complete documentation, please check the project files or contact the develo
           </div>
         </div>
       </div>
+    </>
   );
 }
