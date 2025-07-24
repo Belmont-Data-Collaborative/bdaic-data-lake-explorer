@@ -401,6 +401,7 @@ export default function Home() {
                 onSelectDataset={handleSelectDataset}
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
+                currentFolder={selectedFolder}
               />
             </div>
 

@@ -20,6 +20,7 @@ interface SearchFiltersProps {
   onSelectDataset?: (datasetId: number) => void;
   isRefreshing?: boolean;
   showFolderFilter?: boolean;
+  currentFolder?: string;
 }
 
 export function SearchFilters({
@@ -34,13 +35,21 @@ export function SearchFilters({
   onSelectDataset,
   isRefreshing = false,
   showFolderFilter = false,
+  currentFolder,
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
 
-  // Fetch available tags with frequencies
+  // Fetch available tags with frequencies scoped to current folder
   const { data: tagFrequencies = [] } = useQuery({
-    queryKey: ["/api/tags"],
+    queryKey: ["/api/tags", currentFolder || "all"],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (currentFolder && currentFolder !== "all") {
+        params.append("folder", currentFolder);
+      }
+      return fetch(`/api/tags?${params.toString()}`).then(res => res.json());
+    },
     enabled: !!onTagChange,
   });
 

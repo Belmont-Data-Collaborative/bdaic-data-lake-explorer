@@ -1333,15 +1333,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get tag frequencies for filtering
+  // Get tag frequencies for filtering (optionally scoped to folder)
   app.get("/api/tags", async (req, res) => {
     try {
-      const cached = getCached<Array<{tag: string, count: number}>>('tag-frequencies');
+      const { folder } = req.query;
+      const cacheKey = folder ? `tag-frequencies-${folder}` : 'tag-frequencies-global';
+      
+      const cached = getCached<Array<{tag: string, count: number}>>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
 
-      const datasets = await storage.getDatasets();
+      let datasets = await storage.getDatasets();
+      
+      // Filter datasets by folder if specified
+      if (folder && folder !== 'all') {
+        datasets = datasets.filter(dataset => dataset.topLevelFolder === folder);
+        console.log(`Filtering tags for folder: ${folder}, found ${datasets.length} datasets`);
+      }
+
       const tagCounts = new Map<string, number>();
 
       // Extract tags from each dataset's metadata
@@ -1362,7 +1372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count);
 
-      setCache('tag-frequencies', tagFrequencies, 600000); // Cache for 10 minutes
+      console.log(`Found ${tagFrequencies.length} unique tags for ${folder ? `folder ${folder}` : 'all folders'}`);
+      
+      setCache(cacheKey, tagFrequencies, 600000); // Cache for 10 minutes
       res.json(tagFrequencies);
     } catch (error) {
       console.error("Error getting tag frequencies:", error);
