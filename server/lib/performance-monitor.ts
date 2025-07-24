@@ -88,12 +88,24 @@ export const performanceMonitor = new PerformanceMonitor();
 export function performanceMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     const start = Date.now();
-    const originalSend = res.send;
     let responseSize = 0;
+    let responseCaptured = false;
 
-    res.send = function(body: any) {
-      if (body) {
+    // Capture response size without overriding send method
+    const originalJson = res.json;
+    res.json = function(body: any) {
+      if (!responseCaptured && body) {
         responseSize = JSON.stringify(body).length;
+        responseCaptured = true;
+      }
+      return originalJson.call(this, body);
+    };
+
+    const originalSend = res.send;
+    res.send = function(body: any) {
+      if (!responseCaptured && body) {
+        responseSize = typeof body === 'string' ? body.length : JSON.stringify(body).length;
+        responseCaptured = true;
       }
       return originalSend.call(this, body);
     };
