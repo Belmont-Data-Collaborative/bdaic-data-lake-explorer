@@ -1334,7 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get tag frequencies for filtering
-  app.get("/api/tags", requireUser, async (req: AuthRequest, res) => {
+  app.get("/api/tags", async (req, res) => {
     try {
       const cached = getCached<Array<{tag: string, count: number}>>('tag-frequencies');
       if (cached) {
