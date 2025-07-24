@@ -311,9 +311,9 @@ What would you like to explore?`,
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full max-h-[60vh] p-4">
-            <div className="space-y-4">
+        <div className="flex-1 overflow-hidden" style={{ height: "60vh" }}>
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
               {messages.map((message) => (
               <div
                 key={message.id}

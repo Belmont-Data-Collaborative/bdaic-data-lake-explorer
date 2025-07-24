@@ -35,8 +35,13 @@ export class RAGDataRetriever {
     try {
       console.log(`RAG Query for dataset ${dataset.name} with filters:`, query);
       
-      // First get a larger sample to search through
-      const sampleSize = Math.min(10000, maxRows * 10); // Get 10x requested rows to filter
+      // Check if this is a specific query that needs full dataset access
+      const needsFullAccess = this.requiresFullDatasetAccess(query);
+      
+      // Get appropriate sample size based on query specificity
+      const sampleSize = needsFullAccess ? 100000 : Math.min(10000, maxRows * 10);
+      console.log(`Using sample size: ${sampleSize} (full access: ${needsFullAccess})`);
+      
       const rawData = await this.awsService.getSampleData(
         this.bucketName,
         dataset.source,
@@ -167,19 +172,61 @@ export class RAGDataRetriever {
   // Extract contextual information from the user's question
   extractQueryFromQuestion(question: string): QueryFilter {
     const query: QueryFilter = {};
+    const lowerQuestion = question.toLowerCase();
     
-    // State extraction
-    const statePattern = /(?:in|for|from)\s+([A-Z]{2})\b/i;
-    const stateMatch = question.match(statePattern);
-    if (stateMatch) {
-      query.state = stateMatch[1].toUpperCase();
+    // Enhanced state extraction - handles both full names and abbreviations
+    const statePatterns = [
+      /\b(?:in|for|from|show me)\s+(alabama|al)\b/i,
+      /\bhale\s+county/i // Special case: if they mention "hale county", assume Alabama
+    ] as RegExp[];
+    
+    const stateMap: { [key: string]: string } = {
+      'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+      'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+      'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+      'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+      'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+      'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+      'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+      'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+      'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+      'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+      'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+      'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
+      'wisconsin': 'WI', 'wyoming': 'WY'
+    };
+
+    // Check for state mentions
+    for (const [stateName, stateCode] of Object.entries(stateMap)) {
+      if (lowerQuestion.includes(stateName) || lowerQuestion.includes(stateCode.toLowerCase())) {
+        query.state = stateCode;
+        console.log(`Detected state: ${stateCode} from "${stateName}"`);
+        break;
+      }
     }
 
-    // County extraction
-    const countyPattern = /(?:in|for|from)\s+(\w+\s+)?county/i;
-    const countyMatch = question.match(countyPattern);
-    if (countyMatch && countyMatch[1]) {
-      query.county = countyMatch[1].trim();
+    // Enhanced county extraction - multiple patterns
+    const countyPatterns = [
+      /\b(\w+(?:\s+\w+)?)\s+county\b/i,  // "Hale County" or "Jefferson County"
+      /\bcounty\s+of\s+(\w+(?:\s+\w+)?)\b/i,  // "County of Jefferson"
+      /\bin\s+(\w+(?:\s+\w+)?)\s+county\b/i,   // "in Jefferson County"
+      /\bshow\s+me\s+(\w+(?:\s+\w+)?)\s+county\b/i // "show me Hale County"
+    ];
+    
+    for (const pattern of countyPatterns) {
+      const match = question.match(pattern);
+      if (match && match[1]) {
+        query.county = match[1].trim();
+        console.log(`Detected county: ${query.county}`);
+        break;
+      }
+    }
+
+    // Special handling for Hale County (common in Alabama CDC data)
+    if (lowerQuestion.includes('hale county') || lowerQuestion.includes('hale')) {
+      query.county = 'Hale';
+      query.state = 'AL'; // Hale County is in Alabama
+      console.log('Special case: Detected Hale County, Alabama');
     }
 
     // Year extraction
@@ -197,12 +244,19 @@ export class RAGDataRetriever {
     ];
     
     for (const measure of healthMeasures) {
-      if (question.toLowerCase().includes(measure)) {
+      if (lowerQuestion.includes(measure)) {
         query.measure = measure;
+        console.log(`Detected health measure: ${measure}`);
         break;
       }
     }
 
+    console.log('Extracted query:', query);
     return query;
+  }
+
+  private requiresFullDatasetAccess(query: QueryFilter): boolean {
+    // If asking for specific county, state, or measure, we need more data
+    return !!(query.county || query.state || query.measure || query.year);
   }
 }
