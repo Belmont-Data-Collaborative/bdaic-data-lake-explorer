@@ -311,9 +311,10 @@ What would you like to explore?`,
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4 max-h-[60vh]">
-          <div className="space-y-4">
-            {messages.map((message) => (
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full max-h-[60vh] p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
@@ -478,8 +479,9 @@ What would you like to explore?`,
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+        </div>
 
         {/* Input */}
         <div className="p-4 border-t border-border container-safe">
