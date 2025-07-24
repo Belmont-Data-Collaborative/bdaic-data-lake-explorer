@@ -77,16 +77,13 @@ export function MultiDatasetChat({ datasets, isOpen, onClose }: MultiDatasetChat
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest(`/api/datasets/batch-chat`, {
-        method: "POST",
-        body: JSON.stringify({
-          message,
-          datasetIds: datasets.map(d => d.id),
-          conversationHistory: messages.slice(1), // Exclude initial message
-          enableVisualization: true
-        }),
+      const response = await apiRequest("POST", "/api/datasets/batch-chat", {
+        message,
+        datasetIds: datasets.map(d => d.id),
+        conversationHistory: messages.slice(1), // Exclude initial message
+        enableVisualization: true
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data) => {
       const assistantMessage: Message = {
