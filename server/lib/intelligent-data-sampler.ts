@@ -1,7 +1,7 @@
 import type { Dataset } from '@shared/schema';
 import { AwsS3Service } from './aws';
 import { storage } from '../storage';
-import { RAGDataRetriever, type QueryFilter } from './rag-data-retriever';
+import { RAGDataRetriever } from './rag-data-retriever';
 
 export interface DataSampleStrategy {
   name: string;
@@ -183,22 +183,22 @@ export class IntelligentDataSampler {
       const summaryKeywords = ['overview', 'summary', 'describe', 'what is'];
       
       if (analysisKeywords.some(kw => questionContext.toLowerCase().includes(kw))) {
-        return this.strategies[0]; // representative
+        return this.strategies[0] || this.strategies.find(s => s.name === 'representative')!;
       }
       if (summaryKeywords.some(kw => questionContext.toLowerCase().includes(kw))) {
-        return this.strategies[3]; // lightweight
+        return this.strategies[3] || this.strategies.find(s => s.name === 'lightweight')!;
       }
     }
 
     // Size-based strategy selection
     if (datasetSizeBytes > 1024 * 1024 * 1024) { // > 1GB
-      return this.strategies[3]; // lightweight
+      return this.strategies[3] || this.strategies.find(s => s.name === 'lightweight')!;
     } else if (datasetSizeBytes > 100 * 1024 * 1024) { // > 100MB
-      return this.strategies[2]; // focused
+      return this.strategies[2] || this.strategies.find(s => s.name === 'focused')!;
     } else if (datasetSizeBytes > 10 * 1024 * 1024) { // > 10MB
-      return this.strategies[1]; // comprehensive
+      return this.strategies[1] || this.strategies.find(s => s.name === 'comprehensive')!;
     } else {
-      return this.strategies[0]; // representative
+      return this.strategies[0] || this.strategies.find(s => s.name === 'representative')!;
     }
   }
 
@@ -322,7 +322,7 @@ export class IntelligentDataSampler {
         uniqueValues,
         nullCount,
         sampleValues: values.slice(0, 10), // First 10 non-null values
-        statistics
+        statistics: statistics || undefined
       };
     });
   }

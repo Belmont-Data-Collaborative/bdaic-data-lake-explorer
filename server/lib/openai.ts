@@ -10,17 +10,18 @@ const openai = new OpenAI({
 export class OpenAIService {
   async generateDatasetInsights(dataset: Dataset): Promise<DatasetInsights> {
     try {
-      const hasYamlMetadata = dataset.metadata?.yamlMetadata;
+      const metadata = dataset.metadata as any;
+      const hasYamlMetadata = metadata?.yamlMetadata;
       const yamlInfo = hasYamlMetadata ? `
 
 YAML Metadata:
-- Title: ${dataset.metadata?.title || 'Not specified'}
-- Description: ${dataset.metadata?.description || 'Not specified'}
-- Tags: ${dataset.metadata?.tags?.join(', ') || 'None'}
-- Data Source: ${dataset.metadata?.dataSource || 'Not specified'}
-- Column Count: ${dataset.metadata?.columnCount || 'Not specified'}
-- License: ${dataset.metadata?.license || 'Not specified'}
-- Version: ${dataset.metadata?.version || 'Not specified'}` : '';
+- Title: ${metadata?.title || 'Not specified'}
+- Description: ${metadata?.description || 'Not specified'}
+- Tags: ${metadata?.tags?.join(', ') || 'None'}
+- Data Source: ${metadata?.dataSource || 'Not specified'}
+- Column Count: ${metadata?.columnCount || 'Not specified'}
+- License: ${metadata?.license || 'Not specified'}
+- Version: ${metadata?.version || 'Not specified'}` : '';
 
       const prompt = `Analyze this dataset and provide insights in JSON format:
 
@@ -29,8 +30,8 @@ Dataset Information:
 - Format: ${dataset.format}
 - Size: ${dataset.size} (${dataset.sizeBytes} bytes)
 - Source: ${dataset.source}
-- File Count: ${dataset.metadata?.fileCount || 'Unknown'}
-- Estimated Records: ${dataset.metadata?.recordCount || 'Unknown'}
+- File Count: ${metadata?.fileCount || 'Unknown'}
+- Estimated Records: ${metadata?.recordCount || 'Unknown'}
 - Last Modified: ${dataset.lastModified.toISOString()}${yamlInfo}
 
 Please provide a JSON response with the following structure:
@@ -81,7 +82,8 @@ Focus on:
     const format = dataset.format.toLowerCase();
     const size = dataset.sizeBytes;
     
-    let summary = `This ${format} dataset contains structured data with ${dataset.metadata?.recordCount || 'unknown'} estimated records.`;
+    const metadata = dataset.metadata as any;
+    let summary = `This ${format} dataset contains structured data with ${metadata?.recordCount || 'unknown'} estimated records.`;
     
     if (size > 1000000000) { // > 1GB
       summary += " Large dataset suitable for big data analytics and machine learning applications.";

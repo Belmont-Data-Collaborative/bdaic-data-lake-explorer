@@ -1311,13 +1311,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use precomputed stats from cache for maximum performance
       let stats = getCached<any>('precomputed-stats');
       
-      if (!stats) {
-        stats = await storage.getStats();
-        setCache('precomputed-stats', stats, 1800000); // 30 minutes cache
+      if (stats) {
+        res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+        return res.json(stats);
       }
-      
-      res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
-      res.json(stats);
 
       // Fallback to legacy cache check
       if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
