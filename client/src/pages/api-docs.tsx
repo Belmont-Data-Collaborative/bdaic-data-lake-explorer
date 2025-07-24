@@ -148,6 +148,12 @@ For complete documentation, please check the project files or contact the develo
         .api-docs-content code {
           color: #000000 !important;
         }
+        .api-docs-content .prose code {
+          color: #000000 !important;
+        }
+        .api-docs-content .prose pre {
+          color: #000000 !important;
+        }
       `}</style>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 api-docs-content">
       {/* Header */}
@@ -274,13 +280,13 @@ For complete documentation, please check the project files or contact the develo
                         const isInline = !className;
                         if (isInline) {
                           return (
-                            <code className="bg-blue-100 text-blue-900 px-2 py-1 rounded text-sm font-mono border border-blue-200" {...props}>
+                            <code className="bg-blue-100 px-2 py-1 rounded text-sm font-mono border border-blue-200" style={{ color: '#000000' }} {...props}>
                               {children}
                             </code>
                           );
                         }
                         return (
-                          <code className="block text-sm font-mono whitespace-pre" style={{ color: '#000000 !important', backgroundColor: 'transparent' }} {...props}>
+                          <code className="block text-sm font-mono whitespace-pre" style={{ color: '#000000', backgroundColor: 'transparent' }} {...props}>
                             {children}
                           </code>
                         );
