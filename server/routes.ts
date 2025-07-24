@@ -1317,44 +1317,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique top-level folders
+  // Get unique top-level folders (optionally filtered by tag)
   app.get("/api/folders", async (req, res) => {
     try {
-      const datasets = await storage.getDatasets();
-      const folders = Array.from(new Set(datasets
-        .map(d => d.topLevelFolder)
-        .filter(Boolean)))
-        .sort();
+      const { tag } = req.query;
+      let datasets = await storage.getDatasets();
       
-      res.json(folders);
+      // If tag filter is provided, only include folders that contain datasets with that tag
+      if (tag && tag !== 'all') {
+        const foldersWithTag = new Set<string>();
+        
+        datasets.forEach(dataset => {
+          const metadata = dataset.metadata as any;
+          if (metadata && metadata.tags && Array.isArray(metadata.tags)) {
+            const hasTag = metadata.tags.some((t: string) => 
+              typeof t === 'string' && t.trim().toLowerCase() === (tag as string).toLowerCase()
+            );
+            if (hasTag && dataset.topLevelFolder) {
+              foldersWithTag.add(dataset.topLevelFolder);
+            }
+          }
+        });
+        
+        const folders = Array.from(foldersWithTag).sort();
+        console.log(`Filtering folders by tag "${tag}": found ${folders.length} folders with that tag`);
+        res.json(folders);
+      } else {
+        // Return all folders
+        const folders = Array.from(new Set(datasets
+          .map(d => d.topLevelFolder)
+          .filter(Boolean)))
+          .sort();
+        
+        res.json(folders);
+      }
     } catch (error) {
       console.error("Error fetching folders:", error);
       res.status(500).json({ message: "Failed to fetch folders" });
     }
   });
 
-  // Get tag frequencies for filtering (optionally scoped to folder)
+  // Get tag frequencies for filtering (always global, not folder-scoped)
   app.get("/api/tags", async (req, res) => {
     try {
-      const { folder } = req.query;
-      const cacheKey = folder ? `tag-frequencies-${folder}` : 'tag-frequencies-global';
+      const cacheKey = 'tag-frequencies-global';
       
       const cached = getCached<Array<{tag: string, count: number}>>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
 
-      let datasets = await storage.getDatasets();
-      
-      // Filter datasets by folder if specified
-      if (folder && folder !== 'all') {
-        datasets = datasets.filter(dataset => dataset.topLevelFolder === folder);
-        console.log(`Filtering tags for folder: ${folder}, found ${datasets.length} datasets`);
-      }
-
+      const datasets = await storage.getDatasets();
       const tagCounts = new Map<string, number>();
 
-      // Extract tags from each dataset's metadata
+      // Extract tags from each dataset's metadata across all folders
       datasets.forEach(dataset => {
         const metadata = dataset.metadata as any;
         if (metadata && metadata.tags && Array.isArray(metadata.tags)) {
@@ -1372,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count);
 
-      console.log(`Found ${tagFrequencies.length} unique tags for ${folder ? `folder ${folder}` : 'all folders'}`);
+      console.log(`Found ${tagFrequencies.length} unique tags across entire data lake`);
       
       setCache(cacheKey, tagFrequencies, 600000); // Cache for 10 minutes
       res.json(tagFrequencies);

@@ -145,14 +145,23 @@ export default function Home() {
   });
 
   const { data: folders = [] } = useQuery<string[]>({
-    queryKey: ["/api/folders"],
-    staleTime: 3600000, // 1 hour cache
-    gcTime: 7200000, // 2 hours garbage collection
+    queryKey: ["/api/folders", tagFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (tagFilter && tagFilter !== "all") {
+        params.set("tag", tagFilter);
+      }
+      const response = await fetch(`/api/folders?${params}`);
+      return response.json();
+    },
+    staleTime: 300000, // 5 minutes cache (shorter since tag filtering affects results)
+    gcTime: 600000, // 10 minutes garbage collection
   });
 
   // Debug logging
   console.log("Folders from API:", folders);
   console.log("All datasets count:", allDatasets.length);
+  console.log("Current tag filter:", tagFilter);
   console.log(
     "Folders with datasets:",
     folders.map((folder) => ({

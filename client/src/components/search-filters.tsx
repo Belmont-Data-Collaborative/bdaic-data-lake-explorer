@@ -40,17 +40,13 @@ export function SearchFilters({
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
 
-  // Fetch available tags with frequencies scoped to current folder
+  // Fetch global tags (not folder-scoped anymore for top-level filtering)
   const { data: tagFrequencies = [] } = useQuery({
-    queryKey: ["/api/tags", currentFolder || "all"],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (currentFolder && currentFolder !== "all") {
-        params.append("folder", currentFolder);
-      }
-      return fetch(`/api/tags?${params.toString()}`).then(res => res.json());
-    },
+    queryKey: ["/api/tags"],
+    queryFn: () => fetch('/api/tags').then(res => res.json()),
     enabled: !!onTagChange,
+    staleTime: 600000, // 10 minutes cache
+    gcTime: 1800000, // 30 minutes garbage collection
   });
 
   const handleRefresh = () => {
