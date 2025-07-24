@@ -16,7 +16,7 @@ export function usePerformanceMonitor() {
     // Monitor page load performance
     const measurePerformance = () => {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-      const resources = performance.getEntriesByType('resource');
+      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
       
       // Calculate cache hit rate
       const cacheHits = resources.filter(resource => 
@@ -27,7 +27,7 @@ export function usePerformanceMonitor() {
       const performanceMetrics: PerformanceMetrics = {
         loadTime: performance.now() - startTime,
         ttfb: navigation.responseStart - navigation.requestStart,
-        domContentLoaded: navigation.domContentLoadedEventEnd - navigation.navigationStart,
+        domContentLoaded: navigation.domContentLoadedEventEnd - navigation.fetchStart,
         networkRequests: resources.length,
         cacheHitRate,
       };

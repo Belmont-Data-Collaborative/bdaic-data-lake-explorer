@@ -36,8 +36,7 @@ export default function Home() {
   // Monitor performance for optimization insights
   const performanceMetrics = usePerformanceMonitor();
 
-  // Preload critical data for faster initial load
-  const { data: preloadData, isLoading: preloadLoading } = usePreloadData();
+  // Remove preload data reference for now - using direct queries
 
   const { data: awsConfig } = useQuery<AwsConfig>({
     queryKey: ["/api/aws-config"],
