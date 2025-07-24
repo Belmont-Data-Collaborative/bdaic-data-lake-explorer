@@ -36,6 +36,51 @@ function invalidateCache(pattern?: string): void {
   }
 }
 
+// Cache warming function
+async function warmCache(): Promise<void> {
+  try {
+    console.log('Warming cache...');
+    
+    // Warm up critical endpoints
+    const datasets = await storage.getDatasets();
+    setCache('datasets-all', datasets, 300000); // 5 minutes
+    
+    const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
+    setCache('folders', folders, 3600000); // 1 hour
+    
+    // Pre-compute stats
+    const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+    const uniqueDataSources = new Set();
+    
+    datasets.forEach(d => {
+      if (d.metadata && (d.metadata as any).dataSource) {
+        (d.metadata as any).dataSource
+          .split(',')
+          .map((s: string) => s.trim())
+          .forEach((s: string) => uniqueDataSources.add(s));
+      }
+    });
+    
+    const lastRefreshTime = await storage.getLastRefreshTime();
+    const precomputedStats = {
+      totalDatasets: datasets.length,
+      totalSize: formatFileSize(totalSize),
+      dataSources: uniqueDataSources.size,
+      lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+      lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+    };
+    
+    setCache('precomputed-stats', precomputedStats, 1800000); // 30 minutes
+    
+    console.log('Cache warmed successfully');
+  } catch (error) {
+    console.error('Error warming cache:', error);
+  }
+}
+
+// Warm cache every 10 minutes
+setInterval(warmCache, 10 * 60 * 1000);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Add cache headers and compression hints for API responses
   app.use("/api", (req, res, next) => {
@@ -43,9 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.method === "GET") {
       // Different cache durations based on endpoint
       if (req.path.includes('/stats') || req.path.includes('/quick-stats')) {
-        res.set("Cache-Control", "public, max-age=300"); // 5 minutes for stats
+        res.set("Cache-Control", "public, max-age=1800"); // 30 minutes for stats
       } else if (req.path.includes('/folders') && !req.path.includes('/community-data-points')) {
-        res.set("Cache-Control", "public, max-age=600"); // 10 minutes for folder lists
+        res.set("Cache-Control", "public, max-age=3600"); // 1 hour for folder lists
       } else if (req.path.includes('/aws-config')) {
         res.set("Cache-Control", "private, max-age=60"); // 1 minute for config
       } else {
@@ -1059,6 +1104,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get download statistics for multiple datasets
+  app.post("/api/datasets/batch-download-stats", async (req, res) => {
+    try {
+      const { datasetIds } = req.body;
+      
+      if (!Array.isArray(datasetIds)) {
+        return res.status(400).json({ message: "datasetIds must be an array" });
+      }
+      
+      const cacheKey = `batch-download-stats-${datasetIds.sort().join(',')}`;
+      let batchStats = getCached<Record<number, any>>(cacheKey);
+      
+      if (!batchStats) {
+        batchStats = await storage.getBatchDownloadStats(datasetIds);
+        setCache(cacheKey, batchStats, 300000); // 5 minute cache
+      }
+      
+      res.json(batchStats);
+    } catch (error) {
+      console.error("Error fetching batch download stats:", error);
+      res.status(500).json({ message: "Failed to fetch batch download statistics" });
+    }
+  });
+
   // Get community data points calculation
   app.get("/api/community-data-points", async (req, res) => {
     try {
@@ -1174,7 +1243,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/stats", async (req, res) => {
     try {
-      // Check cache first
+      // Check pre-computed cache first
+      let stats = getCached<any>('precomputed-stats');
+      
+      if (stats) {
+        return res.json(stats);
+      }
+
+      // Fallback to legacy cache check
       if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
         return res.json(statsCache.data);
       }
@@ -1204,7 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the last refresh time instead of dataset modification times
       const lastRefreshTime = await storage.getLastRefreshTime();
 
-      const stats = {
+      stats = {
         totalDatasets: datasets.length,
         totalSize: formatFileSize(totalSize),
         dataSources: uniqueDataSources.size,
@@ -1218,6 +1294,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: stats,
         timestamp: Date.now()
       };
+      
+      setCache('precomputed-stats', stats, 1800000); // 30 minutes
 
       res.json(stats);
     } catch (error) {
@@ -1313,6 +1391,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Initialize cache warming
+  setTimeout(warmCache, 5000); // Warm cache 5 seconds after server start
+  
   return httpServer;
 }
 
