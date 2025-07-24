@@ -87,6 +87,7 @@ The build process creates optimized static assets for the frontend while bundlin
   - Added custom CSS for smooth scrolling behavior and enhanced scrollbar styling
   - Enhanced ScrollArea with proper height calculations and smooth scroll behavior
   - Chat messages now properly scroll with improved visual feedback and accessibility
+  - Removed "Data analysis details" technical information box from AI chat responses for cleaner UX
 - July 24, 2025: Successfully implemented comprehensive RAG system with intelligent progressive scanning for large datasets
   - **Major Achievement**: System now performs fresh RAG retrieval for every question, scanning entire 440MB files to find specific county data
   - **Fresh Data Retrieval**: Each question triggers new progressive file scanning (5MB chunks, 20 chunks total) with question-specific filters
