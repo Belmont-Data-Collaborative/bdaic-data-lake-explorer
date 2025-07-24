@@ -272,7 +272,7 @@ For complete documentation, please check the project files or contact the develo
                           );
                         }
                         return (
-                          <code className="block bg-gray-100 text-black p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-300 whitespace-pre-wrap" {...props}>
+                          <code className="block bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-300 whitespace-pre-wrap" style={{ color: '#000000' }} {...props}>
                             {children}
                           </code>
                         );
