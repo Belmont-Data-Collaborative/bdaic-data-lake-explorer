@@ -522,14 +522,24 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
       context += `\n`;
     }
 
-    // Sample data preview
+    // Sample data preview with actual column names
     if (intelligentSample.sampleData.length > 0) {
-      context += `**Sample Data (first 5 rows):**\n`;
-      const preview = intelligentSample.sampleData.slice(0, 5);
+      context += `**Sample Data (first 3 rows):**\n`;
+      const preview = intelligentSample.sampleData.slice(0, 3);
+      const columns = Object.keys(preview[0] || {});
+      
+      // Show column headers
+      context += `Columns: ${columns.join(', ')}\n\n`;
+      
+      // Show actual data rows in a readable format
       preview.forEach((row, i) => {
-        context += `Row ${i + 1}: ${JSON.stringify(row)}\n`;
+        context += `Row ${i + 1}:\n`;
+        columns.forEach(col => {
+          const value = row[col];
+          context += `  ${col}: ${value}\n`;
+        });
+        context += `\n`;
       });
-      context += `\n`;
     }
 
     // Add metadata if available

@@ -311,8 +311,8 @@ What would you like to explore?`,
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4 overflow-safe">
-          <div className="space-y-4 container-safe">
+        <ScrollArea className="flex-1 p-4 max-h-[60vh]">
+          <div className="space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
