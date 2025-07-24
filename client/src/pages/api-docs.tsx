@@ -272,7 +272,7 @@ For complete documentation, please check the project files or contact the develo
                           );
                         }
                         return (
-                          <code className="block bg-gray-800 text-white p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-600 whitespace-pre-wrap" {...props}>
+                          <code className="block bg-black text-white p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-700 whitespace-pre-wrap" {...props}>
                             {children}
                           </code>
                         );
