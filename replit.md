@@ -411,11 +411,13 @@ The build process creates optimized static assets for the frontend while bundlin
 6. [User Management Endpoints](#user-management-endpoints)
 7. [AWS Configuration Endpoints](#aws-configuration-endpoints)
 8. [Dataset Endpoints](#dataset-endpoints)
-9. [Folder and Statistics Endpoints](#folder-and-statistics-endpoints)
-10. [Performance Monitoring](#performance-monitoring)
-11. [Data Models](#data-models)
-12. [Error Handling](#error-handling)
-13. [Examples](#examples)
+9. [Tag Filtering Endpoints](#tag-filtering-endpoints)
+10. [Hierarchical Tag Filtering](#hierarchical-tag-filtering)
+11. [Folder and Statistics Endpoints](#folder-and-statistics-endpoints)
+12. [Performance Monitoring](#performance-monitoring)
+13. [Data Models](#data-models)
+14. [Error Handling](#error-handling)
+15. [Examples](#examples)
 
 ### Overview
 
@@ -663,10 +665,13 @@ List datasets with advanced filtering and pagination.
 - `format`: Filter by file format (csv, json, parquet)
 - `minSize`: Minimum file size in bytes
 - `maxSize`: Maximum file size in bytes
+- `tag`: Filter by tag (works hierarchically with folder parameter)
 
-**Example Request**:
+**Example Requests**:
 ```
 GET /api/datasets?folder=cdc_places&format=csv&search=health&page=1&limit=20
+GET /api/datasets?tag=census&page=1&limit=50
+GET /api/datasets?tag=health&folder=ndacan&page=1&limit=20
 ```
 
 **Success Response (200)**:
@@ -854,19 +859,118 @@ Interactive AI chat about a specific dataset.
 }
 ```
 
-### Folder and Statistics Endpoints
+### Tag Filtering Endpoints
 
-#### GET /api/folders
-Get list of unique top-level folders.
+#### GET /api/tags
+Get all available tags across the entire data lake with their usage counts.
 
 **Success Response (200)**:
 ```json
 [
+  {
+    "tag": "census",
+    "count": 167
+  },
+  {
+    "tag": "csv",
+    "count": 240
+  },
+  {
+    "tag": "health",
+    "count": 45
+  },
+  {
+    "tag": "county-level data",
+    "count": 125
+  },
+  {
+    "tag": "state-level data",
+    "count": 89
+  }
+]
+```
+
+### Hierarchical Tag Filtering
+
+The Data Lake Explorer implements a sophisticated hierarchical tag filtering system that allows users to filter content at multiple levels:
+
+#### How It Works
+
+1. **Top-Level Filtering**: Users can select tags from the main page to filter which folders are visible
+2. **Folder-Level Filtering**: When entering a filtered folder, only datasets matching the selected tag are shown
+3. **Tag Persistence**: Selected tags are maintained throughout navigation between folders and the main view
+
+#### Workflow Example
+
+```
+1. Main Page → Select "census" tag
+2. Result: Shows only 6 folders containing census-related datasets
+3. Click on "census_acs5" folder
+4. Result: Shows only datasets within that folder that have the "census" tag
+5. Navigate back to folders
+6. Result: Still shows only the 6 census-related folders
+```
+
+#### Performance Characteristics
+
+- Tag filtering queries can take 2-5 seconds for large data lakes
+- Loading indicators are shown during filtering operations
+- Server-side filtering ensures accurate results
+- Caching is implemented to improve repeated query performance
+
+### Folder and Statistics Endpoints
+
+#### GET /api/folders
+Get list of unique top-level folders with optional tag filtering.
+
+**Query Parameters**:
+- `tag`: Optional tag filter to show only folders containing datasets with the specified tag
+
+**Example Requests**:
+```
+GET /api/folders                    # Get all folders
+GET /api/folders?tag=census          # Get only folders with "census" tag
+GET /api/folders?tag=health          # Get only folders with "health" tag
+```
+
+**Success Response (200) - All folders**:
+```json
+[
   "cdc_places",
   "cdc_svi", 
+  "cdc_wonder",
   "census_acs5",
+  "census_acs5_profile",
+  "cms_medicare_disparities",
+  "county_health_rankings",
   "epa_ejscreen",
+  "epa_smart_location",
+  "feeding_america",
+  "nashville_police_incidents",
+  "nashville_traffic_accidents",
+  "ndacan",
+  "state_specific",
+  "usda_census_agriculture",
   "usda_food_access"
+]
+```
+
+**Success Response (200) - Filtered by "census" tag**:
+```json
+[
+  "census_acs5",
+  "census_acs5_profile",
+  "cms_medicare_disparities",
+  "epa_smart_location",
+  "feeding_america",
+  "usda_census_agriculture"
+]
+```
+
+**Success Response (200) - Filtered by "health" tag**:
+```json
+[
+  "ndacan"
 ]
 ```
 
@@ -1050,6 +1154,30 @@ curl -X GET https://your-domain.replit.app/api/datasets \
 ```bash
 # Search for health-related datasets in CDC folders
 curl -X GET "https://your-domain.replit.app/api/datasets?search=health&folder=cdc_places&format=csv&limit=10" \
+  -H "Authorization: Bearer <token>"
+
+# Get datasets filtered by tag
+curl -X GET "https://your-domain.replit.app/api/datasets?tag=census&limit=50" \
+  -H "Authorization: Bearer <token>"
+
+# Hierarchical filtering: datasets with tag within specific folder
+curl -X GET "https://your-domain.replit.app/api/datasets?tag=health&folder=ndacan&limit=20" \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Tag-Based Folder Filtering
+
+```bash
+# Get all available tags with usage counts
+curl -X GET "https://your-domain.replit.app/api/tags" \
+  -H "Authorization: Bearer <token>"
+
+# Get folders containing datasets with specific tag
+curl -X GET "https://your-domain.replit.app/api/folders?tag=census" \
+  -H "Authorization: Bearer <token>"
+
+# Get folders containing health-related datasets
+curl -X GET "https://your-domain.replit.app/api/folders?tag=health" \
   -H "Authorization: Bearer <token>"
 ```
 
