@@ -524,8 +524,12 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
 
     // Sample data preview with actual column names
     if (intelligentSample.sampleData.length > 0) {
-      context += `**Sample Data (first 3 rows):**\n`;
-      const preview = intelligentSample.sampleData.slice(0, 3);
+      // If we have specific matches, show more rows to ensure we capture the relevant data
+      const rowsToShow = intelligentSample.strategy.name === 'comprehensive' || 
+                         intelligentSample.strategy.name === 'focused' ? 10 : 5;
+      
+      context += `**Sample Data (showing ${Math.min(rowsToShow, intelligentSample.sampleData.length)} rows):**\n`;
+      const preview = intelligentSample.sampleData.slice(0, rowsToShow);
       const columns = Object.keys(preview[0] || {});
       
       // Show column headers
@@ -534,12 +538,30 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
       // Show actual data rows in a readable format
       preview.forEach((row, i) => {
         context += `Row ${i + 1}:\n`;
-        columns.forEach(col => {
+        // Show important columns first
+        const importantCols = ['StateAbbr', 'CountyName', 'Measure', 'Data_Value', 'Year'];
+        const otherCols = columns.filter(col => !importantCols.includes(col));
+        
+        // Show important columns
+        importantCols.forEach(col => {
+          if (columns.includes(col)) {
+            const value = row[col];
+            context += `  ${col}: ${value}\n`;
+          }
+        });
+        
+        // Show first few other columns
+        otherCols.slice(0, 5).forEach(col => {
           const value = row[col];
           context += `  ${col}: ${value}\n`;
         });
         context += `\n`;
       });
+      
+      // If we have many rows, mention it
+      if (intelligentSample.sampleData.length > rowsToShow) {
+        context += `... and ${intelligentSample.sampleData.length - rowsToShow} more rows in the sample\n\n`;
+      }
     }
 
     // Add metadata if available

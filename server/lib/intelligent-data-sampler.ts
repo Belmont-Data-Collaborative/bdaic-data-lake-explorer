@@ -88,23 +88,41 @@ export class IntelligentDataSampler {
         
         if (Object.keys(query).length > 0) {
           console.log('Using RAG retrieval with query:', query);
+          
+          // For specific entity queries, request more rows to ensure we find the data
+          const ragRows = query.county || query.state ? 
+            Math.max(1000, selectedStrategy.sampleRows) : 
+            selectedStrategy.sampleRows;
+          
           const ragResult = await this.ragRetriever.queryDatasetWithFilters(
             dataset,
             query,
-            selectedStrategy.sampleRows
+            ragRows
           );
           
           if (ragResult.data.length > 0) {
             console.log(`RAG returned ${ragResult.data.length} rows matching filters:`, ragResult.matchedFilters);
             sampleData = ragResult.data;
           } else {
-            // Fallback to regular sampling if no matches
-            console.log('No RAG matches, falling back to regular sampling');
-            sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+            // Even if no specific matches, still provide a larger sample for entity queries
+            console.log('No RAG matches found, but providing larger sample for entity query');
+            sampleData = await this.fetchStrategicSample(dataset, {
+              ...selectedStrategy,
+              sampleRows: ragRows
+            });
           }
         } else {
-          // No specific filters extracted, use regular sampling
-          sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+          // Check if this is still an entity query even without extracted filters
+          const isEntityQuery = /\b(county|state|city|what is|show me|find)\b/i.test(questionContext);
+          if (isEntityQuery) {
+            console.log('Detected entity query, using larger sample');
+            sampleData = await this.fetchStrategicSample(dataset, {
+              ...selectedStrategy,
+              sampleRows: Math.max(1000, selectedStrategy.sampleRows)
+            });
+          } else {
+            sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
+          }
         }
       } else {
         // No question context or RAG not initialized, use regular sampling

@@ -264,11 +264,14 @@ export class AwsS3Service {
         return null;
       }
 
+      // For larger row requests, download more data
+      const bytesToRead = maxRows > 1000 ? 10 * 1024 * 1024 : 32768; // 10MB for large requests, 32KB for small
+      
       // Download first part of the CSV file
       const getCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: csvFile.Key,
-        Range: 'bytes=0-32768', // First 32KB should be enough for sample
+        Range: `bytes=0-${bytesToRead}`,
       });
 
       const response = await this.s3Client.send(getCommand);
@@ -287,6 +290,202 @@ export class AwsS3Service {
       console.error("Error fetching sample data:", error);
       return null;
     }
+  }
+
+  // Enhanced method for progressive data scanning
+  async getSampleDataWithProgression(
+    bucketName: string, 
+    datasetSource: string, 
+    searchCriteria: any,
+    maxMatches: number = 100
+  ): Promise<any[] | null> {
+    try {
+      // Find CSV file
+      const listCommand = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: datasetSource,
+        MaxKeys: 10,
+      });
+
+      const listResponse = await this.s3Client.send(listCommand);
+      
+      if (!listResponse.Contents) {
+        return null;
+      }
+
+      const csvFile = listResponse.Contents.find(obj => 
+        obj.Key && obj.Key.toLowerCase().endsWith('.csv')
+      );
+
+      if (!csvFile || !csvFile.Key) {
+        return null;
+      }
+
+      // Get file size
+      const headCommand = new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: csvFile.Key,
+      });
+      
+      const headResponse = await this.s3Client.send(headCommand);
+      const fileSize = headResponse.ContentLength || 0;
+      
+      console.log(`Progressive scan of file ${csvFile.Key} (${this.formatFileSize(fileSize)})`);
+      
+      const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+      const maxChunks = Math.min(20, Math.ceil(fileSize / chunkSize)); // Max 20 chunks (100MB)
+      let allMatches: any[] = [];
+      let headers: string[] = [];
+      let currentOffset = 0;
+      
+      for (let chunk = 0; chunk < maxChunks && allMatches.length < maxMatches; chunk++) {
+        const endByte = Math.min(currentOffset + chunkSize - 1, fileSize - 1);
+        
+        console.log(`Scanning chunk ${chunk + 1}/${maxChunks}: bytes ${currentOffset}-${endByte}`);
+        
+        const getCommand = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: csvFile.Key,
+          Range: `bytes=${currentOffset}-${endByte}`,
+        });
+
+        const response = await this.s3Client.send(getCommand);
+        
+        if (!response.Body) {
+          continue;
+        }
+
+        const chunkContent = await this.streamToString(response.Body);
+        
+        // Parse this chunk
+        const { rows, lastHeaders } = this.parseCSVChunk(
+          chunkContent, 
+          headers.length > 0 ? headers : undefined,
+          searchCriteria,
+          maxMatches - allMatches.length
+        );
+        
+        if (lastHeaders.length > 0) {
+          headers = lastHeaders;
+        }
+        
+        allMatches.push(...rows);
+        
+        // Update offset for next chunk
+        currentOffset = endByte + 1;
+        
+        // If we found enough matches, check if we should continue
+        if (allMatches.length >= maxMatches) {
+          // If searching for a specific county, check if we found it
+          if (searchCriteria.county) {
+            const hasCountyMatch = allMatches.some(row => 
+              Object.values(row).some(val => 
+                String(val).toLowerCase().includes(searchCriteria.county.toLowerCase())
+              )
+            );
+            
+            if (hasCountyMatch) {
+              console.log(`Found ${allMatches.length} matches including target county, stopping scan`);
+              break;
+            } else {
+              console.log(`Found ${allMatches.length} matches but not target county yet, continuing...`);
+              // Continue scanning but limit total matches to prevent memory issues
+              if (allMatches.length > 10000) {
+                console.log('Reached maximum scan limit without finding target county');
+                break;
+              }
+            }
+          } else {
+            console.log(`Found ${allMatches.length} matches, stopping scan`);
+            break;
+          }
+        }
+      }
+      
+      console.log(`Progressive scan complete. Found ${allMatches.length} matching rows`);
+      return allMatches;
+      
+    } catch (error) {
+      console.error("Error in progressive data scan:", error);
+      return null;
+    }
+  }
+
+  private parseCSVChunk(
+    chunkContent: string, 
+    existingHeaders?: string[],
+    searchCriteria?: any,
+    maxRows: number = Number.MAX_SAFE_INTEGER
+  ): { rows: any[], lastHeaders: string[] } {
+    const lines = chunkContent.split('\n');
+    let headers = existingHeaders || [];
+    const rows: any[] = [];
+    let startLine = 0;
+    
+    // If we don't have headers yet, parse them from first line
+    if (!existingHeaders && lines.length > 0) {
+      headers = this.parseCSVLine(lines[0]);
+      startLine = 1;
+    }
+    
+    // Parse data rows
+    for (let i = startLine; i < lines.length && rows.length < maxRows; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) continue;
+      
+      const values = this.parseCSVLine(line);
+      if (values.length !== headers.length) continue; // Skip malformed rows
+      
+      const row: any = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      
+      // If search criteria provided, check if row matches
+      if (searchCriteria && Object.keys(searchCriteria).length > 0) {
+        let allCriteriaMatch = true;
+        
+        // Check each search criteria against actual column names in the row
+        for (const [searchKey, searchValue] of Object.entries(searchCriteria)) {
+          if (!searchValue) continue;
+          
+          let criterionMatches = false;
+          
+          // Check if any column in the row matches this search criterion
+          for (const [columnName, columnValue] of Object.entries(row)) {
+            // Case-insensitive column name partial match
+            const colNameLower = columnName.toLowerCase();
+            const searchKeyLower = searchKey.toLowerCase();
+            
+            // Match if column name contains search key or vice versa
+            if (colNameLower.includes(searchKeyLower) || searchKeyLower.includes(colNameLower)) {
+              // Check if the value matches (case-insensitive partial match)
+              const valueLower = String(columnValue).toLowerCase();
+              const searchValueLower = String(searchValue).toLowerCase();
+              
+              if (valueLower.includes(searchValueLower)) {
+                criterionMatches = true;
+                break;
+              }
+            }
+          }
+          
+          // All criteria must match
+          if (!criterionMatches) {
+            allCriteriaMatch = false;
+            break;
+          }
+        }
+        
+        if (allCriteriaMatch) {
+          rows.push(row);
+        }
+      } else {
+        rows.push(row);
+      }
+    }
+    
+    return { rows, lastHeaders: headers };
   }
 
   private async streamToString(stream: any): Promise<string> {

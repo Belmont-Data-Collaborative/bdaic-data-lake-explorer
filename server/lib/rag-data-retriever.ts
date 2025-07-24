@@ -35,43 +35,50 @@ export class RAGDataRetriever {
     try {
       console.log(`RAG Query for dataset ${dataset.name} with filters:`, query);
       
-      // Check if this is a specific query that needs full dataset access
-      const needsFullAccess = this.requiresFullDatasetAccess(query);
+      // Check if this is a specific query that needs progressive scanning
+      const needsProgressiveScan = this.requiresFullDatasetAccess(query);
       
-      // Get appropriate sample size based on query specificity
-      const sampleSize = needsFullAccess ? 100000 : Math.min(10000, maxRows * 10);
-      console.log(`Using sample size: ${sampleSize} (full access: ${needsFullAccess})`);
-      
-      const rawData = await this.awsService.getSampleData(
-        this.bucketName,
-        dataset.source,
-        sampleSize
-      );
+      if (needsProgressiveScan) {
+        console.log('Starting progressive scan for specific entity:', query);
+        // Use progressive scanning to find the requested data
+        const result = await this.progressiveScan(dataset, query, maxRows);
+        return result;
+      } else {
+        // For general queries, use standard sampling
+        const sampleSize = Math.min(10000, maxRows * 10);
+        console.log(`Using standard sample size: ${sampleSize}`);
+        
+        const rawData = await this.awsService.getSampleData(
+          this.bucketName,
+          dataset.source,
+          sampleSize
+        );
 
-      if (!rawData || rawData.length === 0) {
+        if (!rawData || rawData.length === 0) {
+          return {
+            data: [],
+            matchedFilters: [],
+            totalMatches: 0,
+            query
+          };
+        }
+
+        // Apply filters based on query
+        const filteredData = this.applyFilters(rawData, query);
+        
+        // Analyze which filters were actually matched
+        const matchedFilters = this.analyzeMatchedFilters(filteredData, query);
+        
+        // Limit to requested rows
+        const resultData = filteredData.slice(0, maxRows);
+
         return {
-          data: [],
-          matchedFilters: [],
-          totalMatches: 0,
+          data: resultData,
+          matchedFilters,
+          totalMatches: filteredData.length,
           query
         };
       }
-
-      // Apply filters based on query
-      const filteredData = this.applyFilters(rawData, query);
-      
-      // Analyze which filters were actually matched
-      const matchedFilters = this.analyzeMatchedFilters(filteredData, query);
-      
-      // Limit to requested rows
-      const resultData = filteredData.slice(0, maxRows);
-
-      return {
-        data: resultData,
-        matchedFilters,
-        totalMatches: filteredData.length,
-        query
-      };
     } catch (error) {
       console.error('Error in RAG query:', error);
       return {
@@ -81,6 +88,88 @@ export class RAGDataRetriever {
         query
       };
     }
+  }
+
+  private async progressiveScan(
+    dataset: Dataset,
+    query: QueryFilter,
+    maxRows: number
+  ): Promise<RAGQueryResult> {
+    console.log(`Progressive scan starting for query:`, query);
+
+    // Convert query filter to search criteria format for AWS service
+    const searchCriteria: any = {};
+    
+    // Map our query fields to the column names in the dataset
+    // We'll create multiple variations to handle different column naming conventions
+    if (query.state) {
+      searchCriteria['state'] = query.state;
+    }
+    
+    if (query.county) {
+      searchCriteria['county'] = query.county;
+    }
+    
+    if (query.measure) {
+      searchCriteria['measure'] = query.measure;
+    }
+    
+    if (query.year) {
+      searchCriteria['year'] = query.year;
+    }
+
+    // Use the new progressive scanning method
+    // For county-specific queries, request more matches to ensure we find the county
+    const matchesToFind = query.county ? Math.max(5000, maxRows) : maxRows;
+    
+    const matchedData = await this.awsService.getSampleDataWithProgression(
+      this.bucketName,
+      dataset.source,
+      searchCriteria,
+      matchesToFind
+    );
+
+    if (!matchedData || matchedData.length === 0) {
+      console.log('No matches found in progressive scan, returning general sample');
+      // If no matches found after scanning, return a general sample
+      const generalSample = await this.awsService.getSampleData(
+        this.bucketName,
+        dataset.source,
+        maxRows
+      );
+      return {
+        data: generalSample || [],
+        matchedFilters: [],
+        totalMatches: 0,
+        query
+      };
+    }
+
+    console.log(`Progressive scan found ${matchedData.length} matching rows`);
+    
+    // Analyze which filters were actually matched
+    const matchedFilters = this.analyzeMatchedFilters(matchedData, query);
+    
+    // If we have room, add some context rows
+    if (matchedData.length < maxRows) {
+      const remainingSpace = maxRows - matchedData.length;
+      const contextData = await this.awsService.getSampleData(
+        this.bucketName,
+        dataset.source,
+        remainingSpace
+      );
+      if (contextData && contextData.length > 0) {
+        matchedData.push(...contextData);
+        console.log(`Added ${contextData.length} context rows`);
+      }
+    }
+
+    return {
+      data: matchedData.slice(0, maxRows),
+      matchedFilters,
+      totalMatches: matchedData.length,
+      query
+    };
   }
 
   private applyFilters(data: any[], query: QueryFilter): any[] {
@@ -209,14 +298,17 @@ export class RAGDataRetriever {
     const countyPatterns = [
       /\b(\w+(?:\s+\w+)?)\s+county\b/i,  // "Hale County" or "Jefferson County"
       /\bcounty\s+of\s+(\w+(?:\s+\w+)?)\b/i,  // "County of Jefferson"
-      /\bin\s+(\w+(?:\s+\w+)?)\s+county\b/i,   // "in Jefferson County"
-      /\bshow\s+me\s+(\w+(?:\s+\w+)?)\s+county\b/i // "show me Hale County"
+      /\b(?:in|for|from)\s+(\w+(?:\s+\w+)?)\s+county\b/i,   // "in/for/from Jefferson County"
+      /\bshow\s+me\s+(?:data\s+for\s+)?(\w+(?:\s+\w+)?)\s+county\b/i // "show me (data for) Hale County"
     ];
     
     for (const pattern of countyPatterns) {
       const match = question.match(pattern);
       if (match && match[1]) {
-        query.county = match[1].trim();
+        // Clean up the county name - remove prepositions if they were captured
+        let countyName = match[1].trim();
+        countyName = countyName.replace(/^(for|in|from)\s+/i, '');
+        query.county = countyName;
         console.log(`Detected county: ${query.county}`);
         break;
       }
