@@ -82,16 +82,23 @@ export class IntelligentDataSampler {
     try {
       let sampleData: any[];
       
+      // Always reinitialize RAG retriever to ensure fresh connections
+      const awsConfig = await storage.getAwsConfig();
+      if (awsConfig) {
+        const awsService = new AwsS3Service(awsConfig.region);
+        this.ragRetriever = new RAGDataRetriever(awsService, awsConfig.bucketName);
+      }
+      
       // If we have a question context, try to use RAG for more targeted data retrieval
       if (questionContext && this.ragRetriever) {
         const query = this.ragRetriever.extractQueryFromQuestion(questionContext);
         
         if (Object.keys(query).length > 0) {
-          console.log('Using RAG retrieval with query:', query);
+          console.log('Using RAG retrieval with fresh query:', query);
           
           // For specific entity queries, request more rows to ensure we find the data
           const ragRows = query.county || query.state ? 
-            Math.max(1000, selectedStrategy.sampleRows) : 
+            Math.max(5000, selectedStrategy.sampleRows) : 
             selectedStrategy.sampleRows;
           
           const ragResult = await this.ragRetriever.queryDatasetWithFilters(
@@ -103,6 +110,9 @@ export class IntelligentDataSampler {
           if (ragResult.data.length > 0) {
             console.log(`RAG returned ${ragResult.data.length} rows matching filters:`, ragResult.matchedFilters);
             sampleData = ragResult.data;
+            
+            // Mark that this sample is from RAG for better context
+            console.log(`Fresh RAG retrieval complete for question: "${questionContext.substring(0, 100)}..."`);
           } else {
             // Even if no specific matches, still provide a larger sample for entity queries
             console.log('No RAG matches found, but providing larger sample for entity query');

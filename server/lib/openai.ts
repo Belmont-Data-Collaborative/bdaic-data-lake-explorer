@@ -154,15 +154,18 @@ Focus on:
     };
   }> {
     try {
-      // Get intelligent sample based on question context and dataset size
+      // Always get fresh intelligent sample based on current question context
+      console.log(`Starting fresh RAG analysis for question: "${message.substring(0, 80)}..."`);
       const intelligentSample = await intelligentDataSampler.getIntelligentSample(
         dataset, 
         'auto', 
         message
       );
       
-      // Build enhanced context with intelligent sampling information
+      // Build enhanced context with fresh intelligent sampling information
       const datasetContext = this.buildIntelligentDatasetContext(dataset, intelligentSample);
+      
+      console.log(`Fresh context built - Strategy: ${intelligentSample.strategy.name}, Sample size: ${intelligentSample.sampleData.length}`);
       
       // Determine if visualization should be generated
       const shouldGenerateChart = enableVisualization && this.shouldCreateVisualization(message);
@@ -495,17 +498,17 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
     const metadata = dataset.metadata as any;
     const insights = dataset.insights as any;
 
-    // Build comprehensive context using intelligent sampling
+    // Build comprehensive context using fresh intelligent sampling
     let context = `**Dataset: ${dataset.name}**\n`;
     context += `File: ${dataset.source}\n`;
     context += `Format: ${dataset.format}\n`;
     context += `Size: ${dataset.size} (${dataset.sizeBytes} bytes)\n`;
     context += `Total Estimated Rows: ${intelligentSample.totalRows.toLocaleString()}\n\n`;
 
-    // Sampling strategy information
-    context += `**Intelligent Sampling Strategy: ${intelligentSample.strategy.name.toUpperCase()}**\n`;
+    // Fresh sampling strategy information
+    context += `**Fresh Data Retrieval - Strategy: ${intelligentSample.strategy.name.toUpperCase()}**\n`;
     context += `Strategy Description: ${intelligentSample.strategy.description}\n`;
-    context += `Sample Size: ${intelligentSample.sampleData.length} rows\n`;
+    context += `Fresh Sample Size: ${intelligentSample.sampleData.length} rows (retrieved for this specific question)\n`;
     context += `Representativeness Score: ${(intelligentSample.representativeness * 100).toFixed(1)}%\n`;
     context += `Data Quality: ${(intelligentSample.dataQuality.completeness * 100).toFixed(1)}% complete, ${(intelligentSample.dataQuality.validity * 100).toFixed(1)}% valid\n\n`;
 
