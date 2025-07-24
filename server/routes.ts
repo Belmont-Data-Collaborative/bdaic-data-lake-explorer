@@ -598,7 +598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit = "50", 
         folder,
         search,
-        format 
+        format,
+        tag
       } = req.query;
 
       const pageNum = parseInt(page as string) || 1;
@@ -650,6 +651,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (format && format !== "all") {
         allDatasets = allDatasets.filter(d => d.format === format);
+      }
+
+      if (tag && tag !== "all") {
+        const searchTag = (tag as string).toLowerCase();
+        allDatasets = allDatasets.filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && metadata.tags && Array.isArray(metadata.tags) &&
+                 metadata.tags.some((t: string) => 
+                   typeof t === 'string' && t.toLowerCase().includes(searchTag)
+                 );
+        });
       }
 
       const totalCount = allDatasets.length;
@@ -1318,6 +1330,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching folders:", error);
       res.status(500).json({ message: "Failed to fetch folders" });
+    }
+  });
+
+  // Get tag frequencies for filtering
+  app.get("/api/tags", requireUser, async (req: AuthRequest, res) => {
+    try {
+      const cached = getCached<Array<{tag: string, count: number}>>('tag-frequencies');
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const datasets = await storage.getDatasets();
+      const tagCounts = new Map<string, number>();
+
+      // Extract tags from each dataset's metadata
+      datasets.forEach(dataset => {
+        const metadata = dataset.metadata as any;
+        if (metadata && metadata.tags && Array.isArray(metadata.tags)) {
+          metadata.tags.forEach((tag: string) => {
+            if (typeof tag === 'string' && tag.trim()) {
+              const normalizedTag = tag.trim().toLowerCase();
+              tagCounts.set(normalizedTag, (tagCounts.get(normalizedTag) || 0) + 1);
+            }
+          });
+        }
+      });
+
+      // Convert to array and sort by frequency (descending)
+      const tagFrequencies = Array.from(tagCounts.entries())
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count);
+
+      setCache('tag-frequencies', tagFrequencies, 600000); // Cache for 10 minutes
+      res.json(tagFrequencies);
+    } catch (error) {
+      console.error("Error getting tag frequencies:", error);
+      res.status(500).json({ message: "Failed to get tag frequencies" });
     }
   });
 

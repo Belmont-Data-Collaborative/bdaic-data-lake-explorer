@@ -27,6 +27,7 @@ interface HomeProps {}
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(
     null,
@@ -88,6 +89,7 @@ export default function Home() {
       selectedFolder,
       searchTerm,
       formatFilter,
+      tagFilter,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -96,6 +98,7 @@ export default function Home() {
         folder: selectedFolder || "all",
         ...(selectedFolder && searchTerm && { search: searchTerm }),
         ...(selectedFolder && formatFilter !== "all" && { format: formatFilter }),
+        ...(selectedFolder && tagFilter !== "all" && { tag: tagFilter }),
       });
       const response = await fetch(`/api/datasets?${params}`);
       return response.json();
@@ -388,6 +391,8 @@ export default function Home() {
                 onSearchChange={setSearchTerm}
                 formatFilter={formatFilter}
                 onFormatChange={setFormatFilter}
+                tagFilter={tagFilter}
+                onTagChange={setTagFilter}
                 folders={folders}
                 onRefresh={() => {
                   refetchDatasets();

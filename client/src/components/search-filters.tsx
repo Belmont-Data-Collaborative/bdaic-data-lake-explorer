@@ -1,16 +1,20 @@
-import { Search, RefreshCw, Brain } from "lucide-react";
+import { Search, RefreshCw, Brain, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { DatasetSearch } from "./dataset-search";
 import { useDatasetRefresh, useGenerateInsights } from "@/hooks/use-api-mutations";
 import { ErrorBoundaryWrapper } from "./error-boundary-wrapper";
+import { useQuery } from "@tanstack/react-query";
 
 interface SearchFiltersProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   formatFilter: string;
   onFormatChange: (value: string) => void;
+  tagFilter?: string;
+  onTagChange?: (value: string) => void;
   folders: string[];
   onRefresh: () => void;
   onSelectDataset?: (datasetId: number) => void;
@@ -23,6 +27,8 @@ export function SearchFilters({
   onSearchChange,
   formatFilter,
   onFormatChange,
+  tagFilter = "all",
+  onTagChange,
   folders,
   onRefresh,
   onSelectDataset,
@@ -31,6 +37,12 @@ export function SearchFilters({
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
+
+  // Fetch available tags with frequencies
+  const { data: tagFrequencies = [] } = useQuery({
+    queryKey: ["/api/tags"],
+    enabled: !!onTagChange,
+  });
 
   const handleRefresh = () => {
     refreshDatasetsMutation.mutate();
@@ -81,6 +93,30 @@ export function SearchFilters({
                   {folders.map((folder) => (
                     <SelectItem key={folder} value={folder}>
                       {folder.replace(/_/g, " ").toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {onTagChange && (
+              <Select value={tagFilter} onValueChange={onTagChange}>
+                <SelectTrigger className="w-64 touch-target" aria-label="Filter by tag">
+                  <div className="flex items-center">
+                    <Tag className="mr-2" size={16} aria-hidden="true" />
+                    <SelectValue placeholder="All Tags" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent role="listbox" className="max-h-80">
+                  <SelectItem value="all">All Tags</SelectItem>
+                  {tagFrequencies.map(({ tag, count }: { tag: string; count: number }) => (
+                    <SelectItem key={tag} value={tag}>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="capitalize">{tag.replace(/_/g, " ")}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {count}
+                        </Badge>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
