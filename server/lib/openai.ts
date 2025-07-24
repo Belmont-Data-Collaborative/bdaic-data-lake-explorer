@@ -8,6 +8,12 @@ const openai = new OpenAI({
 });
 
 export class OpenAIService {
+  private openai: OpenAI;
+
+  constructor() {
+    this.openai = openai;
+  }
+
   async generateDatasetInsights(dataset: Dataset): Promise<DatasetInsights> {
     try {
       const metadata = dataset.metadata as any;
@@ -360,6 +366,102 @@ Chart Guidelines:
           representativeness: 0,
           dataQuality: { completeness: 0, consistency: 0, uniqueness: 0, validity: 0 }
         }
+      };
+    }
+  }
+
+  async chatWithMultipleDatasets(datasets: Dataset[], message: string, conversationHistory: any[], enableVisualization: boolean = false): Promise<{
+    response: string;
+    chart?: any;
+    hasFileAccess: boolean;
+  }> {
+    try {
+      console.log(`Starting multi-dataset analysis for ${datasets.length} datasets: ${datasets.map(d => d.name).join(', ')}`);
+
+      // Build context for all datasets
+      const datasetContexts = await Promise.all(
+        datasets.map(async (dataset) => {
+          // Get intelligent sample for each dataset
+          const intelligentSample = await intelligentDataSampler.getIntelligentSample(
+            dataset, 
+            'focused', // Use focused strategy for multi-dataset analysis
+            message
+          );
+          
+          return this.buildIntelligentDatasetContext(dataset, intelligentSample);
+        })
+      );
+
+      // Combine all dataset contexts
+      const combinedContext = `You are analyzing ${datasets.length} related datasets simultaneously. Here are the details for each dataset:
+
+${datasetContexts.map((context, index) => `
+## Dataset ${index + 1}: ${datasets[index].name}
+${context}
+
+---`).join('\n')}
+
+When analyzing these datasets together, look for:
+- Common patterns across datasets
+- Complementary information that can provide deeper insights
+- Relationships between the different data sources
+- Cross-dataset correlations and trends
+- Comprehensive answers that leverage multiple data sources
+
+Always specify which dataset(s) your insights are drawn from and how the datasets relate to each other.`;
+
+      // Determine if visualization should be generated
+      const shouldGenerateChart = enableVisualization && this.shouldCreateVisualization(message);
+      
+      const systemPrompt = `You are an advanced data analyst with access to multiple related datasets. You can perform cross-dataset analysis and provide comprehensive insights.
+
+${combinedContext}
+
+Provide thorough, insightful analysis that leverages the strengths of each dataset. When possible, identify patterns that span across multiple datasets and provide a unified perspective.`;
+
+      const userPrompt = `${message}
+
+Please analyze this question using all ${datasets.length} available datasets. Provide insights that draw from multiple sources where relevant.`;
+
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...conversationHistory.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        { role: "user", content: userPrompt }
+      ];
+
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages as any,
+        max_tokens: 4000,
+        temperature: 0.1,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response.";
+
+      let chartData = null;
+      if (shouldGenerateChart) {
+        try {
+          chartData = this.generateChartData(responseText, datasets);
+        } catch (chartError) {
+          console.error("Error generating chart for multi-dataset analysis:", chartError);
+        }
+      }
+
+      console.log(`Multi-dataset analysis complete for ${datasets.length} datasets`);
+
+      return {
+        response: responseText,
+        chart: chartData,
+        hasFileAccess: true
+      };
+    } catch (error) {
+      console.error("Error in multi-dataset chat:", error);
+      return {
+        response: `I'm experiencing some difficulties analyzing these ${datasets.length} datasets right now. Please try your question again in a moment.`,
+        hasFileAccess: false
       };
     }
   }

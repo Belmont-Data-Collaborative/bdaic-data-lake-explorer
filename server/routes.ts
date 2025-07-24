@@ -906,6 +906,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch dataset chat endpoint for multi-dataset analysis
+  app.post("/api/datasets/batch-chat", async (req, res) => {
+    try {
+      const { message, datasetIds, conversationHistory, enableVisualization } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      if (!datasetIds || !Array.isArray(datasetIds) || datasetIds.length === 0) {
+        return res.status(400).json({ message: "Dataset IDs are required" });
+      }
+
+      // Fetch all datasets
+      const datasets = await Promise.all(
+        datasetIds.map(async (id: number) => {
+          const dataset = await storage.getDataset(id);
+          if (!dataset) {
+            throw new Error(`Dataset with ID ${id} not found`);
+          }
+          return dataset;
+        })
+      );
+
+      const response = await openAIService.chatWithMultipleDatasets(
+        datasets, 
+        message, 
+        conversationHistory || [], 
+        enableVisualization || false
+      );
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error in batch dataset chat:", error);
+      res.status(500).json({ message: "Failed to process batch chat message" });
+    }
+  });
+
   // Find datasets by query
   app.post("/api/datasets/search", async (req, res) => {
     try {

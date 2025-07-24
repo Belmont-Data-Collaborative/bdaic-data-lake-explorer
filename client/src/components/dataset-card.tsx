@@ -51,11 +51,17 @@ import type { Dataset, DatasetInsights, DatasetMetadata } from "@shared/schema";
 interface DatasetCardProps {
   dataset: Dataset;
   initiallyOpen?: boolean;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionClick?: (event: React.MouseEvent) => void;
 }
 
 export function DatasetCard({
   dataset,
   initiallyOpen = false,
+  isSelectionMode = false,
+  isSelected = false,
+  onSelectionClick,
 }: DatasetCardProps) {
   const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -344,18 +350,38 @@ export function DatasetCard({
   const Icon = getIconForFormat(dataset.format);
   const iconColorClass = getIconColorForFormat(dataset.format);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onSelectionClick) {
+        onSelectionClick(e);
+      }
+    }
+  };
+
   return (
     <article
       id={`dataset-${dataset.id}`}
-      className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow"
+      className={`bg-card rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 ${
+        isSelectionMode 
+          ? isSelected 
+            ? 'border-primary ring-2 ring-primary/20' 
+            : 'border-border hover:border-primary/50'
+          : 'border-border'
+      }`}
+      onClick={handleCardClick}
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger 
-          className="w-full px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors touch-target container-safe focus-ring"
+          className={`w-full px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors touch-target container-safe focus-ring ${
+            isSelectionMode ? 'cursor-pointer' : ''
+          }`}
           aria-expanded={isOpen}
           aria-controls={`dataset-content-${dataset.id}`}
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} dataset details for ${dataset.name}. Format: ${dataset.format}, Size: ${dataset.size}, Last modified: ${new Date(dataset.lastModified).toLocaleDateString()}`}
           aria-describedby={`dataset-summary-${dataset.id}`}
+          disabled={isSelectionMode}
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
