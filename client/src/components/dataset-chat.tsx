@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, X, Bot, User, Loader2, Download, MessageCircle } from "lucide-react";
+import { Send, X, Bot, User, Loader2, Download, MessageCircle, Database, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,6 +52,12 @@ interface Message {
   timestamp: Date;
   chart?: ChartData;
   hasFileAccess?: boolean;
+  sampleInfo?: {
+    strategy: string;
+    sampleSize: number;
+    representativeness: number;
+    dataQuality: any;
+  };
 }
 
 interface DatasetChatProps {
@@ -131,6 +137,7 @@ What would you like to explore?`,
         timestamp: new Date(),
         chart: data.chart, // Include chart data if provided
         hasFileAccess: data.hasFileAccess,
+        sampleInfo: data.sampleInfo, // Include intelligent sampling information
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
@@ -398,10 +405,40 @@ What would you like to explore?`,
                             </div>
                           </div>
                         )}
+                        {/* Intelligent Sampling Information */}
+                        {message.sampleInfo && message.sampleInfo.strategy !== 'error' && (
+                          <div className="mt-3 p-3 bg-accent/10 border border-accent/20 rounded-lg">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <Database className="h-3 w-3" />
+                              <span className="font-medium">Data Analysis Details</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">Strategy:</span>
+                                <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium">
+                                  {message.sampleInfo.strategy.charAt(0).toUpperCase() + message.sampleInfo.strategy.slice(1)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Sample Size:</span>
+                                <span className="ml-2 font-medium">{message.sampleInfo.sampleSize.toLocaleString()} rows</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Accuracy:</span>
+                                <span className="ml-2 font-medium">{(message.sampleInfo.representativeness * 100).toFixed(1)}%</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Quality:</span>
+                                <span className="ml-2 font-medium">{(message.sampleInfo.dataQuality.completeness * 100).toFixed(1)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         {message.hasFileAccess && (
                           <div className="mt-2 flex items-center space-x-1 text-xs text-green-600">
-                            {/* <BarChart3 className="h-3 w-3" /> */}
-                            {/* <span>Analysis includes actual file data</span> */}
+                            <BarChart3 className="h-3 w-3" />
+                            <span>Analysis includes actual file data</span>
                           </div>
                         )}
                       </div>

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { DatasetInsights, Dataset } from "@shared/schema";
+import { intelligentDataSampler, type IntelligentSample } from './intelligent-data-sampler';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
@@ -145,13 +146,23 @@ Focus on:
     response: string;
     chart?: any;
     hasFileAccess: boolean;
+    sampleInfo?: {
+      strategy: string;
+      sampleSize: number;
+      representativeness: number;
+      dataQuality: any;
+    };
   }> {
     try {
-      // Get sample data for analysis
-      const sampleData = await this.getSampleDataForAnalysis(dataset);
+      // Get intelligent sample based on question context and dataset size
+      const intelligentSample = await intelligentDataSampler.getIntelligentSample(
+        dataset, 
+        'auto', 
+        message
+      );
       
-      // Build enhanced context with actual data
-      const datasetContext = this.buildEnhancedDatasetContext(dataset, sampleData);
+      // Build enhanced context with intelligent sampling information
+      const datasetContext = this.buildIntelligentDatasetContext(dataset, intelligentSample);
       
       // Determine if visualization should be generated
       const shouldGenerateChart = enableVisualization && this.shouldCreateVisualization(message);
@@ -325,13 +336,25 @@ Chart Guidelines:
       return {
         response: responseText,
         chart: chartData,
-        hasFileAccess: !!sampleData
+        hasFileAccess: true,
+        sampleInfo: {
+          strategy: intelligentSample.strategy.name,
+          sampleSize: intelligentSample.sampleData.length,
+          representativeness: intelligentSample.representativeness,
+          dataQuality: intelligentSample.dataQuality
+        }
       };
     } catch (error) {
       console.error("Error in enhanced dataset chat:", error);
       return {
         response: "I'm experiencing some difficulties accessing the data right now. Please try your question again in a moment.",
-        hasFileAccess: false
+        hasFileAccess: false,
+        sampleInfo: {
+          strategy: 'error',
+          sampleSize: 0,
+          representativeness: 0,
+          dataQuality: { completeness: 0, consistency: 0, uniqueness: 0, validity: 0 }
+        }
       };
     }
   }
@@ -466,6 +489,59 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
     });
     
     return formatted;
+  }
+
+  private buildIntelligentDatasetContext(dataset: Dataset, intelligentSample: IntelligentSample): string {
+    const metadata = dataset.metadata as any;
+    const insights = dataset.insights as any;
+
+    // Build comprehensive context using intelligent sampling
+    let context = `**Dataset: ${dataset.name}**\n`;
+    context += `File: ${dataset.source}\n`;
+    context += `Format: ${dataset.format}\n`;
+    context += `Size: ${dataset.size} (${dataset.sizeBytes} bytes)\n`;
+    context += `Total Estimated Rows: ${intelligentSample.totalRows.toLocaleString()}\n\n`;
+
+    // Sampling strategy information
+    context += `**Intelligent Sampling Strategy: ${intelligentSample.strategy.name.toUpperCase()}**\n`;
+    context += `Strategy Description: ${intelligentSample.strategy.description}\n`;
+    context += `Sample Size: ${intelligentSample.sampleData.length} rows\n`;
+    context += `Representativeness Score: ${(intelligentSample.representativeness * 100).toFixed(1)}%\n`;
+    context += `Data Quality: ${(intelligentSample.dataQuality.completeness * 100).toFixed(1)}% complete, ${(intelligentSample.dataQuality.validity * 100).toFixed(1)}% valid\n\n`;
+
+    // Column statistics from intelligent analysis
+    if (intelligentSample.columnStats.length > 0) {
+      context += `**Column Analysis (${intelligentSample.columnStats.length} columns):**\n`;
+      intelligentSample.columnStats.forEach(col => {
+        context += `• ${col.name} (${col.dataType}): ${col.uniqueValues} unique values`;
+        if (col.statistics) {
+          context += `, Range: ${col.statistics.min?.toFixed(2)}-${col.statistics.max?.toFixed(2)}, Avg: ${col.statistics.mean?.toFixed(2)}`;
+        }
+        context += `\n`;
+      });
+      context += `\n`;
+    }
+
+    // Sample data preview
+    if (intelligentSample.sampleData.length > 0) {
+      context += `**Sample Data (first 5 rows):**\n`;
+      const preview = intelligentSample.sampleData.slice(0, 5);
+      preview.forEach((row, i) => {
+        context += `Row ${i + 1}: ${JSON.stringify(row)}\n`;
+      });
+      context += `\n`;
+    }
+
+    // Add metadata if available
+    if (metadata?.description) {
+      context += `**Description:** ${metadata.description}\n\n`;
+    }
+
+    if (insights?.summary) {
+      context += `**AI Insights:** ${insights.summary}\n\n`;
+    }
+
+    return context;
   }
 
   private generateDataStatistics(sampleData: any[]): string {
