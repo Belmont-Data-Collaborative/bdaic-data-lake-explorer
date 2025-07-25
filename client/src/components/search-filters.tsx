@@ -43,14 +43,18 @@ export function SearchFilters({
   // Fetch global tags (not folder-scoped anymore for top-level filtering)
   const { data: tagFrequencies = [] } = useQuery({
     queryKey: ["/api/tags"],
-    queryFn: () => fetch('/api/tags').then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch('/api/tags');
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
     enabled: !!onTagChange,
     staleTime: 600000, // 10 minutes cache
     gcTime: 1800000, // 30 minutes garbage collection
   });
 
   const handleRefresh = () => {
-    refreshDatasetsMutation.mutate();
+    refreshDatasetsMutation.mutate(undefined);
     onRefresh();
   };
 
@@ -132,7 +136,7 @@ export function SearchFilters({
             
             <Button
               variant="secondary"
-              onClick={() => generateInsightsMutation.mutate()}
+              onClick={() => generateInsightsMutation.mutate(undefined)}
               disabled={generateInsightsMutation.isPending}
               className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
               aria-label="Generate AI insights for all datasets"

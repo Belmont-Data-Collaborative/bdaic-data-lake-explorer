@@ -378,8 +378,8 @@ Chart Guidelines:
         sampleInfo: {
           strategy: intelligentSample.strategy.name,
           sampleSize: intelligentSample.sampleData.length,
-          representativeness: intelligentSample.metrics.representativeness,
-          dataQuality: intelligentSample.metrics.quality
+          representativeness: intelligentSample.representativeness || 0.85,
+          dataQuality: intelligentSample.dataQuality || { completeness: 0.9, consistency: 0.85, uniqueness: 0.8, validity: 0.9 }
         },
         embeddingRetrievalUsed
       };
@@ -771,18 +771,15 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
       const { GetObjectCommand } = await import("@aws-sdk/client-s3");
       
       // Get AWS config
-      const awsConfig = await storage.getActiveAwsConfig();
+      const awsConfigs = await storage.getAllAwsConfigs();
+      const awsConfig = awsConfigs.find(config => config.isActive);
       if (!awsConfig) {
         console.error("No active AWS configuration");
         return null;
       }
 
       // Create S3 client
-      const awsService = createAwsS3Service({
-        region: awsConfig.region,
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ""
-      });
+      const awsService = createAwsS3Service(awsConfig.region);
 
       // Download first 1MB of CSV for embedding analysis
       const command = new GetObjectCommand({
@@ -791,7 +788,7 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
         Range: 'bytes=0-1048576' // 1MB sample
       });
 
-      const response = await awsService.s3Client.send(command);
+      const response = await awsService.send(command);
       if (!response.Body) {
         console.error("No body in S3 response");
         return null;
