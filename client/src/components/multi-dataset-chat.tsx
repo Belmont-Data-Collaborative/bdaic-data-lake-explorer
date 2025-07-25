@@ -9,8 +9,7 @@ import {
   Bot, 
   User, 
   Database,
-  BarChart3,
-  Minimize2
+  BarChart3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
@@ -46,10 +45,9 @@ export function MultiDatasetChat({ datasets, isOpen, onClose }: MultiDatasetChat
     isActive: isOpen, 
     restoreFocus: true, 
     autoFocus: true 
-  });
+  }) as React.RefObject<HTMLDivElement>;
 
   useKeyboardNavigation({
-    isActive: isOpen,
     onEscape: onClose,
   });
 

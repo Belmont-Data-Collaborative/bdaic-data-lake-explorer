@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { DatasetInsights, Dataset } from "@shared/schema";
 import { intelligentDataSampler, type IntelligentSample } from './intelligent-data-sampler';
+import { embeddingRetriever } from './embedding-context';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
@@ -160,20 +161,46 @@ Focus on:
       representativeness: number;
       dataQuality: any;
     };
+    embeddingRetrievalUsed?: boolean;
   }> {
     try {
-      // Always get fresh intelligent sample based on current question context
-      console.log(`Starting fresh RAG analysis for question: "${message.substring(0, 80)}..."`);
+      // Determine if we should use embedding-based retrieval
+      const shouldUseEmbeddings = this.shouldUseEmbeddingRetrieval(message);
+      let enhancedContext = '';
+      let embeddingRetrievalUsed = false;
+      
+      if (shouldUseEmbeddings) {
+        // Try to get enhanced context using embedding retrieval
+        try {
+          console.log(`Using embedding retrieval for question: "${message.substring(0, 80)}..."`);
+          const csvData = await this.getDatasetCSVContent(dataset);
+          if (csvData) {
+            enhancedContext = await embeddingRetriever.buildEnhancedContext(
+              csvData,
+              message,
+              dataset.metadata as any
+            );
+            embeddingRetrievalUsed = true;
+            console.log('Successfully retrieved context using embeddings');
+          }
+        } catch (error) {
+          console.error('Error using embedding retrieval, falling back to intelligent sampling:', error);
+        }
+      }
+      
+      // Always get intelligent sample as well
       const intelligentSample = await intelligentDataSampler.getIntelligentSample(
         dataset, 
         'auto', 
         message
       );
       
-      // Build enhanced context with fresh intelligent sampling information
-      const datasetContext = this.buildIntelligentDatasetContext(dataset, intelligentSample);
+      // Build context, combining embedding retrieval and intelligent sampling
+      const datasetContext = embeddingRetrievalUsed 
+        ? `${enhancedContext}\n\n${this.buildIntelligentDatasetContext(dataset, intelligentSample)}`
+        : this.buildIntelligentDatasetContext(dataset, intelligentSample);
       
-      console.log(`Fresh context built - Strategy: ${intelligentSample.strategy.name}, Sample size: ${intelligentSample.sampleData.length}`);
+      console.log(`Context built - Strategy: ${intelligentSample.strategy.name}, Sample size: ${intelligentSample.sampleData.length}, Embeddings used: ${embeddingRetrievalUsed}`);
       
       // Determine if visualization should be generated
       const shouldGenerateChart = enableVisualization && this.shouldCreateVisualization(message);
@@ -351,9 +378,10 @@ Chart Guidelines:
         sampleInfo: {
           strategy: intelligentSample.strategy.name,
           sampleSize: intelligentSample.sampleData.length,
-          representativeness: intelligentSample.representativeness,
-          dataQuality: intelligentSample.dataQuality
-        }
+          representativeness: intelligentSample.metrics.representativeness,
+          dataQuality: intelligentSample.metrics.quality
+        },
+        embeddingRetrievalUsed
       };
     } catch (error) {
       console.error("Error in enhanced dataset chat:", error);
@@ -719,6 +747,71 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
     return visualizationKeywords.some(keyword => 
       message.toLowerCase().includes(keyword)
     );
+  }
+
+  private shouldUseEmbeddingRetrieval(message: string): boolean {
+    // Use embedding retrieval for questions that likely need specific row matching
+    const embeddingKeywords = [
+      'specific', 'particular', 'exact', 'precisely',
+      'find', 'search', 'locate', 'identify',
+      'which rows', 'what records', 'show me entries',
+      'matching', 'containing', 'with value',
+      'filter', 'where', 'having'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return embeddingKeywords.some(keyword => lowerMessage.includes(keyword));
+  }
+
+  private async getDatasetCSVContent(dataset: Dataset): Promise<Buffer | null> {
+    try {
+      // Import required modules
+      const { storage } = await import("../storage");
+      const { createAwsS3Service } = await import("./aws");
+      const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+      
+      // Get AWS config
+      const awsConfig = await storage.getActiveAwsConfig();
+      if (!awsConfig) {
+        console.error("No active AWS configuration");
+        return null;
+      }
+
+      // Create S3 client
+      const awsService = createAwsS3Service({
+        region: awsConfig.region,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ""
+      });
+
+      // Download first 1MB of CSV for embedding analysis
+      const command = new GetObjectCommand({
+        Bucket: awsConfig.bucketName,
+        Key: dataset.source,
+        Range: 'bytes=0-1048576' // 1MB sample
+      });
+
+      const response = await awsService.s3Client.send(command);
+      if (!response.Body) {
+        console.error("No body in S3 response");
+        return null;
+      }
+
+      // Convert stream to buffer
+      const chunks: Uint8Array[] = [];
+      const reader = response.Body.transformToWebStream().getReader();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+
+      return Buffer.concat(chunks);
+    } catch (error) {
+      console.error("Error fetching CSV content:", error);
+      return null;
+    }
   }
 
   async chatWithDataset(dataset: Dataset, message: string, conversationHistory: any[]): Promise<string> {
