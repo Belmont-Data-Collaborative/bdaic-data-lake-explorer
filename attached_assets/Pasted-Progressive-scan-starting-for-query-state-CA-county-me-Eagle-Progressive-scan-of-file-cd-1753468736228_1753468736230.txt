@@ -1,0 +1,71 @@
+Progressive scan starting for query: { state: 'CA', county: 'me Eagle' }
+Progressive scan of file cdc_places/census_tract/2022/cdc_places_transform_nw2y-v4gm_census_tract_data_2022.csv (440 MB)
+Scanning chunk 1/20: bytes 0-5242879
+Scanning chunk 2/20: bytes 5242880-10485759
+Scanning chunk 3/20: bytes 10485760-15728639
+Scanning chunk 4/20: bytes 15728640-20971519
+Scanning chunk 5/20: bytes 20971520-26214399
+Scanning chunk 6/20: bytes 26214400-31457279
+Scanning chunk 7/20: bytes 31457280-36700159
+Scanning chunk 8/20: bytes 36700160-41943039
+Scanning chunk 9/20: bytes 41943040-47185919
+Scanning chunk 10/20: bytes 47185920-52428799
+Scanning chunk 11/20: bytes 52428800-57671679
+Scanning chunk 12/20: bytes 57671680-62914559
+Scanning chunk 13/20: bytes 62914560-68157439
+Scanning chunk 14/20: bytes 68157440-73400319
+Scanning chunk 15/20: bytes 73400320-78643199
+Scanning chunk 16/20: bytes 78643200-83886079
+Scanning chunk 17/20: bytes 83886080-89128959
+Scanning chunk 18/20: bytes 89128960-94371839
+Scanning chunk 19/20: bytes 94371840-99614719
+Scanning chunk 20/20: bytes 99614720-104857599
+Progressive scan complete. Found 0 matching rows
+No matches found in progressive scan, returning general sample
+RAG returned 5000 rows matching filters: []
+Fresh RAG retrieval complete for question: "Can you give me Eagle county's full row data?..."
+Context built - Strategy: focused, Sample size: 5000, Embeddings used: false
+Slow query detected: POST /api/datasets/6726/chat took 27573ms
+6:13:43 PM [express] POST /api/datasets/6726/chat 200 in 27573ms :: {"response":"Certainly! Here is …
+Warming cache with performance optimizations...
+Cache warmed successfully in 2327ms - preloaded 259 datasets, 16 folders
+Detected state: AL from "alabama"
+Detected county: comparing Eagle
+Special case: Detected Hale County, Alabama
+Extracted query: { state: 'AL', county: 'Hale' }
+Using RAG retrieval with fresh query: { state: 'AL', county: 'Hale' }
+RAG Query for dataset cdc_places_transform_nw2y-v4gm_census_tract_data_2022 with filters: { state: 'AL', county: 'Hale' }
+Starting progressive scan for specific entity: { state: 'AL', county: 'Hale' }
+Progressive scan starting for query: { state: 'AL', county: 'Hale' }
+Progressive scan of file cdc_places/census_tract/2022/cdc_places_transform_nw2y-v4gm_census_tract_data_2022.csv (440 MB)
+Scanning chunk 1/20: bytes 0-5242879
+Scanning chunk 2/20: bytes 5242880-10485759
+Scanning chunk 3/20: bytes 10485760-15728639
+Scanning chunk 4/20: bytes 15728640-20971519
+Scanning chunk 5/20: bytes 20971520-26214399
+Scanning chunk 6/20: bytes 26214400-31457279
+Scanning chunk 7/20: bytes 31457280-36700159
+Scanning chunk 8/20: bytes 36700160-41943039
+Scanning chunk 9/20: bytes 41943040-47185919
+Scanning chunk 10/20: bytes 47185920-52428799
+Scanning chunk 11/20: bytes 52428800-57671679
+Scanning chunk 12/20: bytes 57671680-62914559
+Scanning chunk 13/20: bytes 62914560-68157439
+Scanning chunk 14/20: bytes 68157440-73400319
+Scanning chunk 15/20: bytes 73400320-78643199
+Scanning chunk 16/20: bytes 78643200-83886079
+Scanning chunk 17/20: bytes 83886080-89128959
+Scanning chunk 18/20: bytes 89128960-94371839
+Scanning chunk 19/20: bytes 94371840-99614719
+Scanning chunk 20/20: bytes 99614720-104857599
+Progressive scan complete. Found 180 matching rows
+Progressive scan found 180 matching rows
+Added 4820 context rows
+RAG returned 5000 rows matching filters: [ 'state (as StateAbbr)', 'county (as CountyName)' ]
+Fresh RAG retrieval complete for question: "Can you generate a graph comparing Eagle County and Hale County, in terms of their total population?..."
+Context built - Strategy: focused, Sample size: 5000, Embeddings used: false
+Successfully parsed chart data: bar
+Slow query detected: POST /api/datasets/6726/chat took 19356ms
+6:30:55 PM [express] POST /api/datasets/6726/chat 200 in 19356ms :: {"response":"Certainly! Based on…
+Warming cache with performance optimizations...
+Cache warmed successfully in 2270ms - preloaded 259 datasets, 16 folders
