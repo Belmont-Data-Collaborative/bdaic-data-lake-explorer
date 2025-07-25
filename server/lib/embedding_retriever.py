@@ -39,9 +39,13 @@ class EmbeddingRetriever:
         self.vectorizer = TfidfVectorizer(
             max_features=max_features,
             stop_words='english',
-            ngram_range=(1, 2),
+            ngram_range=(1, 3),  # Include 3-grams for better phrase matching
             min_df=1,
-            max_df=0.95
+            max_df=0.95,
+            token_pattern=r'\b[A-Za-z]{2,}\b',  # Better tokenization
+            analyzer='word',
+            lowercase=True,
+            sublinear_tf=True  # Sublinear term frequency scaling
         )
         self.embeddings = None
         self.documents = []
@@ -144,7 +148,7 @@ class EmbeddingRetriever:
     
     def retrieve(self, query: str, k: int = 5) -> List[Tuple[Document, float]]:
         """
-        Retrieve the top-k most relevant documents for a query
+        Retrieve the top-k most relevant documents for a query with enhanced accuracy
         
         Args:
             query: The user's question
@@ -159,22 +163,109 @@ class EmbeddingRetriever:
         
         print(f"Retrieving top {k} documents for query: {query}")
         
+        # Enhanced query preprocessing for better matching
+        processed_query = self._enhance_query_for_retrieval(query)
+        
         # Transform the query using the fitted vectorizer
-        query_embedding = self.vectorizer.transform([query])
+        query_embedding = self.vectorizer.transform([processed_query])
         
         # Calculate cosine similarities
         similarities = cosine_similarity(query_embedding, self.embeddings).flatten()
         
+        # Apply context-aware boosting
+        boosted_similarities = self._apply_context_boost(similarities, query)
+        
         # Get top-k indices
-        top_indices = similarities.argsort()[-k:][::-1]
+        top_indices = boosted_similarities.argsort()[-k:][::-1]
         
         # Get documents with scores
         results = []
         for idx in top_indices:
-            if idx < len(self.documents) and similarities[idx] > 0:
-                results.append((self.documents[idx], float(similarities[idx])))
+            if idx < len(self.documents) and boosted_similarities[idx] > 0:
+                results.append((self.documents[idx], float(boosted_similarities[idx])))
         
         return results
+    
+    def _enhance_query_for_retrieval(self, query: str) -> str:
+        """Enhanced query processing for better retrieval accuracy"""
+        # State abbreviation mapping
+        state_mapping = {
+            'colorado': 'CO', 'co': 'CO',
+            'california': 'CA', 'ca': 'CA',
+            'alabama': 'AL', 'al': 'AL',
+            'texas': 'TX', 'tx': 'TX',
+            'florida': 'FL', 'fl': 'FL',
+            'new york': 'NY', 'ny': 'NY'
+        }
+        
+        # Health measure standardization
+        health_mapping = {
+            'obesity': 'OBESITY obesity obese overweight',
+            'diabetes': 'DIABETES diabetes diabetic',
+            'heart disease': 'CHD coronary heart disease',
+            'stroke': 'STROKE cerebrovascular',
+            'depression': 'MHLTH mental health depression',
+            'asthma': 'CASTHMA asthma respiratory'
+        }
+        
+        processed = query.lower()
+        
+        # Apply state mappings
+        for state_name, abbrev in state_mapping.items():
+            if state_name in processed:
+                processed = processed.replace(state_name, f"{abbrev} {state_name}")
+        
+        # Apply health measure mappings
+        for condition, expanded in health_mapping.items():
+            if condition in processed:
+                processed = processed.replace(condition, expanded)
+                
+        # Add context keywords for better matching
+        if 'county' in processed:
+            processed += ' CountyName CountyFIPS'
+        if 'state' in processed:
+            processed += ' StateAbbr StateName'
+        if any(word in processed for word in ['data', 'information', 'statistics']):
+            processed += ' TotalPopulation Data_Value Measure'
+            
+        return processed
+    
+    def _apply_context_boost(self, similarities: np.ndarray, query: str) -> np.ndarray:
+        """Apply intelligent context-based boosting for better accuracy"""
+        boosted = similarities.copy()
+        query_lower = query.lower()
+        
+        # Extract key entities from query
+        states = ['colorado', 'california', 'alabama', 'texas', 'florida', 'co', 'ca', 'al', 'tx', 'fl']
+        health_terms = ['obesity', 'diabetes', 'heart', 'stroke', 'depression', 'asthma']
+        location_terms = ['county', 'state', 'region', 'area']
+        
+        for i, doc in enumerate(self.documents):
+            doc_content = doc.page_content.lower()
+            boost_factor = 1.0
+            
+            # Strong boost for exact state matches
+            for state in states:
+                if state in query_lower and state in doc_content:
+                    boost_factor *= 1.5  # 50% boost
+            
+            # Boost for health measure matches
+            for health in health_terms:
+                if health in query_lower and health in doc_content:
+                    boost_factor *= 1.3  # 30% boost
+                    
+            # Boost for location context
+            if any(loc in query_lower for loc in location_terms) and \
+               any(loc in doc_content for loc in location_terms):
+                boost_factor *= 1.2  # 20% boost
+                
+            # Penalty for irrelevant matches
+            if 'county' in query_lower and 'county' not in doc_content:
+                boost_factor *= 0.7  # 30% penalty
+                
+            boosted[i] *= boost_factor
+        
+        return boosted
     
     def format_context(self, retrieved_docs: List[Tuple[Document, float]], 
                       query: str, 

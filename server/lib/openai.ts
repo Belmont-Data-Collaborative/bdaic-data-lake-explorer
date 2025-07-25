@@ -750,17 +750,58 @@ ${insights.useCases ? `- Use Cases: ${insights.useCases.join(', ')}` : ''}
   }
 
   private shouldUseEmbeddingRetrieval(message: string): boolean {
-    // Use embedding retrieval for questions that likely need specific row matching
-    const embeddingKeywords = [
-      'specific', 'particular', 'exact', 'precisely',
-      'find', 'search', 'locate', 'identify',
-      'which rows', 'what records', 'show me entries',
-      'matching', 'containing', 'with value',
-      'filter', 'where', 'having'
+    const lowerMessage = message.toLowerCase();
+    
+    // Enhanced keyword detection with semantic understanding
+    const embeddingTriggers = {
+      // Specific data retrieval
+      specific: ['specific', 'particular', 'exact', 'precisely', 'find', 'search', 'locate', 'identify'],
+      
+      // Entity-based queries (locations, organizations, etc.)
+      entities: ['county', 'state', 'region', 'area', 'location', 'city', 'place', 'district'],
+      
+      // Data exploration and filtering
+      filtering: ['which rows', 'what records', 'show me entries', 'matching', 'containing', 'with value', 'filter', 'where', 'having'],
+      
+      // Question words with context
+      questions: ['what about', 'tell me about', 'information on', 'details about', 'data for', 'show me'],
+      
+      // Health/medical terms (for CDC datasets)
+      health: ['obesity', 'diabetes', 'health', 'disease', 'condition', 'medical', 'wellness', 'mortality', 'morbidity'],
+      
+      // Comparison and analysis
+      analysis: ['compare', 'versus', 'vs', 'difference between', 'correlation', 'relationship', 'trend']
+    };
+    
+    // Check for trigger words across categories
+    const hasTriggerWords = Object.values(embeddingTriggers).some(keywords =>
+      keywords.some(keyword => lowerMessage.includes(keyword))
+    );
+    
+    // Enhanced contextual patterns
+    const patterns = [
+      // Location-specific patterns: "data for Jefferson County", "in Alabama", "Hale County obesity"
+      /\b(data\s+for|information\s+about|tell\s+me\s+about)\s+\w+\s+(county|state|region)\b/i,
+      
+      // Entity mentions: "Jefferson County", "Hale County", "Colorado data"
+      /\b[A-Z][a-z]+\s+(county|County|state|State)\b/,
+      
+      // Health condition queries: "diabetes in", "obesity rates", "heart disease for"
+      /\b(diabetes|obesity|stroke|heart\s+disease|asthma|depression)\s+(in|for|rates?|data)\b/i,
+      
+      // Specific value queries: "what is the", "how much", "percentage of"
+      /\b(what\s+is\s+the|how\s+much|percentage\s+of|rate\s+of|number\s+of)\b/i
     ];
     
-    const lowerMessage = message.toLowerCase();
-    return embeddingKeywords.some(keyword => lowerMessage.includes(keyword));
+    const hasContextPattern = patterns.some(pattern => pattern.test(message));
+    
+    // Check for question structure with specific intent
+    const hasQuestionStructure = /^(what|how|which|where|who)\b/i.test(message.trim()) &&
+                                (lowerMessage.includes('county') || lowerMessage.includes('state') || 
+                                 lowerMessage.includes('specific') || lowerMessage.includes('data'));
+    
+    // Use embeddings if we have triggers, patterns, or specific question structures
+    return hasTriggerWords || hasContextPattern || hasQuestionStructure;
   }
 
   private async getDatasetCSVContent(dataset: Dataset): Promise<Buffer | null> {

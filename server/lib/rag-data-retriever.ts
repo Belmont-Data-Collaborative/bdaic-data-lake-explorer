@@ -294,24 +294,59 @@ export class RAGDataRetriever {
       }
     }
 
-    // Enhanced county extraction - multiple patterns
+    // Enhanced county extraction with more precise patterns
     const countyPatterns = [
-      /\b(\w+(?:\s+\w+)?)\s+county\b/i,  // "Hale County" or "Jefferson County"
-      /\bcounty\s+of\s+(\w+(?:\s+\w+)?)\b/i,  // "County of Jefferson"
-      /\b(?:in|for|from)\s+(\w+(?:\s+\w+)?)\s+county\b/i,   // "in/for/from Jefferson County"
-      /\bshow\s+me\s+(?:data\s+for\s+)?(\w+(?:\s+\w+)?)\s+county\b/i // "show me (data for) Hale County"
+      // Direct "CountyName County" pattern
+      /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+County\b/i,
+      // "County" + county name
+      /\bcounty(?:\s+of)?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/i,
+      // Preposition + county name + "county"
+      /\b(?:in|for|from|about|regarding)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:county|County)\b/i,
+      // "Show me" + county pattern
+      /\bshow\s+me\s+(?:data\s+(?:for|from|about)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:county|County)\b/i,
+      // County name without "County" when followed by state context
+      /\b(?:data\s+for|information\s+about|tell\s+me\s+about)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:in\s+[A-Z]{2}|in\s+\w+)\b/i
     ];
     
+    let detectedCounty = null;
     for (const pattern of countyPatterns) {
       const match = question.match(pattern);
       if (match && match[1]) {
-        // Clean up the county name - remove prepositions if they were captured
         let countyName = match[1].trim();
-        countyName = countyName.replace(/^(for|in|from)\s+/i, '');
-        query.county = countyName;
-        console.log(`Detected county: ${query.county}`);
-        break;
+        // Clean up common noise words
+        countyName = countyName.replace(/^(for|in|from|about|data|information)\s+/i, '');
+        countyName = countyName.replace(/\s+(data|information|county)$/i, '');
+        
+        // Validate county name (should be proper case, real county names)
+        if (this.isValidCountyName(countyName)) {
+          detectedCounty = countyName;
+          console.log(`Detected county: ${detectedCounty} using pattern`);
+          break;
+        }
       }
+    }
+    
+    // Special case handling for common misparses
+    if (!detectedCounty) {
+      const specialCases = {
+        'eagle': 'Eagle',
+        'hale': 'Hale', 
+        'jefferson': 'Jefferson',
+        'madison': 'Madison',
+        'mobile': 'Mobile'
+      };
+      
+      for (const [keyword, county] of Object.entries(specialCases)) {
+        if (lowerQuestion.includes(keyword) && (lowerQuestion.includes('county') || query.state)) {
+          detectedCounty = county;
+          console.log(`Detected county via special case: ${detectedCounty}`);
+          break;
+        }
+      }
+    }
+    
+    if (detectedCounty) {
+      query.county = detectedCounty;
     }
 
     // Special handling for Hale County (common in Alabama CDC data)
@@ -345,6 +380,16 @@ export class RAGDataRetriever {
 
     console.log('Extracted query:', query);
     return query;
+  }
+
+  private isValidCountyName(name: string): boolean {
+    // Basic validation for county names - should be capitalized, reasonable length
+    if (name.length < 2 || name.length > 30) return false;
+    if (!/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?$/.test(name)) return false;
+    
+    // Filter out common noise words that might be captured
+    const noiseWords = ['Data', 'Information', 'County', 'State', 'Tell', 'Show', 'Give', 'About'];
+    return !noiseWords.includes(name);
   }
 
   private requiresFullDatasetAccess(query: QueryFilter): boolean {
