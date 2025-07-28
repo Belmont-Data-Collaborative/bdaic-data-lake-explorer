@@ -96,41 +96,61 @@ export class IntelligentDataSampler {
         if (Object.keys(query).length > 0) {
           console.log('Using RAG retrieval with fresh query:', query);
           
-          // For specific entity queries, request more rows to ensure we find the data
-          const ragRows = query.county || query.state ? 
-            Math.max(5000, selectedStrategy.sampleRows) : 
-            selectedStrategy.sampleRows;
+          // Intelligent decision on whether to use progressive scanning or regular sampling
+          const needsProgressiveScan = this.ragRetriever.requiresFullDatasetAccess && 
+                                     this.ragRetriever.requiresFullDatasetAccess(query);
           
-          const ragResult = await this.ragRetriever.queryDatasetWithFilters(
-            dataset,
-            query,
-            ragRows
-          );
-          
-          if (ragResult.data.length > 0) {
-            console.log(`RAG returned ${ragResult.data.length} rows matching filters:`, ragResult.matchedFilters);
-            sampleData = ragResult.data;
+          if (needsProgressiveScan) {
+            console.log('Query requires progressive scanning for comprehensive results');
+            const ragResult = await this.ragRetriever.queryDatasetWithFilters(
+              dataset,
+              query,
+              Math.max(5000, selectedStrategy.sampleRows)
+            );
             
-            // Mark that this sample is from RAG for better context
-            console.log(`Fresh RAG retrieval complete for question: "${questionContext.substring(0, 100)}..."`);
+            if (ragResult.data.length > 0) {
+              console.log(`Progressive scan returned ${ragResult.data.length} rows matching filters:`, ragResult.matchedFilters);
+              sampleData = ragResult.data;
+            } else {
+              console.log('Progressive scan found no matches, using larger regular sample');
+              sampleData = await this.fetchStrategicSample(dataset, {
+                ...selectedStrategy,
+                sampleRows: Math.max(2000, selectedStrategy.sampleRows)
+              });
+            }
           } else {
-            // Even if no specific matches, still provide a larger sample for entity queries
-            console.log('No RAG matches found, but providing larger sample for entity query');
+            console.log('Query can be satisfied with regular sampling - using larger sample for better coverage');
+            // Use regular sampling but with increased size for better query coverage
             sampleData = await this.fetchStrategicSample(dataset, {
               ...selectedStrategy,
-              sampleRows: ragRows
+              sampleRows: Math.max(2000, selectedStrategy.sampleRows)
             });
+            
+            // Apply filters to the regular sample
+            if (sampleData.length > 0) {
+              const filteredData = this.ragRetriever.applyFilters && 
+                                 typeof this.ragRetriever.applyFilters === 'function' ?
+                                 this.ragRetriever.applyFilters(sampleData, query) : sampleData;
+              
+              if (filteredData.length > 0) {
+                console.log(`Regular sampling with filters returned ${filteredData.length} matching rows`);
+                sampleData = filteredData;
+              }
+            }
           }
         } else {
           // Check if this is still an entity query even without extracted filters
           const isEntityQuery = /\b(county|state|city|what is|show me|find)\b/i.test(questionContext);
-          if (isEntityQuery) {
-            console.log('Detected entity query, using larger sample');
+          const isGeneralQuery = /\b(overview|summary|describe|what|how|analyze|pattern|trend)\b/i.test(questionContext);
+          
+          if (isEntityQuery && !isGeneralQuery) {
+            console.log('Detected specific entity query, using larger sample');
             sampleData = await this.fetchStrategicSample(dataset, {
               ...selectedStrategy,
-              sampleRows: Math.max(1000, selectedStrategy.sampleRows)
+              sampleRows: Math.max(1500, selectedStrategy.sampleRows)
             });
           } else {
+            console.log('Detected general analysis query, using standard sampling');
             sampleData = await this.fetchStrategicSample(dataset, selectedStrategy);
           }
         }

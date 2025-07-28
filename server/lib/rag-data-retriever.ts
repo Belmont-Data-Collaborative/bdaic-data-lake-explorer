@@ -383,7 +383,29 @@ export class RAGDataRetriever {
   }
 
   private requiresFullDatasetAccess(query: QueryFilter): boolean {
-    // If asking for specific county, state, or measure, we need more data
-    return !!(query.county || query.state || query.measure || query.year);
+    // Progressive scanning should only be used for highly specific entity queries
+    // that are likely to have limited matches requiring full file search
+    
+    // County-specific queries almost always need progressive scanning
+    // since counties are rare and scattered throughout large files
+    if (query.county) {
+      return true;
+    }
+    
+    // State + specific measure combinations may need progressive scanning
+    // if they're looking for precise data points
+    if (query.state && query.measure) {
+      return true;
+    }
+    
+    // State + year combinations for temporal analysis
+    if (query.state && query.year) {
+      return true;
+    }
+    
+    // General state-only, measure-only, or year-only queries can usually
+    // be satisfied with standard sampling since they're common
+    // and likely to appear in any reasonable sample
+    return false;
   }
 }
