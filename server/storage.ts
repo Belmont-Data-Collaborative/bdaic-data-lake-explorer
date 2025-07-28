@@ -1,4 +1,4 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, users, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser } from "@shared/schema";
+import { datasets, awsConfig, authConfig, refreshLog, downloads, users, roles, roleDatasets, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser, type Role, type InsertRole, type RoleDataset, type InsertRoleDataset, type CreateRole, type UpdateRole, type RoleWithDatasets, type UserWithRole } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -7,7 +7,9 @@ import jwt from "jsonwebtoken";
 export interface IStorage {
   // Dataset operations
   getDatasets(): Promise<Dataset[]>;
+  getDatasetsForUser(userId: number): Promise<Dataset[]>;
   getDataset(id: number): Promise<Dataset | undefined>;
+  getDatasetForUser(id: number, userId: number): Promise<Dataset | undefined>;
   getDatasetByNameAndSource(name: string, source: string): Promise<Dataset | undefined>;
   createDataset(dataset: InsertDataset): Promise<Dataset>;
   updateDataset(id: number, dataset: Partial<InsertDataset>): Promise<Dataset | undefined>;
@@ -28,6 +30,27 @@ export interface IStorage {
   setPassword(password: string): Promise<AuthConfig>;
   verifyPassword(password: string): Promise<boolean>;
   
+  // User operations
+  getUserById(id: number): Promise<UserWithRole | undefined>;
+  getUserByUsername(username: string): Promise<UserWithRole | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  getAllUsers(): Promise<UserWithRole[]>;
+  
+  // Role management operations
+  getRoles(): Promise<Role[]>;
+  getRole(id: number): Promise<RoleWithDatasets | undefined>;
+  getRoleByName(name: string): Promise<RoleWithDatasets | undefined>;
+  createRole(roleData: CreateRole): Promise<Role>;
+  updateRole(id: number, updates: UpdateRole): Promise<Role | undefined>;
+  deleteRole(id: number): Promise<boolean>;
+  assignRoleToUser(userId: number, roleId: number): Promise<void>;
+  removeRoleFromUser(userId: number): Promise<void>;
+  addDatasetToRole(roleId: number, datasetId: number): Promise<void>;
+  removeDatasetFromRole(roleId: number, datasetId: number): Promise<void>;
+  getUserAccessibleDatasetIds(userId: number): Promise<number[]>;
+  
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
@@ -46,9 +69,95 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(datasets).orderBy(asc(datasets.source), asc(datasets.name));
   }
 
+  async getDatasetsForUser(userId: number): Promise<Dataset[]> {
+    // Get user with their custom role
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // If user is admin, return all datasets
+    if (user.systemRole === 'admin') {
+      return this.getDatasets();
+    }
+
+    // If user has no custom role, return empty array
+    if (!user.customRoleId) {
+      return [];
+    }
+
+    // Get datasets accessible through the user's custom role
+    const accessibleDatasets = await db
+      .select({
+        id: datasets.id,
+        name: datasets.name,
+        source: datasets.source,
+        topLevelFolder: datasets.topLevelFolder,
+        format: datasets.format,
+        size: datasets.size,
+        sizeBytes: datasets.sizeBytes,
+        lastModified: datasets.lastModified,
+        createdDate: datasets.createdDate,
+        status: datasets.status,
+        metadata: datasets.metadata,
+        insights: datasets.insights,
+        downloadCountSample: datasets.downloadCountSample,
+        downloadCountFull: datasets.downloadCountFull,
+        downloadCountMetadata: datasets.downloadCountMetadata,
+      })
+      .from(datasets)
+      .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
+      .where(eq(roleDatasets.roleId, user.customRoleId))
+      .orderBy(asc(datasets.source), asc(datasets.name));
+
+    return accessibleDatasets;
+  }
+
   async getDataset(id: number): Promise<Dataset | undefined> {
     const [dataset] = await db.select().from(datasets).where(eq(datasets.id, id));
     return dataset || undefined;
+  }
+
+  async getDatasetForUser(id: number, userId: number): Promise<Dataset | undefined> {
+    // Get user with their custom role
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+
+    // If user is admin, return dataset directly
+    if (user.systemRole === 'admin') {
+      return this.getDataset(id);
+    }
+
+    // If user has no custom role, no access
+    if (!user.customRoleId) {
+      return undefined;
+    }
+
+    // Check if dataset is accessible through the user's custom role
+    const [accessibleDataset] = await db
+      .select({
+        id: datasets.id,
+        name: datasets.name,
+        source: datasets.source,
+        topLevelFolder: datasets.topLevelFolder,
+        format: datasets.format,
+        size: datasets.size,
+        sizeBytes: datasets.sizeBytes,
+        lastModified: datasets.lastModified,
+        createdDate: datasets.createdDate,
+        status: datasets.status,
+        metadata: datasets.metadata,
+        insights: datasets.insights,
+        downloadCountSample: datasets.downloadCountSample,
+        downloadCountFull: datasets.downloadCountFull,
+        downloadCountMetadata: datasets.downloadCountMetadata,
+      })
+      .from(datasets)
+      .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
+      .where(and(
+        eq(datasets.id, id),
+        eq(roleDatasets.roleId, user.customRoleId)
+      ));
+
+    return accessibleDataset || undefined;
   }
 
   async getDatasetByNameAndSource(name: string, source: string): Promise<Dataset | undefined> {
@@ -267,38 +376,106 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
+  async getUserByUsername(username: string): Promise<UserWithRole | undefined> {
+    const [result] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        passwordHash: users.passwordHash,
+        systemRole: users.systemRole,
+        customRoleId: users.customRoleId,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        lastLoginAt: users.lastLoginAt,
+        customRole: {
+          id: roles.id,
+          name: roles.name,
+          description: roles.description,
+          isSystemRole: roles.isSystemRole,
+          createdAt: roles.createdAt,
+          updatedAt: roles.updatedAt,
+        }
+      })
       .from(users)
+      .leftJoin(roles, eq(users.customRoleId, roles.id))
       .where(eq(users.username, username))
       .limit(1);
-    return user || undefined;
+    
+    if (!result) return undefined;
+    
+    return {
+      ...result,
+      customRole: result.customRole.id ? result.customRole : null
+    };
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
+  async getUserById(id: number): Promise<UserWithRole | undefined> {
+    const [result] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        passwordHash: users.passwordHash,
+        systemRole: users.systemRole,
+        customRoleId: users.customRoleId,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        lastLoginAt: users.lastLoginAt,
+        customRole: {
+          id: roles.id,
+          name: roles.name,
+          description: roles.description,
+          isSystemRole: roles.isSystemRole,
+          createdAt: roles.createdAt,
+          updatedAt: roles.updatedAt,
+        }
+      })
       .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-    return user || undefined;
-  }
-
-  async getUserById(id: number): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
+      .leftJoin(roles, eq(users.customRoleId, roles.id))
       .where(eq(users.id, id))
       .limit(1);
-    return user || undefined;
+    
+    if (!result) return undefined;
+    
+    return {
+      ...result,
+      customRole: result.customRole.id ? result.customRole : null
+    };
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await db
-      .select()
+  async getAllUsers(): Promise<UserWithRole[]> {
+    const results = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        passwordHash: users.passwordHash,
+        systemRole: users.systemRole,
+        customRoleId: users.customRoleId,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        lastLoginAt: users.lastLoginAt,
+        customRole: {
+          id: roles.id,
+          name: roles.name,
+          description: roles.description,
+          isSystemRole: roles.isSystemRole,
+          createdAt: roles.createdAt,
+          updatedAt: roles.updatedAt,
+        }
+      })
       .from(users)
+      .leftJoin(roles, eq(users.customRoleId, roles.id))
       .orderBy(asc(users.createdAt));
+    
+    return results.map(result => ({
+      ...result,
+      customRole: result.customRole.id ? result.customRole : null
+    }));
   }
 
   async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
@@ -343,21 +520,201 @@ export class DatabaseStorage implements IStorage {
       { 
         id: user.id, 
         username: user.username, 
-        role: user.role 
+        systemRole: user.systemRole,
+        customRoleId: user.customRoleId
       },
       secret,
       { expiresIn: '24h' }
     );
   }
 
-  verifyJWT(token: string): { id: number; username: string; role: string } | null {
+  verifyJWT(token: string): { id: number; username: string; systemRole: string; customRoleId?: number } | null {
     try {
       const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-      const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
+      const decoded = jwt.verify(token, secret) as { id: number; username: string; systemRole: string; customRoleId?: number };
       return decoded;
     } catch (error) {
       return null;
     }
+  }
+
+  // Role management methods
+  async getRoles(): Promise<Role[]> {
+    return await db.select().from(roles).orderBy(asc(roles.name));
+  }
+
+  async getRole(id: number): Promise<RoleWithDatasets | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    if (!role) return undefined;
+
+    // Get associated datasets
+    const roleDatasetList = await db
+      .select({
+        dataset: {
+          id: datasets.id,
+          name: datasets.name,
+          source: datasets.source,
+          topLevelFolder: datasets.topLevelFolder,
+          format: datasets.format,
+          size: datasets.size,
+          sizeBytes: datasets.sizeBytes,
+          lastModified: datasets.lastModified,
+          createdDate: datasets.createdDate,
+          status: datasets.status,
+          metadata: datasets.metadata,
+          insights: datasets.insights,
+          downloadCountSample: datasets.downloadCountSample,
+          downloadCountFull: datasets.downloadCountFull,
+          downloadCountMetadata: datasets.downloadCountMetadata,
+        }
+      })
+      .from(roleDatasets)
+      .innerJoin(datasets, eq(roleDatasets.datasetId, datasets.id))
+      .where(eq(roleDatasets.roleId, id));
+
+    return {
+      ...role,
+      datasets: roleDatasetList.map(item => item.dataset),
+      datasetCount: roleDatasetList.length
+    };
+  }
+
+  async getRoleByName(name: string): Promise<RoleWithDatasets | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.name, name));
+    if (!role) return undefined;
+
+    return this.getRole(role.id);
+  }
+
+  async createRole(roleData: CreateRole): Promise<Role> {
+    const [role] = await db
+      .insert(roles)
+      .values({
+        name: roleData.name,
+        description: roleData.description,
+        isSystemRole: false,
+      })
+      .returning();
+
+    // Add dataset associations if provided
+    if (roleData.datasetIds && roleData.datasetIds.length > 0) {
+      const roleDatasetValues = roleData.datasetIds.map(datasetId => ({
+        roleId: role.id,
+        datasetId,
+      }));
+      await db.insert(roleDatasets).values(roleDatasetValues);
+    }
+
+    return role;
+  }
+
+  async updateRole(id: number, updates: UpdateRole): Promise<Role | undefined> {
+    const [role] = await db
+      .update(roles)
+      .set({
+        name: updates.name,
+        description: updates.description,
+        updatedAt: new Date(),
+      })
+      .where(eq(roles.id, id))
+      .returning();
+
+    if (!role) return undefined;
+
+    // Update dataset associations if provided
+    if (updates.datasetIds !== undefined) {
+      // Remove existing associations
+      await db.delete(roleDatasets).where(eq(roleDatasets.roleId, id));
+      
+      // Add new associations
+      if (updates.datasetIds.length > 0) {
+        const roleDatasetValues = updates.datasetIds.map(datasetId => ({
+          roleId: id,
+          datasetId,
+        }));
+        await db.insert(roleDatasets).values(roleDatasetValues);
+      }
+    }
+
+    return role;
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    // Check if role is a system role
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    if (!role || role.isSystemRole) {
+      return false; // Cannot delete system roles
+    }
+
+    // Remove users assigned to this role
+    await db
+      .update(users)
+      .set({ customRoleId: null })
+      .where(eq(users.customRoleId, id));
+
+    // Delete the role (cascade will handle role_datasets)
+    const result = await db.delete(roles).where(eq(roles.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async assignRoleToUser(userId: number, roleId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        customRoleId: roleId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async removeRoleFromUser(userId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        customRoleId: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async addDatasetToRole(roleId: number, datasetId: number): Promise<void> {
+    await db
+      .insert(roleDatasets)
+      .values({ roleId, datasetId })
+      .onConflictDoNothing();
+  }
+
+  async removeDatasetFromRole(roleId: number, datasetId: number): Promise<void> {
+    await db
+      .delete(roleDatasets)
+      .where(and(
+        eq(roleDatasets.roleId, roleId),
+        eq(roleDatasets.datasetId, datasetId)
+      ));
+  }
+
+  async getUserAccessibleDatasetIds(userId: number): Promise<number[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // If user is admin, return all dataset IDs
+    if (user.systemRole === 'admin') {
+      const allDatasets = await db.select({ id: datasets.id }).from(datasets);
+      return allDatasets.map(d => d.id);
+    }
+
+    // If user has no custom role, return empty array
+    if (!user.customRoleId) {
+      return [];
+    }
+
+    // Get dataset IDs accessible through the user's custom role
+    const accessibleDatasets = await db
+      .select({ id: roleDatasets.datasetId })
+      .from(roleDatasets)
+      .where(eq(roleDatasets.roleId, user.customRoleId));
+
+    return accessibleDatasets.map(d => d.id);
   }
 
   async recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download> {

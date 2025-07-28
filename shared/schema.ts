@@ -60,12 +60,43 @@ export const authConfig = pgTable("auth_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Custom roles that admins can create and manage
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isSystemRole: boolean("is_system_role").notNull().default(false), // true for admin/user, false for custom roles
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Index on name for fast role lookups
+  nameIdx: index("idx_roles_name").on(table.name),
+  // Index on isSystemRole for filtering system vs custom roles
+  isSystemRoleIdx: index("idx_roles_is_system_role").on(table.isSystemRole),
+}));
+
+// Junction table for role-dataset permissions
+export const roleDatasets = pgTable("role_datasets", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  datasetId: integer("dataset_id").notNull().references(() => datasets.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate role-dataset associations
+  uniqueRoleDataset: index("idx_role_datasets_unique").on(table.roleId, table.datasetId),
+  // Index on roleId for fast lookups by role
+  roleIdIdx: index("idx_role_datasets_role_id").on(table.roleId),
+  // Index on datasetId for fast lookups by dataset
+  datasetIdIdx: index("idx_role_datasets_dataset_id").on(table.datasetId),
+}));
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role").notNull().default("user"), // 'user', 'admin'
+  systemRole: text("system_role").notNull().default("user"), // 'user', 'admin' - for system permissions
+  customRoleId: integer("custom_role_id").references(() => roles.id, { onDelete: "set null" }), // Custom role for dataset access
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -75,8 +106,10 @@ export const users = pgTable("users", {
   usernameIdx: index("idx_users_username").on(table.username),
   // Index on email for email-based lookups
   emailIdx: index("idx_users_email").on(table.email),
-  // Index on role for role-based queries
-  roleIdx: index("idx_users_role").on(table.role),
+  // Index on systemRole for system permission queries
+  systemRoleIdx: index("idx_users_system_role").on(table.systemRole),
+  // Index on customRoleId for dataset permission queries
+  customRoleIdIdx: index("idx_users_custom_role_id").on(table.customRoleId),
   // Index on isActive for filtering active users
   isActiveIdx: index("idx_users_is_active").on(table.isActive),
 }));
@@ -133,6 +166,17 @@ export const insertRefreshLogSchema = createInsertSchema(refreshLog).omit({
   id: true,
 });
 
+export const insertRoleSchema = createInsertSchema(roles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoleDatasetSchema = createInsertSchema(roleDatasets).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -146,7 +190,8 @@ export const registerUserSchema = z.object({
   email: z.string().email("Valid email is required"),
   password: z.string().min(1, "Password is required"),
   confirmPassword: z.string().min(1, "Password confirmation is required"),
-  role: z.enum(["admin", "user"]).default("user"),
+  systemRole: z.enum(["admin", "user"]).default("user"),
+  customRoleId: z.number().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -162,18 +207,23 @@ export const loginUserSchema = z.object({
 export const updateUserSchema = z.object({
   username: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  role: z.enum(["user", "admin"]).optional(),
+  systemRole: z.enum(["user", "admin"]).optional(),
+  customRoleId: z.number().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
-export type Dataset = typeof datasets.$inferSelect;
-export type InsertDataset = z.infer<typeof insertDatasetSchema>;
-export type AwsConfig = typeof awsConfig.$inferSelect;
-export type InsertAwsConfig = z.infer<typeof insertAwsConfigSchema>;
-export type AuthConfig = typeof authConfig.$inferSelect;
-export type InsertAuthConfig = z.infer<typeof insertAuthConfigSchema>;
-export type RefreshLog = typeof refreshLog.$inferSelect;
-export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
+// Role management schemas
+export const createRoleSchema = z.object({
+  name: z.string().min(1, "Role name is required"),
+  description: z.string().optional(),
+  datasetIds: z.array(z.number()).default([]),
+});
+
+export const updateRoleSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  datasetIds: z.array(z.number()).optional(),
+});
 
 export const datasetInsights = z.object({
   summary: z.string(),
@@ -220,7 +270,7 @@ export const datasetMetadata = z.object({
 export type DatasetInsights = z.infer<typeof datasetInsights>;
 export type DatasetMetadata = z.infer<typeof datasetMetadata>;
 
-// Type definitions
+// Type definitions for all tables
 export type Dataset = typeof datasets.$inferSelect;
 export type InsertDataset = z.infer<typeof insertDatasetSchema>;
 export type AwsConfig = typeof awsConfig.$inferSelect;
@@ -236,3 +286,21 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+
+// Role-related types
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type RoleDataset = typeof roleDatasets.$inferSelect;
+export type InsertRoleDataset = z.infer<typeof insertRoleDatasetSchema>;
+export type CreateRole = z.infer<typeof createRoleSchema>;
+export type UpdateRole = z.infer<typeof updateRoleSchema>;
+
+// Extended types for role-based queries
+export interface RoleWithDatasets extends Role {
+  datasets?: Dataset[];
+  datasetCount?: number;
+}
+
+export interface UserWithRole extends User {
+  customRole?: Role | null;
+}

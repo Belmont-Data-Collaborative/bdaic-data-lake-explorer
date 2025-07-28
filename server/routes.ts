@@ -150,20 +150,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "Username already exists" });
       }
 
-      const existingEmail = await storage.getUserByEmail(email);
-      if (existingEmail) {
-        return res.status(409).json({ message: "Email already exists" });
-      }
-
       // Hash the password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create new user
+      // Create new user with new schema
       const newUser = await storage.createUser({
         username,
         email,
         passwordHash,
-        role,
+        systemRole: role || "user", // Map old role to systemRole
         isActive: true,
       });
 
@@ -177,7 +172,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: newUser.id,
           username: newUser.username,
           email: newUser.email,
-          role: newUser.role,
+          systemRole: newUser.systemRole,
+          customRoleId: newUser.customRoleId,
         },
       });
     } catch (error) {
@@ -209,7 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: user.id,
               username: user.username,
               email: user.email,
-              role: user.role,
+              systemRole: user.systemRole,
+              customRoleId: user.customRoleId,
+              customRole: user.customRole,
             },
           });
         }
@@ -295,7 +293,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user.id,
           username: user.username,
           email: user.email,
-          role: user.role,
+          systemRole: user.systemRole,
+          customRoleId: user.customRoleId,
+          customRole: user.customRole,
         },
       });
     } catch (error) {
@@ -312,7 +312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role,
+        systemRole: user.systemRole,
+        customRoleId: user.customRoleId,
+        customRole: user.customRole,
         isActive: user.isActive,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
@@ -345,7 +347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
-        role: updatedUser.role,
+        systemRole: updatedUser.systemRole,
+        customRoleId: updatedUser.customRoleId,
         isActive: updatedUser.isActive,
       });
     } catch (error) {
@@ -372,6 +375,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Role Management API Endpoints
+  
+  // Get all roles
+  app.get("/api/admin/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roles = await storage.getRoles();
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      res.status(500).json({ message: "Failed to fetch roles" });
+    }
+  });
+
+  // Get specific role with datasets
+  app.get("/api/admin/roles/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const role = await storage.getRole(roleId);
+      
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      
+      res.json(role);
+    } catch (error) {
+      console.error("Error fetching role:", error);
+      res.status(500).json({ message: "Failed to fetch role" });
+    }
+  });
+
+  // Create new role
+  app.post("/api/admin/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { name, description, datasetIds } = req.body;
+      
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ message: "Role name is required" });
+      }
+
+      // Check if role name already exists
+      const existingRole = await storage.getRoleByName(name.trim());
+      if (existingRole) {
+        return res.status(409).json({ message: "Role name already exists" });
+      }
+
+      const role = await storage.createRole({
+        name: name.trim(),
+        description: description?.trim(),
+        datasetIds: datasetIds || [],
+      });
+
+      res.status(201).json(role);
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Failed to create role" });
+    }
+  });
+
+  // Update role
+  app.put("/api/admin/roles/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const { name, description, datasetIds } = req.body;
+      
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ message: "Role name is required" });
+      }
+
+      // Check if role name already exists (excluding current role)
+      const existingRole = await storage.getRoleByName(name.trim());
+      if (existingRole && existingRole.id !== roleId) {
+        return res.status(409).json({ message: "Role name already exists" });
+      }
+
+      const updatedRole = await storage.updateRole(roleId, {
+        name: name.trim(),
+        description: description?.trim(),
+        datasetIds: datasetIds,
+      });
+
+      if (!updatedRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.json(updatedRole);
+    } catch (error) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  // Delete role
+  app.delete("/api/admin/roles/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      
+      const success = await storage.deleteRole(roleId);
+      if (!success) {
+        return res.status(404).json({ message: "Role not found or is a system role" });
+      }
+
+      res.json({ message: "Role deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ message: "Failed to delete role" });
+    }
+  });
+
+  // Assign role to user
+  app.post("/api/admin/users/:userId/assign-role", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { roleId } = req.body;
+      
+      if (!roleId) {
+        return res.status(400).json({ message: "Role ID is required" });
+      }
+
+      // Verify role exists
+      const role = await storage.getRole(roleId);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Verify user exists
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.assignRoleToUser(userId, roleId);
+      res.json({ message: "Role assigned successfully" });
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      res.status(500).json({ message: "Failed to assign role" });
+    }
+  });
+
+  // Remove role from user
+  app.delete("/api/admin/users/:userId/role", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      // Verify user exists
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.removeRoleFromUser(userId);
+      res.json({ message: "Role removed successfully" });
+    } catch (error) {
+      console.error("Error removing role:", error);
+      res.status(500).json({ message: "Failed to remove role" });
+    }
+  });
+
+  // Add dataset to role
+  app.post("/api/admin/roles/:roleId/datasets/:datasetId", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.roleId);
+      const datasetId = parseInt(req.params.datasetId);
+      
+      // Verify role exists
+      const role = await storage.getRole(roleId);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Verify dataset exists
+      const dataset = await storage.getDataset(datasetId);
+      if (!dataset) {
+        return res.status(404).json({ message: "Dataset not found" });
+      }
+
+      await storage.addDatasetToRole(roleId, datasetId);
+      res.json({ message: "Dataset added to role successfully" });
+    } catch (error) {
+      console.error("Error adding dataset to role:", error);
+      res.status(500).json({ message: "Failed to add dataset to role" });
+    }
+  });
+
+  // Remove dataset from role
+  app.delete("/api/admin/roles/:roleId/datasets/:datasetId", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.roleId);
+      const datasetId = parseInt(req.params.datasetId);
+      
+      await storage.removeDatasetFromRole(roleId, datasetId);
+      res.json({ message: "Dataset removed from role successfully" });
+    } catch (error) {
+      console.error("Error removing dataset from role:", error);
+      res.status(500).json({ message: "Failed to remove dataset from role" });
     }
   });
 
@@ -590,8 +790,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dataset endpoints with pagination and filtering
-  app.get("/api/datasets", async (req, res) => {
+  // Dataset endpoints with pagination and filtering (role-based access)
+  app.get("/api/datasets", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { 
         page = "1", 
@@ -609,13 +809,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Request params - page: ${page}, limit: ${limit}`);
       console.log(`Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
 
-      // Use preloaded cached datasets for maximum performance
-      let allDatasets = getCached<any[]>('datasets-all');
+      // Get datasets based on user role and permissions
+      const userId = req.user!.id;
+      const userCacheKey = `datasets-user-${userId}`;
+      
+      let allDatasets = getCached<any[]>(userCacheKey);
       
       if (!allDatasets) {
-        console.log('Cache miss - loading datasets from storage');
-        allDatasets = await storage.getDatasets();
-        setCache('datasets-all', allDatasets, 300000); // 5 minutes cache
+        console.log(`Cache miss - loading datasets for user ${userId}`);
+        allDatasets = await storage.getDatasetsForUser(userId);
+        setCache(userCacheKey, allDatasets, 300000); // 5 minutes cache per user
       }
       
       // Apply filters
@@ -808,17 +1011,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/datasets/:id", async (req, res) => {
+  app.get("/api/datasets/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid dataset ID" });
       }
       
-      const dataset = await storage.getDataset(id);
+      const userId = req.user!.id;
+      const dataset = await storage.getDatasetForUser(id, userId);
       
       if (!dataset) {
-        return res.status(404).json({ message: "Dataset not found" });
+        return res.status(404).json({ message: "Dataset not found or access denied" });
       }
 
       res.json(dataset);
@@ -828,14 +1032,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Insights endpoints
-  app.post("/api/datasets/:id/insights", async (req, res) => {
+  // AI Insights endpoints (role-based access)
+  app.post("/api/datasets/:id/insights", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
-      const dataset = await storage.getDataset(id);
+      const userId = req.user!.id;
+      const dataset = await storage.getDatasetForUser(id, userId);
       
       if (!dataset) {
-        return res.status(404).json({ message: "Dataset not found" });
+        return res.status(404).json({ message: "Dataset not found or access denied" });
       }
 
       const insights = await openAIService.generateDatasetInsights(dataset);
@@ -850,14 +1055,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dataset download endpoint
-  app.get("/api/datasets/:id/download", async (req, res) => {
+  // Dataset download endpoint (role-based access)
+  app.get("/api/datasets/:id/download", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
-      const dataset = await storage.getDataset(id);
+      const userId = req.user!.id;
+      const dataset = await storage.getDatasetForUser(id, userId);
       
       if (!dataset) {
-        return res.status(404).json({ error: "Dataset not found" });
+        return res.status(404).json({ error: "Dataset not found or access denied" });
       }
       
       const awsConfig = await storage.getAwsConfig();
@@ -889,8 +1095,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced dataset chat endpoint with file access and visualization
-  app.post("/api/datasets/:id/chat", async (req, res) => {
+  // Enhanced dataset chat endpoint with file access and visualization (role-based access)
+  app.post("/api/datasets/:id/chat", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
       const { message, conversationHistory, enableVisualization } = req.body;
@@ -899,9 +1105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      const dataset = await storage.getDataset(id);
+      const userId = req.user!.id;
+      const dataset = await storage.getDatasetForUser(id, userId);
       if (!dataset) {
-        return res.status(404).json({ message: "Dataset not found" });
+        return res.status(404).json({ message: "Dataset not found or access denied" });
       }
 
       const response = await openAIService.chatWithDatasetEnhanced(
@@ -918,8 +1125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Batch dataset chat endpoint for multi-dataset analysis
-  app.post("/api/datasets/batch-chat", async (req, res) => {
+  // Batch dataset chat endpoint for multi-dataset analysis (role-based access)
+  app.post("/api/datasets/batch-chat", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { message, datasetIds, conversationHistory, enableVisualization } = req.body;
       
@@ -931,12 +1138,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Dataset IDs are required" });
       }
 
-      // Fetch all datasets
+      // Fetch all datasets with role-based access
+      const userId = req.user!.id;
       const datasets = await Promise.all(
         datasetIds.map(async (id: number) => {
-          const dataset = await storage.getDataset(id);
+          const dataset = await storage.getDatasetForUser(id, userId);
           if (!dataset) {
-            throw new Error(`Dataset with ID ${id} not found`);
+            throw new Error(`Dataset with ID ${id} not found or access denied`);
           }
           return dataset;
         })
@@ -956,8 +1164,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Find datasets by query
-  app.post("/api/datasets/search", async (req, res) => {
+  // Find datasets by query (role-based access)
+  app.post("/api/datasets/search", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { query } = req.body;
       
@@ -966,7 +1174,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Starting search for:', query);
-      const datasets = await storage.getDatasets();
+      const userId = req.user!.id;
+      const datasets = await storage.getDatasetsForUser(userId);
       console.log('Found datasets:', datasets.length);
       
       // Use fallback search primarily with AI search as enhancement
@@ -983,7 +1192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/datasets/bulk-insights", async (req, res) => {
+  app.post("/api/datasets/bulk-insights", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const datasets = await storage.getDatasets();
       
@@ -1010,11 +1219,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download sample endpoint
-  app.get("/api/datasets/:id/download-sample", async (req, res) => {
+  // Download sample endpoint (role-based access)
+  app.get("/api/datasets/:id/download-sample", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
-      const dataset = await storage.getDataset(id);
+      const userId = req.user!.id;
+      const dataset = await storage.getDatasetForUser(id, userId);
       
       if (!dataset) {
         return res.status(404).json({ message: "Dataset not found" });
