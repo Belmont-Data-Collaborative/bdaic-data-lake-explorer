@@ -816,7 +816,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let allDatasets = getCached<any[]>(userCacheKey);
       
       if (!allDatasets) {
-        console.log(`Cache miss - loading datasets for user ${userId}`);
         allDatasets = await storage.getDatasetsForUser(userId);
         setCache(userCacheKey, allDatasets, 300000); // 5 minutes cache per user
       }
