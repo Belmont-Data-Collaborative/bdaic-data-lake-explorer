@@ -12,6 +12,7 @@ interface User {
   username: string;
   email: string;
   role: string;
+  systemRole?: string;
 }
 
 interface MainLayoutProps {
@@ -43,8 +44,9 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
     }
   };
 
-  // Keyboard navigation for tab switching
-  const availableTabs = currentUser?.role === 'admin' 
+  // Keyboard navigation for tab switching - check both role fields for admin
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.systemRole === 'admin';
+  const availableTabs = isAdmin
     ? ["home", "user-panel", "aws-config", "admin"]
     : ["home", "user-panel"];
 
@@ -59,7 +61,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
       const nextIndex = currentIndex < availableTabs.length - 1 ? currentIndex + 1 : 0;
       handleTabChange(availableTabs[nextIndex]!);
     },
-    isActive: true,
+
   });
 
   return (
@@ -99,7 +101,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                 <div 
                   className="hidden md:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg"
                   role="status"
-                  aria-label={`Current user: ${currentUser.username}, role: ${currentUser.role}`}
+                  aria-label={`Current user: ${currentUser.username}, role: ${currentUser.systemRole || currentUser.role}`}
                 >
                   <User className="text-primary flex-shrink-0" size={16} aria-hidden="true" />
                   <div className="flex flex-col">
@@ -107,11 +109,11 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                       {currentUser.username}
                     </span>
                     <Badge 
-                      variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'} 
+                      variant={isAdmin ? 'destructive' : 'secondary'} 
                       className="text-xs px-1 py-0"
-                      aria-label={`User role: ${currentUser.role}`}
+                      aria-label={`User role: ${currentUser.systemRole || currentUser.role}`}
                     >
-                      {currentUser.role}
+                      {currentUser.systemRole || currentUser.role}
                     </Badge>
                   </div>
                 </div>
@@ -148,7 +150,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           <nav id="navigation" className="border-t border-border overflow-x-auto" role="navigation" aria-label="Main navigation">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
               <TabsList 
-                className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}
+                className={`flex w-full min-w-max sm:grid ${isAdmin ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}
                 role="tablist"
                 aria-label="Main navigation tabs"
               >
@@ -172,7 +174,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   <User size={16} aria-hidden="true" />
                   <span className="text-responsive-sm">User Panel</span>
                 </TabsTrigger>
-                {currentUser?.role === 'admin' && (
+                {isAdmin && (
                   <TabsTrigger 
                     value="aws-config" 
                     className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
@@ -184,7 +186,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                     <span className="text-responsive-sm">AWS Config</span>
                   </TabsTrigger>
                 )}
-                {currentUser?.role === 'admin' && (
+                {isAdmin && (
                   <TabsTrigger 
                     value="admin" 
                     className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
