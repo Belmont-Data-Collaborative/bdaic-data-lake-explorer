@@ -88,6 +88,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         
         const data = await res.json();
         console.log('Users data received:', data.length, 'users');
+        console.log('First user data:', data[0]); // Log the structure of user data
         return data;
       } catch (err) {
         console.error('Admin API error:', err);
@@ -967,9 +968,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {user.customRoleId ? (
+                        {user.customRole ? (
                           <Badge variant="outline">
-                            {roles?.find((r: Role) => r.id === user.customRoleId)?.name || "Unknown"}
+                            {user.customRole.name}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">No custom role</span>
@@ -995,7 +996,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedUserForRole(user);
-                                    setSelectedRoleToAssign(user.customRoleId?.toString() || "");
+                                    setSelectedRoleToAssign(user.customRole?.id?.toString() || "");
                                     setIsAssignRoleOpen(true);
                                   }}
                                 >
@@ -1064,7 +1065,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                               onClick={() => {
                                 removeRoleMutation.mutate(user.id);
                               }}
-                              disabled={!user.customRoleId || removeRoleMutation.isPending}
+                              disabled={!user.customRole || removeRoleMutation.isPending}
                             >
                               <Trash2 className="h-4 w-4 mr-1" />
                               {removeRoleMutation.isPending ? "Removing..." : "Remove Role"}
