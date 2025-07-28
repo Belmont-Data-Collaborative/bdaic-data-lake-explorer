@@ -11,8 +11,7 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role?: string; // Legacy compatibility
-  systemRole: string; // New JWT-based role system
+  role: string;
   customRoleId?: number;
 }
 
@@ -45,8 +44,8 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
     }
   };
 
-  // Keyboard navigation for tab switching - check both role fields for admin
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.systemRole === 'admin';
+  // Keyboard navigation for tab switching
+  const isAdmin = currentUser?.role === 'admin';
   const availableTabs = isAdmin
     ? ["home", "user-panel", "aws-config", "admin"]
     : ["home", "user-panel"];

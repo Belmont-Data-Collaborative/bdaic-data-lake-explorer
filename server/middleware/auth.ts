@@ -29,7 +29,11 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     return res.status(403).json({ message: "User account is inactive" });
   }
 
-  req.user = decoded;
+  req.user = {
+    id: decoded.id,
+    username: decoded.username,
+    role: decoded.systemRole || decoded.role || 'user' // Map systemRole to role for consistency
+  };
   next();
 };
 
