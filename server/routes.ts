@@ -36,6 +36,24 @@ function invalidateCache(pattern?: string): void {
   }
 }
 
+// Number formatting function (server-side version of client formatNumber)
+function formatNumber(num: number): string {
+  if (num < 1000) {
+    return num.toLocaleString();
+  } else if (num < 1000000) {
+    return num.toLocaleString();
+  } else if (num < 1000000000) {
+    const millions = num / 1000000;
+    return (millions % 1 === 0) ? `${millions}M` : `${millions.toFixed(1)}M`;
+  } else if (num < 1000000000000) {
+    const billions = num / 1000000000;
+    return (billions % 1 === 0) ? `${billions}B` : `${billions.toFixed(1)}B`;
+  } else {
+    const trillions = num / 1000000000000;
+    return (trillions % 1 === 0) ? `${trillions}T` : `${trillions.toFixed(1)}T`;
+  }
+}
+
 // Enhanced cache warming with performance optimizations
 async function warmCache(): Promise<void> {
   try {
@@ -1517,7 +1535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Format results with folder labels
       const results = Array.from(folderTotals.entries()).map(([folderName, total]) => ({
-        folder_label: `${folderName.toUpperCase().replace(/_/g, ' ')}(${Math.round(total).toLocaleString()})`,
+        folder_label: `${folderName.toUpperCase().replace(/_/g, ' ')}(${formatNumber(Math.round(total))})`,
         total_community_data_points: Math.round(total)
       }));
       

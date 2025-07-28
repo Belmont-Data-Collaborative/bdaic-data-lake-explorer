@@ -2,6 +2,7 @@ import { Folder, ChevronRight, BarChart3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useMemo, memo } from "react";
+import { formatNumber } from "@/lib/utils";
 import type { Dataset } from "@shared/schema";
 
 interface FolderCardProps {
@@ -74,7 +75,7 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
                 >
                   Folder containing {datasetCount} datasets with a total size of {formatFileSize(totalSize)}. 
                   Available formats: {formatCounts.map(f => `${f.format} (${f.count})`).join(', ')}.
-                  {totalCommunityDataPoints && ` Community data points: ${totalCommunityDataPoints.toLocaleString()}.`}
+                  {totalCommunityDataPoints && ` Community data points: ${formatNumber(totalCommunityDataPoints)}.`}
                 </div>
                 
                 <section aria-label="Folder statistics">
@@ -90,9 +91,9 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
                       <Badge 
                         variant="outline" 
                         className="bg-blue-50 text-blue-700 border-blue-200"
-                        aria-label={`${totalCommunityDataPoints.toLocaleString()} community data points`}
+                        aria-label={`${formatNumber(totalCommunityDataPoints)} community data points`}
                       >
-                        {totalCommunityDataPoints.toLocaleString()} CDP
+                        {formatNumber(totalCommunityDataPoints)} CDP
                       </Badge>
                     )}
                   </div>

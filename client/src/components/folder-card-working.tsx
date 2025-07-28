@@ -2,6 +2,7 @@ import { Folder, ChevronRight, BarChart3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useMemo, memo } from "react";
+import { formatNumber } from "@/lib/utils";
 import type { Dataset } from "@shared/schema";
 
 interface FolderCardProps {
@@ -70,7 +71,7 @@ export const FolderCard = memo(function FolderCard({ folderName, datasets, onCli
                 </Badge>
                 {totalCommunityDataPoints && (
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {totalCommunityDataPoints.toLocaleString()} CDP
+                    {formatNumber(totalCommunityDataPoints)} CDP
                   </Badge>
                 )}
               </div>
