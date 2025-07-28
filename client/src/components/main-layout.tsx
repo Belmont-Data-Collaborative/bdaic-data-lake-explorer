@@ -11,8 +11,9 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: string;
-  systemRole?: string;
+  role?: string; // Legacy compatibility
+  systemRole: string; // New JWT-based role system
+  customRoleId?: number;
 }
 
 interface MainLayoutProps {

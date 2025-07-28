@@ -18,7 +18,9 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: string;
+  role?: string; // Legacy compatibility
+  systemRole: string; // New JWT-based role system
+  customRoleId?: number;
 }
 
 function Router() {
@@ -127,7 +129,7 @@ function Router() {
         <Route path="/user-panel" component={() => <UserPanel currentUser={currentUser} />} />
         <Route path="/aws-config" component={() => {
           // Role-based access control for AWS configuration
-          if (currentUser?.role !== 'admin') {
+          if (currentUser?.systemRole !== 'admin' && currentUser?.role !== 'admin') {
             return (
               <div className="container mx-auto py-8">
                 <div className="text-center">
@@ -141,7 +143,7 @@ function Router() {
         }} />
         <Route path="/admin" component={() => {
           // Role-based access control for admin panel
-          if (currentUser?.role !== 'admin') {
+          if (currentUser?.systemRole !== 'admin' && currentUser?.role !== 'admin') {
             return (
               <div className="container mx-auto py-8">
                 <div className="text-center">
