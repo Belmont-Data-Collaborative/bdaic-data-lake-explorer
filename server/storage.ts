@@ -37,6 +37,10 @@ export interface IStorage {
   updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   getAllUsers(): Promise<UserWithRole[]>;
+  verifyUserPassword(username: string, password: string): Promise<UserWithRole | null>;
+  updateUserLastLogin(id: number): Promise<void>;
+  generateJWT(user: User): string;
+  verifyJWT(token: string): { id: number; username: string; systemRole: string; customRoleId?: number } | null;
   
   // Role management operations
   getRoles(): Promise<Role[]>;
@@ -326,13 +330,13 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(authConfig.id, existing.id))
         .returning();
-      return updated;
+      return updated!;
     } else {
       const [created] = await db
         .insert(authConfig)
         .values({ passwordHash })
         .returning();
-      return created;
+      return created!;
     }
   }
 
@@ -497,7 +501,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+  async verifyUserPassword(username: string, password: string): Promise<UserWithRole | null> {
     const user = await this.getUserByUsername(username);
     if (!user || !user.isActive) {
       return null;

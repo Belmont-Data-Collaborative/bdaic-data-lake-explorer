@@ -4,14 +4,14 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema } from "@shared/schema";
+import { insertAwsConfigSchema, registerUserSchema, loginUserSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
+import { authenticateToken, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
 // Simple cache for expensive operations
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-function getCached<T>(key: string, ttl: number = 30000): T | null {
+function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data as T;
@@ -142,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { username, email, password, role = "user" } = validation.data;
+      const { username, email, password, systemRole = "user" } = validation.data;
 
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         email,
         passwordHash,
-        systemRole: role || "user", // Map old role to systemRole
+        systemRole: systemRole || "user", // Map old role to systemRole
         isActive: true,
       });
 
@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: user.email,
               systemRole: user.systemRole,
               customRoleId: user.customRoleId,
-              customRole: user.customRole,
+              customRole: user.customRoleId,
             },
           });
         }
@@ -1441,7 +1441,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let batchStats = getCached<Record<number, any>>(cacheKey);
       
       if (!batchStats) {
-        batchStats = await storage.getBatchDownloadStats(datasetIds);
+        const statsPromises = datasetIds.map(id => storage.getDownloadStats(id));
+        const statsArray = await Promise.all(statsPromises);
+        batchStats = Object.fromEntries(datasetIds.map((id, index) => [id, statsArray[index]]));
         setCache(cacheKey, batchStats, 300000); // 5 minute cache
       }
       
