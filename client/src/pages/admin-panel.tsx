@@ -59,6 +59,11 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     description: "",
     selectedFolders: []
   });
+  
+  // State for role assignment dialog
+  const [isAssignRoleOpen, setIsAssignRoleOpen] = useState(false);
+  const [selectedUserForRole, setSelectedUserForRole] = useState<any>(null);
+  const [selectedRoleToAssign, setSelectedRoleToAssign] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -267,6 +272,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+      setIsAssignRoleOpen(false);
+      setSelectedUserForRole(null);
+      setSelectedRoleToAssign("");
       toast({
         title: "Role assigned",
         description: "The role has been successfully assigned to the user.",
@@ -277,6 +285,33 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       toast({
         title: "Error",
         description: "Failed to assign role. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Remove role from user mutation
+  const removeRoleMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('DELETE', `/api/admin/users/${userId}/role`, null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+      toast({
+        title: "Role removed",
+        description: "Custom role has been removed from user.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error removing role:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove role. Please try again.",
         variant: "destructive",
       });
     },
@@ -936,57 +971,95 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                             Admin - No role assignment needed
                           </Badge>
                         ) : (
-                          <Select
-                            value={user.customRoleId?.toString() || "none"}
-                            onValueChange={(value) => {
-                              console.log("Role change selected:", value, "for user:", user.id);
-                              if (value === "none") {
-                                console.log("Removing role from user:", user.id);
-                                // Remove role
-                                const token = localStorage.getItem('authToken');
-                                apiRequest('DELETE', `/api/admin/users/${user.id}/role`, null, {
-                                  'Authorization': `Bearer ${token}`
-                                }).then((response) => {
-                                  console.log("Role removal successful:", response);
-                                  console.log("Before cache refresh - user customRoleId:", user.customRoleId);
-                                  queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-                                  queryClient.refetchQueries({ queryKey: ['/api/admin/users'] }).then(() => {
-                                    console.log("Cache refresh completed");
-                                  });
-                                  toast({
-                                    title: "Role removed",
-                                    description: "Custom role has been removed from user.",
-                                  });
-                                }).catch((error) => {
-                                  console.error("Error removing role:", error);
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to remove role. Please try again.",
-                                    variant: "destructive",
-                                  });
-                                });
-                              } else {
-                                console.log("Assigning role:", value, "to user:", user.id);
-                                // Assign role
-                                assignRoleMutation.mutate({
-                                  userId: user.id,
-                                  roleId: parseInt(value)
-                                });
+                          <div className="flex space-x-2">
+                            <Dialog open={isAssignRoleOpen && selectedUserForRole?.id === user.id} onOpenChange={(open) => {
+                              if (!open) {
+                                setIsAssignRoleOpen(false);
+                                setSelectedUserForRole(null);
+                                setSelectedRoleToAssign("");
                               }
-                            }}
-                          >
-                            <SelectTrigger className="w-48">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No custom role</SelectItem>
-                              {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
-                                <SelectItem key={role.id} value={role.id.toString()}>
-                                  {role.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            }}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserForRole(user);
+                                    setSelectedRoleToAssign(user.customRoleId?.toString() || "");
+                                    setIsAssignRoleOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Assign Role
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Assign Role to {user.username}</DialogTitle>
+                                  <DialogDescription>
+                                    Select a custom role to assign to this user. This will control which datasets they can access.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="text-sm font-medium">Select Role</label>
+                                    <Select
+                                      value={selectedRoleToAssign}
+                                      onValueChange={setSelectedRoleToAssign}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Choose a role..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
+                                          <SelectItem key={role.id} value={role.id.toString()}>
+                                            {role.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="flex justify-end space-x-2">
+                                    <Button 
+                                      variant="outline" 
+                                      onClick={() => {
+                                        setIsAssignRoleOpen(false);
+                                        setSelectedUserForRole(null);
+                                        setSelectedRoleToAssign("");
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      onClick={() => {
+                                        if (selectedRoleToAssign && selectedUserForRole) {
+                                          assignRoleMutation.mutate({
+                                            userId: selectedUserForRole.id,
+                                            roleId: parseInt(selectedRoleToAssign)
+                                          });
+                                        }
+                                      }}
+                                      disabled={!selectedRoleToAssign || assignRoleMutation.isPending}
+                                    >
+                                      {assignRoleMutation.isPending ? "Assigning..." : "Assign Role"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                removeRoleMutation.mutate(user.id);
+                              }}
+                              disabled={!user.customRoleId || removeRoleMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              {removeRoleMutation.isPending ? "Removing..." : "Remove Role"}
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
