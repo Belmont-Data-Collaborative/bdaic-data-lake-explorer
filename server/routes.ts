@@ -487,7 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Assign role to user
-  app.post("/api/admin/users/:userId/assign-role", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+  app.post("/api/admin/users/:userId/role", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const { roleId } = req.body;

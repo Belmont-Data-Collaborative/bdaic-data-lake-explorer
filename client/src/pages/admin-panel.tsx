@@ -930,42 +930,55 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={user.customRoleId?.toString() || "none"}
-                          onValueChange={(value) => {
-                            if (value === "none") {
-                              // Remove role
-                              const token = localStorage.getItem('authToken');
-                              apiRequest('DELETE', `/api/admin/users/${user.id}/role`, null, {
-                                'Authorization': `Bearer ${token}`
-                              }).then(() => {
-                                queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-                                toast({
-                                  title: "Role removed",
-                                  description: "Custom role has been removed from user.",
+                        {user.role === 'admin' ? (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Admin - No role assignment needed
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={user.customRoleId?.toString() || "none"}
+                            onValueChange={(value) => {
+                              if (value === "none") {
+                                // Remove role
+                                const token = localStorage.getItem('authToken');
+                                apiRequest('DELETE', `/api/admin/users/${user.id}/role`, null, {
+                                  'Authorization': `Bearer ${token}`
+                                }).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+                                  toast({
+                                    title: "Role removed",
+                                    description: "Custom role has been removed from user.",
+                                  });
+                                }).catch((error) => {
+                                  console.error("Error removing role:", error);
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to remove role. Please try again.",
+                                    variant: "destructive",
+                                  });
                                 });
-                              });
-                            } else {
-                              // Assign role
-                              assignRoleMutation.mutate({
-                                userId: user.id,
-                                roleId: parseInt(value)
-                              });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No custom role</SelectItem>
-                            {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
-                              <SelectItem key={role.id} value={role.id.toString()}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              } else {
+                                // Assign role
+                                assignRoleMutation.mutate({
+                                  userId: user.id,
+                                  roleId: parseInt(value)
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No custom role</SelectItem>
+                              {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
+                                <SelectItem key={role.id} value={role.id.toString()}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
