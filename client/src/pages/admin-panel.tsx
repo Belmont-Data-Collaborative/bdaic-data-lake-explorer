@@ -96,6 +96,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     enabled: !!localStorage.getItem('authToken') && !!currentUser,
     retry: false, // Don't retry auth errors
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    gcTime: 0, // Don't cache data
   });
 
   // Fetch all roles
@@ -114,6 +116,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     enabled: !!localStorage.getItem('authToken') && !!currentUser,
     retry: false,
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    gcTime: 0, // Don't cache data
   });
 
   // Fetch available folders
@@ -269,9 +273,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      // Force immediate cache reset to ensure fresh data
+      await queryClient.resetQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.resetQueries({ queryKey: ['/api/admin/roles'] });
       setIsAssignRoleOpen(false);
       setSelectedUserForRole(null);
       setSelectedRoleToAssign("");
@@ -299,9 +304,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      // Force immediate cache reset to ensure fresh data
+      await queryClient.resetQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.resetQueries({ queryKey: ['/api/admin/roles'] });
       toast({
         title: "Role removed",
         description: "Custom role has been removed from user.",

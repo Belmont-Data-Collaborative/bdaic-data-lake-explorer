@@ -80,6 +80,14 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 28, 2025: **Enhanced Role Management UI**: Replaced dropdown with intuitive "Assign Role" and "Remove Role" buttons in Admin Panel
+  - **Assign Role Button**: Opens modal dialog for selecting roles to assign to users with proper validation
+  - **Remove Role Button**: Direct one-click removal of custom roles from users with confirmation
+  - **Improved UX**: Buttons replace complex dropdown interface for clearer role management workflow
+  - **Real-time Updates**: UI automatically refreshes after role changes using aggressive cache invalidation (resetQueries)
+  - **Loading States**: Both buttons show appropriate loading states during API operations
+  - **Better Performance**: Added `staleTime: 0` and `gcTime: 0` to ensure fresh data after mutations
+  - **Error Handling**: Comprehensive error handling with toast notifications for success/failure states
 - July 28, 2025: **🎉 MAJOR MILESTONE**: Successfully implemented and tested comprehensive role-based access control system
   - **Complete Role Management**: Admins can create custom roles determining which datasets users can access
   - **Database Schema**: Enhanced user schema with systemRole (admin/user) and customRoleId fields
