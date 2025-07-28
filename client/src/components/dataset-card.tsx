@@ -45,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatNumber } from "@/lib/utils";
 import { DatasetChat } from "@/components/dataset-chat";
 import type { Dataset, DatasetInsights, DatasetMetadata } from "@shared/schema";
 
@@ -466,7 +467,7 @@ export function DatasetCard({
                         Record Count
                       </span>
                       <span className="text-sm font-medium text-foreground text-ellipsis">
-                        {metadata?.recordCount || "Unknown"}
+                        {metadata?.recordCount ? formatNumber(parseInt(metadata.recordCount)) : "Unknown"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-border">
@@ -565,13 +566,13 @@ export function DatasetCard({
                             </Popover>
                           </span>
                           <span className="text-sm font-medium text-gray-900">
-                            {(
-                              parseInt(metadata.recordCount) *
-                              metadata.columnCount *
-                              (metadata.completenessScore / 100)
-                            ).toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })}
+                            {formatNumber(
+                              Math.round(
+                                parseInt(metadata.recordCount) *
+                                metadata.columnCount *
+                                (metadata.completenessScore / 100)
+                              )
+                            )}
                           </span>
                         </div>
                       )}

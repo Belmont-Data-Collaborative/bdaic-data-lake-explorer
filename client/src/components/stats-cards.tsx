@@ -1,6 +1,7 @@
 import { Folder, HardDrive, Map, Clock, BarChart3 } from "lucide-react";
 import { useDynamicTime } from "@/hooks/use-dynamic-time";
 import { useCountAnimation } from "@/hooks/use-count-animation";
+import { formatNumber } from "@/lib/utils";
 
 interface Stats {
   totalDatasets: number;
@@ -105,7 +106,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Community Data Points</p>
-              <p className="text-2xl font-bold text-gray-900">{placeholderPoints.value.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatNumber(placeholderPoints.value)}</p>
             </div>
             <div className={`w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center ${placeholderPoints.isAnimating ? 'animate-stat-pulse' : ''}`}>
               <BarChart3 className="text-blue-600" size={24} />
@@ -151,7 +152,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Community Data Points",
-      value: animatedCommunityPoints.value.toLocaleString(),
+      value: formatNumber(animatedCommunityPoints.value),
       icon: BarChart3,
       bgColor: "bg-blue-100",
       iconColor: "text-blue-600",
