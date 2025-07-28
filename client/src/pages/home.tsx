@@ -56,17 +56,7 @@ export default function Home() {
     limit: number;
     totalPages: number;
   }>({
-    queryKey: ["/api/datasets", "all"],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        page: "1",
-        limit: "10000", // Load all datasets
-        folder: "all",
-      });
-      console.log("All datasets query URL:", `/api/datasets?${params}`);
-      const response = await fetch(`/api/datasets?${params}`);
-      return response.json();
-    },
+    queryKey: ["/api/datasets?page=1&limit=10000&folder=all"],
     staleTime: 60000, // 1 minute cache
     gcTime: 300000, // 5 minutes garbage collection
   });
@@ -100,7 +90,16 @@ export default function Home() {
         ...(selectedFolder && formatFilter !== "all" && { format: formatFilter }),
         ...(selectedFolder && tagFilter !== "all" && { tag: tagFilter }),
       });
-      const response = await fetch(`/api/datasets?${params}`);
+      
+      // Use the default query function which includes authentication
+      const response = await fetch(`/api/datasets?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${await response.text()}`);
+      }
       return response.json();
     },
     enabled: !!selectedFolder, // Only run when folder is selected
@@ -151,7 +150,16 @@ export default function Home() {
       if (tagFilter && tagFilter !== "all") {
         params.set("tag", tagFilter);
       }
-      const response = await fetch(`/api/folders?${params}`);
+      
+      // Use the default query function which includes authentication
+      const response = await fetch(`/api/folders?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${await response.text()}`);
+      }
       return response.json();
     },
     staleTime: 300000, // 5 minutes cache (shorter since tag filtering affects results)

@@ -83,9 +83,15 @@ function Router() {
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      
+      // Invalidate all queries to refresh with new authentication
+      queryClient.invalidateQueries();
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
+      
+      // Invalidate all queries for legacy login too
+      queryClient.invalidateQueries();
     }
   };
 
