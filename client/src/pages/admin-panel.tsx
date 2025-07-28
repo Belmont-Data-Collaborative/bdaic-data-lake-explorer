@@ -25,8 +25,6 @@ interface User {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  customRoleId?: number | null;
-  customRole?: { id: number; name: string; description?: string } | null;
 }
 
 interface Role {
@@ -61,8 +59,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     description: "",
     selectedFolders: []
   });
-  const [assigningRoleUser, setAssigningRoleUser] = useState<User | null>(null);
-  const [selectedRoleForAssignment, setSelectedRoleForAssignment] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -270,8 +266,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      setAssigningRoleUser(null);
-      setSelectedRoleForAssignment(null);
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({
         title: "Role assigned",
         description: "The role has been successfully assigned to the user.",
@@ -282,32 +277,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       toast({
         title: "Error",
         description: "Failed to assign role. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Remove role from user mutation
-  const removeRoleMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const token = localStorage.getItem('authToken');
-      const res = await apiRequest('DELETE', `/api/admin/users/${userId}/role`, null, {
-        'Authorization': `Bearer ${token}`
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      toast({
-        title: "Role removed",
-        description: "The role has been successfully removed from the user.",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error removing role:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove role. Please try again.",
         variant: "destructive",
       });
     },
@@ -574,147 +543,121 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     }
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col space-y-2">
-                      {/* Current Role Display */}
-                      {user.customRole && (
-                        <div className="text-xs text-muted-foreground">
-                          Current: {user.customRole.name}
-                        </div>
-                      )}
-                      
-                      <div className="flex space-x-2">
-                        {/* Assign Role Button */}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAssigningRoleUser(user)}
-                              disabled={currentUser?.id === user.id}
-                            >
-                              <Shield className="h-4 w-4 mr-1" />
-                              Assign Role
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Assign Role to {user.username}</DialogTitle>
-                              <DialogDescription>
-                                Select a custom role to assign to this user
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-sm font-medium">Select Role</label>
-                                <Select
-                                  value={selectedRoleForAssignment?.toString() || ""}
-                                  onValueChange={(value) => {
-                                    setSelectedRoleForAssignment(parseInt(value));
-                                  }}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Choose a role..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
-                                      <SelectItem key={role.id} value={role.id.toString()}>
-                                        <div className="flex flex-col">
-                                          <span className="font-medium">{role.name}</span>
-                                          {role.description && (
-                                            <span className="text-xs text-muted-foreground">{role.description}</span>
-                                          )}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex justify-end space-x-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    setAssigningRoleUser(null);
-                                    setSelectedRoleForAssignment(null);
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  onClick={() => {
-                                    if (selectedRoleForAssignment) {
-                                      assignRoleMutation.mutate({
-                                        userId: user.id,
-                                        roleId: selectedRoleForAssignment
-                                      });
-                                    }
-                                  }}
-                                  disabled={!selectedRoleForAssignment || assignRoleMutation.isPending}
-                                >
-                                  {assignRoleMutation.isPending ? "Assigning..." : "Assign Role"}
-                                </Button>
-                              </div>
+                    <div className="flex space-x-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingUser(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit User</DialogTitle>
+                            <DialogDescription>
+                              Update user role and status
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium">Role</label>
+                              <Select
+                                defaultValue={editingUser?.role}
+                                onValueChange={(value) => {
+                                  if (editingUser) {
+                                    setEditingUser({ ...editingUser, role: value });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">User</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          </DialogContent>
-                        </Dialog>
+                            <div>
+                              <label className="text-sm font-medium">Status</label>
+                              <Select
+                                defaultValue={editingUser?.isActive ? "active" : "inactive"}
+                                onValueChange={(value) => {
+                                  if (editingUser) {
+                                    setEditingUser({ ...editingUser, isActive: value === "active" });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="inactive">Inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              onClick={() => handleUpdateUser({
+                                role: editingUser?.role,
+                                isActive: editingUser?.isActive,
+                              })}
+                              disabled={updateUserMutation.isPending}
+                            >
+                              {updateUserMutation.isPending ? "Updating..." : "Update User"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
 
-                        {/* Remove Role Button */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeRoleMutation.mutate(user.id)}
-                          disabled={!user.customRole || currentUser?.id === user.id || removeRoleMutation.isPending}
-                        >
-                          <UserX className="h-4 w-4 mr-1" />
-                          Remove Role
-                        </Button>
-
-                        {/* Delete User Button */}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDeletingUser(user)}
-                                  disabled={currentUser?.id === user.id}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {currentUser?.id === user.id 
-                                  ? "Cannot delete your own account" 
-                                  : "Delete user"
-                                }
-                              </TooltipContent>
-                            </Tooltip>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Delete User</DialogTitle>
-                              <DialogDescription>
-                                Are you sure you want to delete this user? This action cannot be undone.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="flex justify-end space-x-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
-                                onClick={() => setDeletingUser(null)}
+                                size="sm"
+                                onClick={() => setDeletingUser(user)}
+                                disabled={currentUser?.id === user.id}
                               >
-                                Cancel
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="destructive"
-                                onClick={handleDeleteUser}
-                                disabled={deleteUserMutation.isPending}
-                              >
-                                {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {currentUser?.id === user.id 
+                                ? "Cannot delete your own account" 
+                                : "Delete user"
+                              }
+                            </TooltipContent>
+                          </Tooltip>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Delete User</DialogTitle>
+                            <DialogDescription>
+                              Are you sure you want to delete this user? This action cannot be undone.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setDeletingUser(null)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={handleDeleteUser}
+                              disabled={deleteUserMutation.isPending}
+                            >
+                              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </TableCell>
                 </TableRow>
