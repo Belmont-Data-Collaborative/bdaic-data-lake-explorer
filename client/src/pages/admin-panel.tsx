@@ -939,14 +939,20 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           <Select
                             value={user.customRoleId?.toString() || "none"}
                             onValueChange={(value) => {
+                              console.log("Role change selected:", value, "for user:", user.id);
                               if (value === "none") {
+                                console.log("Removing role from user:", user.id);
                                 // Remove role
                                 const token = localStorage.getItem('authToken');
                                 apiRequest('DELETE', `/api/admin/users/${user.id}/role`, null, {
                                   'Authorization': `Bearer ${token}`
-                                }).then(() => {
+                                }).then((response) => {
+                                  console.log("Role removal successful:", response);
+                                  console.log("Before cache refresh - user customRoleId:", user.customRoleId);
                                   queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-                                  queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+                                  queryClient.refetchQueries({ queryKey: ['/api/admin/users'] }).then(() => {
+                                    console.log("Cache refresh completed");
+                                  });
                                   toast({
                                     title: "Role removed",
                                     description: "Custom role has been removed from user.",
@@ -960,6 +966,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                                   });
                                 });
                               } else {
+                                console.log("Assigning role:", value, "to user:", user.id);
                                 // Assign role
                                 assignRoleMutation.mutate({
                                   userId: user.id,
