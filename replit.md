@@ -88,10 +88,12 @@ The build process creates optimized static assets for the frontend while bundlin
   - **User-Specific Caching**: Performance optimized with per-user dataset caching for role-based access
   - **Test Environment**: Successfully created admin user, custom "cdc_data_access" role with 10 CDC datasets
   - **Authentication Flow**: JWT-based login working, users see only datasets they have permission to access
-  - **Verified Results**: Admin users see all 259 datasets, regular users see only their role's datasets (10 CDC datasets)
+  - **Verified Results**: Admin users see all 259 datasets, users with custom roles see only their role's datasets (10 CDC datasets)
+  - **Default Access Policy**: Users without custom roles have full access to all datasets by default (unrestricted access)
+  - **Role Restriction Logic**: Only users assigned custom roles have their access restricted to role-specific datasets
   - **Complete API Coverage**: All endpoints (datasets, chat, insights, download) respect user role permissions
-  - **Admin Bypass Logic**: Admin users (systemRole: "admin") correctly bypass all role restrictions and see all data
-  - **Production Ready**: Role-based access control fully functional with proper admin privileges and user restrictions
+  - **Admin Bypass Logic**: Admin users (systemRole: "admin") always bypass all role restrictions and see all data
+  - **Production Ready**: Role-based access control fully functional with proper default access, role restrictions, and admin privileges
 - July 25, 2025: Enhanced retrieval accuracy and implemented comprehensive progressive scanning
   - **Major Enhancement**: Improved AI retrieval accuracy with enhanced embedding system using context-aware boosting and query preprocessing
   - Enhanced entity detection with fuzzy matching for counties and states using sophisticated pattern recognition

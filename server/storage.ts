@@ -74,17 +74,17 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
-    // If user is admin, return all datasets
+    // If user is admin, always return all datasets
     if (user.systemRole === 'admin') {
       return this.getDatasets();
     }
 
-    // If user has no custom role, return empty array
+    // If user has no custom role, they have full access by default (return all datasets)
     if (!user.customRoleId) {
-      return [];
+      return this.getDatasets();
     }
 
-    // Get datasets accessible through the user's custom role
+    // If user has a custom role, restrict access to only datasets in their role
     const accessibleDatasets = await db
       .select({
         id: datasets.id,
