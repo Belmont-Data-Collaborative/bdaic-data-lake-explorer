@@ -80,15 +80,16 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
-- July 25, 2025: Implemented lightweight embedding-based context retrieval system for enhanced AI chat
-  - **Major Enhancement**: Created Python-based embedding retriever using TF-IDF and cosine similarity for finding relevant CSV rows
-  - Built with scikit-learn instead of heavy sentence-transformers for Replit compatibility
-  - Created Node.js TypeScript wrapper (embedding-context.ts) to integrate Python script with Express backend
-  - Enhanced chatWithDatasetEnhanced method to use embedding retrieval for specific data point questions
-  - System automatically detects when to use embeddings based on question keywords (find, search, specific, etc.)
-  - Embedding retriever processes CSV samples (1MB) and finds most relevant rows using TF-IDF vectorization
-  - Added fallback mechanism to intelligent sampling when embedding retrieval is unavailable
-  - Embedding context includes both similar rows and dataset metadata for comprehensive AI responses
+- July 25, 2025: Enhanced retrieval accuracy and implemented comprehensive progressive scanning
+  - **Major Enhancement**: Improved AI retrieval accuracy with enhanced embedding system using context-aware boosting and query preprocessing
+  - Enhanced entity detection with fuzzy matching for counties and states using sophisticated pattern recognition
+  - Improved RAG query parsing with better county/state name validation and multiple extraction patterns
+  - Enhanced keyword detection system with semantic understanding for when to use embeddings vs standard sampling
+  - **Comprehensive Document Scanning**: Modified progressive scanning to collect ALL matching rows throughout entire documents
+  - Progressive scan now continues through entire 440MB+ files to find multiple entries for same county and all matching entities
+  - Removed early termination when target found - system now scans complete documents for comprehensive data coverage
+  - Enhanced safety limits (50,000 matches max) to prevent memory issues while ensuring complete data retrieval
+  - Added progress logging for large document scans with chunk-by-chunk match counting
 - July 24, 2025: Implemented hierarchical tag filtering system for top-level folder filtering
   - **Major Enhancement**: Tag filtering now available on main page to filter which folders are shown
   - Added global tag dropdown (100+ tags) on top-level view for filtering folders by tag presence

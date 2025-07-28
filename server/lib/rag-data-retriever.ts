@@ -118,15 +118,15 @@ export class RAGDataRetriever {
       searchCriteria['year'] = query.year;
     }
 
-    // Use the new progressive scanning method
-    // For county-specific queries, request more matches to ensure we find the county
-    const matchesToFind = query.county ? Math.max(5000, maxRows) : maxRows;
+    // Use comprehensive progressive scanning to find ALL matching rows throughout entire file
+    // This ensures we collect multiple entries for the same county or multiple counties with similar names
+    console.log('Starting comprehensive scan to collect ALL matching rows from entire document');
     
     const matchedData = await this.awsService.getSampleDataWithProgression(
       this.bucketName,
       dataset.source,
       searchCriteria,
-      matchesToFind
+      maxRows // This is now just a guide, actual scan will collect ALL matches
     );
 
     if (!matchedData || matchedData.length === 0) {
@@ -145,31 +145,21 @@ export class RAGDataRetriever {
       };
     }
 
-    console.log(`Progressive scan found ${matchedData.length} matching rows`);
+    console.log(`Comprehensive scan found ${matchedData.length} total matching rows from entire document`);
     
     // Analyze which filters were actually matched
     const matchedFilters = this.analyzeMatchedFilters(matchedData, query);
     
-    // If we have room, add some context rows
-    if (matchedData.length < maxRows) {
-      const remainingSpace = maxRows - matchedData.length;
-      const contextData = await this.awsService.getSampleData(
-        this.bucketName,
-        dataset.source,
-        remainingSpace
-      );
-      if (contextData && contextData.length > 0) {
-        matchedData.push(...contextData);
-        console.log(`Added ${contextData.length} context rows`);
-      }
-    }
-
+    // Return ALL matches found (comprehensive analysis)
+    // Note: This may exceed maxRows to ensure complete data coverage
     return {
-      data: matchedData.slice(0, maxRows),
+      data: matchedData,
       matchedFilters,
       totalMatches: matchedData.length,
       query
     };
+    
+
   }
 
   private applyFilters(data: any[], query: QueryFilter): any[] {

@@ -297,7 +297,7 @@ export class AwsS3Service {
     bucketName: string, 
     datasetSource: string, 
     searchCriteria: any,
-    maxMatches: number = 100
+    requestedMaxMatches: number = 5000
   ): Promise<any[] | null> {
     try {
       // Find CSV file
@@ -330,18 +330,20 @@ export class AwsS3Service {
       const headResponse = await this.s3Client.send(headCommand);
       const fileSize = headResponse.ContentLength || 0;
       
-      console.log(`Progressive scan of file ${csvFile.Key} (${this.formatFileSize(fileSize)})`);
+      console.log(`Comprehensive scan of entire file ${csvFile.Key} (${this.formatFileSize(fileSize)}) - scanning ALL chunks to collect ALL matching rows`);
       
       const chunkSize = 5 * 1024 * 1024; // 5MB chunks
-      const maxChunks = Math.min(20, Math.ceil(fileSize / chunkSize)); // Max 20 chunks (100MB)
       let allMatches: any[] = [];
       let headers: string[] = [];
       let currentOffset = 0;
       
-      for (let chunk = 0; chunk < maxChunks && allMatches.length < maxMatches; chunk++) {
+      // Comprehensive scan through entire document to collect ALL matching rows
+      const maxChunksForFullScan = Math.ceil(fileSize / chunkSize); // Scan entire file
+      
+      for (let chunk = 0; chunk < maxChunksForFullScan; chunk++) {
         const endByte = Math.min(currentOffset + chunkSize - 1, fileSize - 1);
         
-        console.log(`Scanning chunk ${chunk + 1}/${maxChunks}: bytes ${currentOffset}-${endByte}`);
+        console.log(`Scanning chunk ${chunk + 1}/${maxChunksForFullScan}: bytes ${currentOffset}-${endByte} (found ${allMatches.length} matches so far)`);
         
         const getCommand = new GetObjectCommand({
           Bucket: bucketName,
@@ -357,12 +359,12 @@ export class AwsS3Service {
 
         const chunkContent = await this.streamToString(response.Body);
         
-        // Parse this chunk
+        // Parse this chunk - no limit on rows per chunk, collect all matches
         const { rows, lastHeaders } = this.parseCSVChunk(
           chunkContent, 
           headers.length > 0 ? headers : undefined,
           searchCriteria,
-          maxMatches - allMatches.length
+          Number.MAX_SAFE_INTEGER // Allow unlimited matches per chunk
         );
         
         if (lastHeaders.length > 0) {
@@ -374,35 +376,21 @@ export class AwsS3Service {
         // Update offset for next chunk
         currentOffset = endByte + 1;
         
-        // If we found enough matches, check if we should continue
-        if (allMatches.length >= maxMatches) {
-          // If searching for a specific county, check if we found it
-          if (searchCriteria.county) {
-            const hasCountyMatch = allMatches.some(row => 
-              Object.values(row).some(val => 
-                String(val).toLowerCase().includes(searchCriteria.county.toLowerCase())
-              )
-            );
-            
-            if (hasCountyMatch) {
-              console.log(`Found ${allMatches.length} matches including target county, stopping scan`);
-              break;
-            } else {
-              console.log(`Found ${allMatches.length} matches but not target county yet, continuing...`);
-              // Continue scanning but limit total matches to prevent memory issues
-              if (allMatches.length > 10000) {
-                console.log('Reached maximum scan limit without finding target county');
-                break;
-              }
-            }
-          } else {
-            console.log(`Found ${allMatches.length} matches, stopping scan`);
-            break;
-          }
+        // Safety check to prevent excessive memory usage
+        if (allMatches.length > 50000) {
+          console.log(`Reached safety limit of 50,000 matches after scanning ${chunk + 1} chunks. Stopping to prevent memory issues.`);
+          break;
+        }
+        
+        // Log progress for large scans
+        if (chunk % 10 === 0 && chunk > 0) {
+          console.log(`Progress update: scanned ${chunk} chunks, found ${allMatches.length} matching rows`);
         }
       }
       
-      console.log(`Progressive scan complete. Found ${allMatches.length} matching rows`);
+      console.log(`Comprehensive scan complete. Found ${allMatches.length} total matching rows from entire ${this.formatFileSize(fileSize)} file`);
+      
+      // Return all matches found (may exceed requested max for comprehensive analysis)
       return allMatches;
       
     } catch (error) {
