@@ -68,7 +68,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const queryClient = useQueryClient();
 
   // Fetch all users
-  const { data: users, isLoading, error } = useQuery({
+  const { data: users, isLoading, error, refetch: refetchUsers } = useQuery({
     queryKey: ['/api/admin/users'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -96,12 +96,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     enabled: !!localStorage.getItem('authToken') && !!currentUser,
     retry: false, // Don't retry auth errors
-    staleTime: 0, // Always consider data stale to ensure fresh fetches
-    gcTime: 0, // Don't cache data
   });
 
-  // Fetch all roles
-  const { data: roles, isLoading: rolesLoading, error: rolesError } = useQuery({
+  // Fetch all roles  
+  const { data: roles, isLoading: rolesLoading, error: rolesError, refetch: refetchRoles } = useQuery({
     queryKey: ['/api/admin/roles'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -115,9 +113,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       return res.json();
     },
     enabled: !!localStorage.getItem('authToken') && !!currentUser,
-    retry: false,
-    staleTime: 0, // Always consider data stale to ensure fresh fetches
-    gcTime: 0, // Don't cache data
+    retry: false
   });
 
   // Fetch available folders
@@ -274,9 +270,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       return res.json();
     },
     onSuccess: async () => {
-      // Force immediate cache reset to ensure fresh data
-      await queryClient.resetQueries({ queryKey: ['/api/admin/users'] });
-      await queryClient.resetQueries({ queryKey: ['/api/admin/roles'] });
+      console.log("Role assignment successful, triggering direct refetch...");
+      
+      // Use direct refetch functions for immediate UI update
+      await refetchUsers();
+      await refetchRoles();
+      
+      console.log("Direct refetch completed");
       setIsAssignRoleOpen(false);
       setSelectedUserForRole(null);
       setSelectedRoleToAssign("");
@@ -305,9 +305,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       return res.json();
     },
     onSuccess: async () => {
-      // Force immediate cache reset to ensure fresh data
-      await queryClient.resetQueries({ queryKey: ['/api/admin/users'] });
-      await queryClient.resetQueries({ queryKey: ['/api/admin/roles'] });
+      console.log("Role removal successful, triggering direct refetch...");
+      
+      // Use direct refetch functions for immediate UI update
+      await refetchUsers();
+      await refetchRoles();
+      
+      console.log("Direct refetch completed");
       toast({
         title: "Role removed",
         description: "Custom role has been removed from user.",
