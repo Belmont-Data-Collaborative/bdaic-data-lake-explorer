@@ -7,9 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw, Settings, Plus, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 
 interface User {
@@ -22,6 +27,22 @@ interface User {
   lastLoginAt: string | null;
 }
 
+interface Role {
+  id: number;
+  name: string;
+  description?: string;
+  isSystemRole: boolean;
+  createdAt: string;
+  updatedAt: string;
+  datasetCount?: number;
+}
+
+interface RoleFormData {
+  name: string;
+  description: string;
+  selectedFolders: string[];
+}
+
 interface AdminPanelProps {
   currentUser?: { id: number; username: string; email: string; role: string } | null;
 }
@@ -29,6 +50,15 @@ interface AdminPanelProps {
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState("users");
+  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
+  const [roleFormData, setRoleFormData] = useState<RoleFormData>({
+    name: "",
+    description: "",
+    selectedFolders: []
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -61,6 +91,37 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     enabled: !!localStorage.getItem('authToken') && !!currentUser,
     retry: false, // Don't retry auth errors
+  });
+
+  // Fetch all roles
+  const { data: roles, isLoading: rolesLoading, error: rolesError } = useQuery({
+    queryKey: ['/api/admin/roles'],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      const res = await apiRequest('GET', '/api/admin/roles', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    enabled: !!localStorage.getItem('authToken') && !!currentUser,
+    retry: false,
+  });
+
+  // Fetch available folders
+  const { data: folders } = useQuery({
+    queryKey: ['/api/folders'],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('GET', '/api/folders', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    enabled: !!localStorage.getItem('authToken') && !!currentUser,
   });
 
   // Update user mutation
@@ -110,6 +171,111 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       toast({
         title: "Delete failed",
         description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create role mutation
+  const createRoleMutation = useMutation({
+    mutationFn: async (roleData: { name: string; description: string; selectedFolders: string[] }) => {
+      const token = localStorage.getItem('authToken');
+      
+      // Get dataset IDs for selected folders
+      const datasetIds: number[] = [];
+      if (roleData.selectedFolders.length > 0) {
+        const datasetsRes = await apiRequest('GET', '/api/datasets?limit=10000', null, {
+          'Authorization': `Bearer ${token}`
+        });
+        const datasetsData = await datasetsRes.json();
+        const allDatasets = datasetsData.datasets || [];
+        
+        // Filter datasets by selected folders
+        const filteredDatasets = allDatasets.filter((dataset: any) => 
+          roleData.selectedFolders.includes(dataset.topLevelFolder)
+        );
+        datasetIds.push(...filteredDatasets.map((d: any) => d.id));
+      }
+
+      const res = await apiRequest('POST', '/api/admin/roles', {
+        name: roleData.name,
+        description: roleData.description,
+        datasetIds
+      }, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/roles'] });
+      setIsCreateRoleOpen(false);
+      setRoleFormData({ name: "", description: "", selectedFolders: [] });
+      toast({
+        title: "Role created",
+        description: "The role has been successfully created.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error creating role:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create role. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete role mutation
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (roleId: number) => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('DELETE', `/api/admin/roles/${roleId}`, null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/roles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      setDeletingRole(null);
+      toast({
+        title: "Role deleted",
+        description: "The role has been successfully deleted.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error deleting role:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete role. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Assign role to user mutation
+  const assignRoleMutation = useMutation({
+    mutationFn: async ({ userId, roleId }: { userId: number; roleId: number }) => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/role`, {
+        roleId
+      }, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      toast({
+        title: "Role assigned",
+        description: "The role has been successfully assigned to the user.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error assigning role:", error);
+      toast({
+        title: "Error",
+        description: "Failed to assign role. Please try again.",
         variant: "destructive",
       });
     },
@@ -190,24 +356,39 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage users and system settings</p>
+          <p className="text-muted-foreground">Manage users, roles, and system settings</p>
         </div>
         <Button
           variant="outline"
           onClick={() => {
             queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/admin/roles'] });
             toast({
               title: "Refreshing data",
-              description: "User data is being refreshed...",
+              description: "Admin data is being refreshed...",
             });
           }}
           className="flex items-center space-x-2"
-          disabled={isLoading}
+          disabled={isLoading || rolesLoading}
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${(isLoading || rolesLoading) ? 'animate-spin' : ''}`} />
           <span>Reload</span>
         </Button>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users" className="flex items-center space-x-2">
+            <Users size={16} />
+            <span>User Management</span>
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center space-x-2">
+            <Shield size={16} />
+            <span>Role Management</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -453,7 +634,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           </Tooltip>
                         </DialogTrigger>
                         <DialogContent>
-
+                          <DialogHeader>
+                            <DialogTitle>Delete User</DialogTitle>
+                            <DialogDescription>
+                              Are you sure you want to delete this user? This action cannot be undone.
+                            </DialogDescription>
+                          </DialogHeader>
                           <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
@@ -479,6 +665,316 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6">
+          {/* Role Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Roles</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{roles?.length || 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Custom Roles</CardTitle>
+                <Settings className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {roles?.filter((role: Role) => !role.isSystemRole).length || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Available Folders</CardTitle>
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{folders?.length || 0}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Create Role Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-medium">Role Management</h3>
+              <p className="text-sm text-muted-foreground">Create custom roles to control dataset access</p>
+            </div>
+            <Dialog open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Role
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create New Role</DialogTitle>
+                  <DialogDescription>
+                    Create a custom role and select which data folders users with this role can access.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="role-name">Role Name</Label>
+                    <Input
+                      id="role-name"
+                      value={roleFormData.name}
+                      onChange={(e) => setRoleFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Enter role name (e.g., 'CDC Data Access')"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="role-description">Description (Optional)</Label>
+                    <Textarea
+                      id="role-description"
+                      value={roleFormData.description}
+                      onChange={(e) => setRoleFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Describe what this role is for..."
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <Label>Select Data Folders</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Choose which top-level data folders users with this role can access. Users will only see datasets from selected folders.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3">
+                      {folders?.map((folder: string) => (
+                        <div key={folder} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={folder}
+                            checked={roleFormData.selectedFolders.includes(folder)}
+                            onCheckedChange={(checked) => {
+                              setRoleFormData(prev => ({
+                                ...prev,
+                                selectedFolders: checked
+                                  ? [...prev.selectedFolders, folder]
+                                  : prev.selectedFolders.filter(f => f !== folder)
+                              }));
+                            }}
+                          />
+                          <Label htmlFor={folder} className="text-sm cursor-pointer">
+                            {folder.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsCreateRoleOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => createRoleMutation.mutate(roleFormData)}
+                      disabled={!roleFormData.name.trim() || createRoleMutation.isPending}
+                    >
+                      {createRoleMutation.isPending ? "Creating..." : "Create Role"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Roles Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Existing Roles</CardTitle>
+              <CardDescription>
+                Manage custom roles and their folder access permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Role Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Folder Access</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roles?.map((role: Role) => (
+                    <TableRow key={role.id}>
+                      <TableCell className="font-medium">{role.name}</TableCell>
+                      <TableCell>{role.description || "No description"}</TableCell>
+                      <TableCell>
+                        <Badge variant={role.isSystemRole ? "default" : "secondary"}>
+                          {role.isSystemRole ? "System" : "Custom"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {role.datasetCount ? (
+                            <Badge variant="outline">{role.datasetCount} datasets</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">No datasets</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(role.createdAt), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {!role.isSystemRole && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingRole(role);
+                                  setRoleFormData({
+                                    name: role.name,
+                                    description: role.description || "",
+                                    selectedFolders: [] // TODO: Get actual folder list for this role
+                                  });
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDeletingRole(role)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Delete Role</DialogTitle>
+                                    <DialogDescription>
+                                      Are you sure you want to delete the role "{role.name}"? This will remove the role from all users and cannot be undone.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="flex justify-end space-x-2">
+                                    <Button variant="outline" onClick={() => setDeletingRole(null)}>
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => deleteRoleMutation.mutate(role.id)}
+                                      disabled={deleteRoleMutation.isPending}
+                                    >
+                                      {deleteRoleMutation.isPending ? "Deleting..." : "Delete Role"}
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* User Role Assignment */}
+          <Card>
+            <CardHeader>
+              <CardTitle>User Role Assignment</CardTitle>
+              <CardDescription>
+                Assign custom roles to users to control their dataset access
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>System Role</TableHead>
+                    <TableHead>Custom Role</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users?.map((user: any) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        {user.username}
+                        {currentUser?.id === user.id && (
+                          <Badge variant="outline" className="ml-2 text-xs">You</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.customRoleId ? (
+                          <Badge variant="outline">
+                            {roles?.find((r: Role) => r.id === user.customRoleId)?.name || "Unknown"}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No custom role</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={user.customRoleId?.toString() || "none"}
+                          onValueChange={(value) => {
+                            if (value === "none") {
+                              // Remove role
+                              const token = localStorage.getItem('authToken');
+                              apiRequest('DELETE', `/api/admin/users/${user.id}/role`, null, {
+                                'Authorization': `Bearer ${token}`
+                              }).then(() => {
+                                queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+                                toast({
+                                  title: "Role removed",
+                                  description: "Custom role has been removed from user.",
+                                });
+                              });
+                            } else {
+                              // Assign role
+                              assignRoleMutation.mutate({
+                                userId: user.id,
+                                roleId: parseInt(value)
+                              });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No custom role</SelectItem>
+                            {roles?.filter((role: Role) => !role.isSystemRole).map((role: Role) => (
+                              <SelectItem key={role.id} value={role.id.toString()}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
