@@ -733,15 +733,24 @@ For detailed API specifications, please contact the system administrator.`;
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">🔧 Test Accounts Available</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p><strong>Admin:</strong> username: <code className="bg-blue-100 px-1 rounded">admin</code>, password: <code className="bg-blue-100 px-1 rounded">admin</code></p>
+                        <p><strong>User:</strong> username: <code className="bg-blue-100 px-1 rounded">user</code>, password: <code className="bg-blue-100 px-1 rounded">user</code></p>
+                        <p className="text-xs mt-2">Admin sees all 259 datasets. User sees only 10 CDC datasets (role-based access control).</p>
+                      </div>
+                    </div>
+
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
-                        <Label htmlFor="username">Username (optional for legacy login)</Label>
+                        <Label htmlFor="username">Username</Label>
                         <Input
                           id="username"
                           type="text"
                           value={loginData.username}
                           onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                          placeholder="Enter your username"
+                          placeholder="Enter username (admin or user)"
                           disabled={loginMutation.isPending}
                           className="mt-1"
                         />

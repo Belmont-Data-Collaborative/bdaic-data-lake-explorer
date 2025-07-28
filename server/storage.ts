@@ -407,7 +407,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...result,
-      customRole: result.customRole.id ? result.customRole : null
+      customRole: result.customRole?.id ? result.customRole : null
     };
   }
 
@@ -442,7 +442,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...result,
-      customRole: result.customRole.id ? result.customRole : null
+      customRole: result.customRole?.id ? result.customRole : null
     };
   }
 
@@ -474,7 +474,7 @@ export class DatabaseStorage implements IStorage {
     
     return results.map(result => ({
       ...result,
-      customRole: result.customRole.id ? result.customRole : null
+      customRole: result.customRole?.id ? result.customRole : null
     }));
   }
 
