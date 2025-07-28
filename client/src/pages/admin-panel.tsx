@@ -266,6 +266,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({
         title: "Role assigned",
         description: "The role has been successfully assigned to the user.",
@@ -945,6 +946,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                                   'Authorization': `Bearer ${token}`
                                 }).then(() => {
                                   queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+                                  queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
                                   toast({
                                     title: "Role removed",
                                     description: "Custom role has been removed from user.",

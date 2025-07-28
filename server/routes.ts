@@ -312,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: user.id,
         username: user.username,
         email: user.email,
-        systemRole: user.systemRole,
+        role: user.systemRole, // Map systemRole to role for frontend consistency
         customRoleId: user.customRoleId,
         customRole: user.customRole,
         isActive: user.isActive,
@@ -347,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
-        systemRole: updatedUser.systemRole,
+        role: updatedUser.systemRole, // Map systemRole to role for frontend consistency
         customRoleId: updatedUser.customRoleId,
         isActive: updatedUser.isActive,
       });
