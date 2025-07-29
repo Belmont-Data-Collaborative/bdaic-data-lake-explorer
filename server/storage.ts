@@ -74,25 +74,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDatasetsForUser(userId: number): Promise<Dataset[]> {
+    console.log(`🔍 ROLE DEBUG: ====== Starting getDatasetsForUser for user ${userId} ======`);
+    
     // Get user with their custom role
+    console.log(`🔍 ROLE DEBUG: Fetching user data from database...`);
     const user = await this.getUserById(userId);
-    if (!user) return [];
+    
+    if (!user) {
+      console.log(`❌ ROLE DEBUG: User ${userId} not found in database - returning empty array`);
+      return [];
+    }
 
-    console.log(`Getting datasets for user ${userId}: systemRole=${user.systemRole}, customRoleId=${user.customRoleId}`);
+    console.log(`🔍 ROLE DEBUG: User ${userId} data retrieved:`, {
+      id: user.id,
+      username: user.username,
+      systemRole: user.systemRole,
+      customRoleId: user.customRoleId,
+      isActive: user.isActive,
+      hasCustomRole: user.customRole ? `Yes (${user.customRole.name})` : 'No'
+    });
 
     // 1. If user is admin, always return all datasets (bypass all role restrictions)
     if (user.systemRole === 'admin') {
-      console.log(`User ${userId} is admin - returning all datasets`);
-      return this.getDatasets();
+      console.log(`✅ ROLE DEBUG: User ${userId} is ADMIN - bypassing ALL role restrictions`);
+      const allDatasets = await this.getDatasets();
+      console.log(`✅ ROLE DEBUG: ADMIN user ${userId} gets ALL ${allDatasets.length} datasets`);
+      
+      // Show sample of datasets being returned
+      const sampleDatasets = allDatasets.slice(0, 3);
+      console.log(`✅ ROLE DEBUG: Sample datasets for ADMIN ${userId}:`, 
+        sampleDatasets.map(d => ({ id: d.id, name: d.name, folder: d.topLevelFolder }))
+      );
+      
+      return allDatasets;
     } 
     // 2. If user has no custom role, they have full access by default
     else if (!user.customRoleId) {
-      console.log(`User ${userId} has no custom role - returning all datasets`);
-      return this.getDatasets();
+      console.log(`✅ ROLE DEBUG: User ${userId} has NO custom role (systemRole=${user.systemRole}) - DEFAULT FULL ACCESS`);
+      const allDatasets = await this.getDatasets();
+      console.log(`✅ ROLE DEBUG: NON-ROLE user ${userId} gets ALL ${allDatasets.length} datasets by default`);
+      
+      // Show sample of datasets being returned
+      const sampleDatasets = allDatasets.slice(0, 3);
+      console.log(`✅ ROLE DEBUG: Sample datasets for NON-ROLE user ${userId}:`, 
+        sampleDatasets.map(d => ({ id: d.id, name: d.name, folder: d.topLevelFolder }))
+      );
+      
+      return allDatasets;
     } 
     // 3. If user has a custom role, restrict access to only datasets in their role
     else {
-      console.log(`User ${userId} has custom role ${user.customRoleId} - restricting access`);
+      console.log(`🔒 ROLE DEBUG: User ${userId} has CUSTOM ROLE ${user.customRoleId} - RESTRICTING ACCESS`);
+      
+      // First check how many role-dataset associations exist for this role
+      console.log(`🔍 ROLE DEBUG: Checking role-dataset associations for role ${user.customRoleId}...`);
+      const roleDatasetCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(roleDatasets)
+        .where(eq(roleDatasets.roleId, user.customRoleId));
+      
+      console.log(`🔍 ROLE DEBUG: Role ${user.customRoleId} has ${roleDatasetCount[0]?.count || 0} dataset associations in role_datasets table`);
+      
+      // Debug: Show what datasets are associated with this role
+      const roleDatasetAssocs = await db
+        .select({
+          roleId: roleDatasets.roleId,
+          datasetId: roleDatasets.datasetId
+        })
+        .from(roleDatasets)
+        .where(eq(roleDatasets.roleId, user.customRoleId))
+        .limit(10);
+      
+      console.log(`🔍 ROLE DEBUG: First 10 role-dataset associations for role ${user.customRoleId}:`, roleDatasetAssocs);
+      
       const accessibleDatasets = await db
         .select({
           id: datasets.id,
@@ -116,7 +170,27 @@ export class DatabaseStorage implements IStorage {
         .where(eq(roleDatasets.roleId, user.customRoleId))
         .orderBy(asc(datasets.source), asc(datasets.name));
 
-      console.log(`User ${userId} with role ${user.customRoleId} can access ${accessibleDatasets.length} datasets`);
+      console.log(`🔒 ROLE DEBUG: User ${userId} with custom role ${user.customRoleId} can access ${accessibleDatasets.length} datasets after JOIN query`);
+      
+      if (accessibleDatasets.length > 0) {
+        console.log(`🔒 ROLE DEBUG: Sample accessible datasets for CUSTOM ROLE user ${userId}:`, 
+          accessibleDatasets.slice(0, 3).map(d => ({ id: d.id, name: d.name, folder: d.topLevelFolder }))
+        );
+        
+        // Show folder distribution for role-restricted user
+        const folderDistribution = accessibleDatasets.reduce((acc, dataset) => {
+          const folder = dataset.topLevelFolder || 'unknown';
+          acc[folder] = (acc[folder] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        console.log(`🔒 ROLE DEBUG: Folder distribution for CUSTOM ROLE user ${userId}:`, folderDistribution);
+      } else {
+        console.log(`⚠️ ROLE DEBUG: CRITICAL - User ${userId} with custom role ${user.customRoleId} has ZERO accessible datasets!`);
+        console.log(`⚠️ ROLE DEBUG: This might indicate a problem with role-dataset associations or the JOIN query`);
+      }
+      
+      console.log(`🔍 ROLE DEBUG: ====== End getDatasetsForUser for user ${userId} ======`);
       return accessibleDatasets;
     }
   }

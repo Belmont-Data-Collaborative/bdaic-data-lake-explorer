@@ -80,6 +80,15 @@ The build process creates optimized static assets for the frontend while bundlin
 
 ## Recent Changes
 
+- July 29, 2025: **Added Extensive Role-Based Access Debugging**: Implemented comprehensive debugging logs throughout the role filtering system
+  - **Storage Layer Debugging**: Added detailed logging to `getDatasetsForUser` method showing user data, role checks, and dataset counts
+  - **API Endpoint Debugging**: Enhanced main datasets endpoint with extensive logging of request parameters, user authentication, and filtering results
+  - **Role Decision Logging**: Clear indicators for admin bypass, default full access, and custom role restrictions
+  - **Association Debugging**: Detailed logging of role-dataset associations and JOIN query results
+  - **Sample Data Logging**: Shows sample datasets being returned for each user type for verification
+  - **Folder Distribution Tracking**: Logs folder distribution for custom role users to identify access patterns
+  - **Zero Access Alerts**: Critical warnings when custom role users have no accessible datasets
+  - **Fresh Data Confirmation**: Logs confirm that user-specific caching has been completely removed
 - July 28, 2025: **Enhanced Role Management UI**: Replaced dropdown with intuitive "Assign Role" and "Remove Role" buttons in Admin Panel
   - **Assign Role Button**: Opens modal dialog for selecting roles to assign to users with proper validation
   - **Remove Role Button**: Direct one-click removal of custom roles from users with confirmation

@@ -845,14 +845,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = parseInt(limit as string) || 50;
       const offset = (pageNum - 1) * limitNum;
       
-      console.log(`Request params - page: ${page}, limit: ${limit}`);
-      console.log(`Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
+      console.log(`🚀 DATASETS ENDPOINT: Request params - page: ${page}, limit: ${limit}`);
+      console.log(`🚀 DATASETS ENDPOINT: Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
 
       // Get datasets based on user role and permissions
       const userId = req.user!.id;
+      console.log(`🚀 DATASETS ENDPOINT: Authenticated user ID: ${userId}`);
+      console.log(`🚀 DATASETS ENDPOINT: Request query params:`, {
+        folder,
+        search,
+        format,
+        tag,
+        page,
+        limit
+      });
       
       // Always fetch fresh data - no caching to prevent role-based data bleeding
+      console.log(`🚀 DATASETS ENDPOINT: Calling getDatasetsForUser(${userId}) - no caching`);
       const allDatasets = await storage.getDatasetsForUser(userId);
+      console.log(`🚀 DATASETS ENDPOINT: getDatasetsForUser(${userId}) returned ${allDatasets.length} datasets`);
       
       // Apply filters
       if (folder && folder !== "all") {
@@ -902,6 +913,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalCount = allDatasets.length;
       const paginatedDatasets = allDatasets.slice(offset, offset + limitNum);
+
+      console.log(`🚀 DATASETS ENDPOINT: Final results for user ${userId}:`);
+      console.log(`🚀 DATASETS ENDPOINT: - Total datasets after all filters: ${totalCount}`);
+      console.log(`🚀 DATASETS ENDPOINT: - Pagination: page ${pageNum}, limit ${limitNum}, offset ${offset}`);
+      console.log(`🚀 DATASETS ENDPOINT: - Returning ${paginatedDatasets.length} datasets to client`);
+      
+      if (paginatedDatasets.length > 0) {
+        console.log(`🚀 DATASETS ENDPOINT: Sample dataset IDs being returned: ${paginatedDatasets.slice(0, 3).map(d => d.id).join(', ')}`);
+      }
 
       // Set optimized cache headers for performance
       res.set({
