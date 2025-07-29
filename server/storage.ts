@@ -78,41 +78,41 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
-    // If user is admin, always return all datasets (bypass all role restrictions)
+    // 1. If user is admin, always return all datasets (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       return this.getDatasets();
-    }
-
-    // For non-admin users: if they have no custom role, they have full access by default
-    if (!user.customRoleId) {
+    } 
+    // 2. If user has no custom role, they have full access by default
+    else if (!user.customRoleId) {
       return this.getDatasets();
+    } 
+    // 3. If user has a custom role, restrict access to only datasets in their role
+    else {
+      const accessibleDatasets = await db
+        .select({
+          id: datasets.id,
+          name: datasets.name,
+          source: datasets.source,
+          topLevelFolder: datasets.topLevelFolder,
+          format: datasets.format,
+          size: datasets.size,
+          sizeBytes: datasets.sizeBytes,
+          lastModified: datasets.lastModified,
+          createdDate: datasets.createdDate,
+          status: datasets.status,
+          metadata: datasets.metadata,
+          insights: datasets.insights,
+          downloadCountSample: datasets.downloadCountSample,
+          downloadCountFull: datasets.downloadCountFull,
+          downloadCountMetadata: datasets.downloadCountMetadata,
+        })
+        .from(datasets)
+        .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
+        .where(eq(roleDatasets.roleId, user.customRoleId))
+        .orderBy(asc(datasets.source), asc(datasets.name));
+
+      return accessibleDatasets;
     }
-
-    // For non-admin users with custom roles: restrict access to only datasets in their role
-    const accessibleDatasets = await db
-      .select({
-        id: datasets.id,
-        name: datasets.name,
-        source: datasets.source,
-        topLevelFolder: datasets.topLevelFolder,
-        format: datasets.format,
-        size: datasets.size,
-        sizeBytes: datasets.sizeBytes,
-        lastModified: datasets.lastModified,
-        createdDate: datasets.createdDate,
-        status: datasets.status,
-        metadata: datasets.metadata,
-        insights: datasets.insights,
-        downloadCountSample: datasets.downloadCountSample,
-        downloadCountFull: datasets.downloadCountFull,
-        downloadCountMetadata: datasets.downloadCountMetadata,
-      })
-      .from(datasets)
-      .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
-      .where(eq(roleDatasets.roleId, user.customRoleId))
-      .orderBy(asc(datasets.source), asc(datasets.name));
-
-    return accessibleDatasets;
   }
 
   async getDataset(id: number): Promise<Dataset | undefined> {
@@ -125,43 +125,43 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return undefined;
 
-    // If user is admin, return dataset directly (bypass all role restrictions)
+    // 1. If user is admin, return dataset directly (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       return this.getDataset(id);
-    }
-
-    // For non-admin users: if they have no custom role, they have full access
-    if (!user.customRoleId) {
+    } 
+    // 2. If user has no custom role, they have full access
+    else if (!user.customRoleId) {
       return this.getDataset(id);
+    } 
+    // 3. If user has a custom role, check if dataset is accessible through their role
+    else {
+      const [accessibleDataset] = await db
+        .select({
+          id: datasets.id,
+          name: datasets.name,
+          source: datasets.source,
+          topLevelFolder: datasets.topLevelFolder,
+          format: datasets.format,
+          size: datasets.size,
+          sizeBytes: datasets.sizeBytes,
+          lastModified: datasets.lastModified,
+          createdDate: datasets.createdDate,
+          status: datasets.status,
+          metadata: datasets.metadata,
+          insights: datasets.insights,
+          downloadCountSample: datasets.downloadCountSample,
+          downloadCountFull: datasets.downloadCountFull,
+          downloadCountMetadata: datasets.downloadCountMetadata,
+        })
+        .from(datasets)
+        .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
+        .where(and(
+          eq(datasets.id, id),
+          eq(roleDatasets.roleId, user.customRoleId)
+        ));
+
+      return accessibleDataset || undefined;
     }
-
-    // For non-admin users with custom roles: check if dataset is accessible through their role
-    const [accessibleDataset] = await db
-      .select({
-        id: datasets.id,
-        name: datasets.name,
-        source: datasets.source,
-        topLevelFolder: datasets.topLevelFolder,
-        format: datasets.format,
-        size: datasets.size,
-        sizeBytes: datasets.sizeBytes,
-        lastModified: datasets.lastModified,
-        createdDate: datasets.createdDate,
-        status: datasets.status,
-        metadata: datasets.metadata,
-        insights: datasets.insights,
-        downloadCountSample: datasets.downloadCountSample,
-        downloadCountFull: datasets.downloadCountFull,
-        downloadCountMetadata: datasets.downloadCountMetadata,
-      })
-      .from(datasets)
-      .innerJoin(roleDatasets, eq(datasets.id, roleDatasets.datasetId))
-      .where(and(
-        eq(datasets.id, id),
-        eq(roleDatasets.roleId, user.customRoleId)
-      ));
-
-    return accessibleDataset || undefined;
   }
 
   async getDatasetByNameAndSource(name: string, source: string): Promise<Dataset | undefined> {
@@ -701,25 +701,25 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
-    // If user is admin, return all dataset IDs (bypass all role restrictions)
+    // 1. If user is admin, return all dataset IDs (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       const allDatasets = await db.select({ id: datasets.id }).from(datasets);
       return allDatasets.map(d => d.id);
-    }
-
-    // For non-admin users: if they have no custom role, return all dataset IDs (full access)
-    if (!user.customRoleId) {
+    } 
+    // 2. If user has no custom role, return all dataset IDs (full access)
+    else if (!user.customRoleId) {
       const allDatasets = await db.select({ id: datasets.id }).from(datasets);
       return allDatasets.map(d => d.id);
+    } 
+    // 3. If user has a custom role, return only accessible dataset IDs
+    else {
+      const accessibleDatasets = await db
+        .select({ id: roleDatasets.datasetId })
+        .from(roleDatasets)
+        .where(eq(roleDatasets.roleId, user.customRoleId));
+
+      return accessibleDatasets.map(d => d.id);
     }
-
-    // For non-admin users with custom roles: return only accessible dataset IDs
-    const accessibleDatasets = await db
-      .select({ id: roleDatasets.datasetId })
-      .from(roleDatasets)
-      .where(eq(roleDatasets.roleId, user.customRoleId));
-
-    return accessibleDatasets.map(d => d.id);
   }
 
   async recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download> {
