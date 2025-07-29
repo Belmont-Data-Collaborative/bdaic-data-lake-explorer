@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Lock, Database, Eye, EyeOff } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +31,9 @@ export default function Login({ onLogin }: LoginProps) {
       return res.json();
     },
     onSuccess: () => {
+      // Clear all cached queries to ensure fresh data with new user permissions
+      queryClient.clear();
+      
       toast({
         title: "Login successful",
         description: "Welcome to the Data Lake Explorer!",
