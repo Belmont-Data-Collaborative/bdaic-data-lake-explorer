@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
+import { queryClient } from "@/lib/queryClient";
 import type { AwsConfig } from "@shared/schema";
 
 interface User {
@@ -12,6 +13,7 @@ interface User {
   username: string;
   email: string;
   role: string;
+  systemRole?: string;
   customRoleId?: number;
 }
 
@@ -71,7 +73,6 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
     localStorage.removeItem('authenticated'); // Legacy cleanup
 
     // Clear query cache to remove any cached user-specific data
-    const { queryClient } = require('@/lib/queryClient');
     if (queryClient) {
       queryClient.clear();
     }
