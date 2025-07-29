@@ -1,3 +1,4 @@
+typescript
 import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -89,12 +90,19 @@ function Router() {
       setCurrentUser(userData.user);
 
       // Invalidate all queries to refresh with new authentication
-      queryClient.invalidateQueries();
+      queryClient.clear();
+      queryClient.invalidateQueries(); // Also invalidate any remaining queries
+
+      // Force immediate refetch of critical data with new user context
+      setTimeout(() => {
+        queryClient.refetchQueries({ type: 'active' });
+      }, 100);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
 
       // Invalidate all queries for legacy login too
+      queryClient.clear();
       queryClient.invalidateQueries();
     }
   };

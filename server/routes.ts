@@ -213,15 +213,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
-          // Clear ALL user-specific caches on login to prevent cache bleeding
-          // This ensures each user gets fresh data
-          const keys = Array.from(cache.keys());
-          for (const key of keys) {
-            if (key.includes('datasets-user-') || key.includes('user-')) {
-              cache.delete(key);
-            }
-          }
-          console.log(`Login: Cleared all user-specific caches for clean session`);
+          // CRITICAL: Clear ALL caches that could contain role-specific data
+          // This prevents any possibility of cross-user data bleeding
+          cache.clear(); // Nuclear option - clear everything
+          console.log(`Login: Cleared ALL caches to prevent role-based data bleeding for user ${user.id}`);
           
           // Generate JWT token
           const token = storage.generateJWT(user);
@@ -335,22 +330,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint to clear server-side session data
   app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      // Clear ALL user-specific caches to prevent data bleeding across sessions
-      // This is critical - we must clear caches for ALL users, not just the current one
-      const keys = Array.from(cache.keys());
-      for (const key of keys) {
-        if (key.includes('datasets-user-') || key.includes('user-')) {
-          cache.delete(key);
-        }
-      }
-      
-      // Also clear general caches that might contain user-specific data
-      invalidateCache('quick-stats');
-      invalidateCache('precomputed-stats');
-      invalidateCache('datasets-all'); // Clear the all datasets cache
-      invalidateCache('folders'); // Clear folders cache
-      
-      console.log(`Logout: Cleared all user-specific caches`);
+      // CRITICAL: Clear ALL caches to prevent any possibility of data bleeding
+      // Role-based data can be cached in various keys, so nuclear option is safest
+      cache.clear();
+      console.log(`Logout: Cleared ALL caches to prevent role-based data bleeding`);
       
       res.json({ message: "Logged out successfully" });
     } catch (error) {
