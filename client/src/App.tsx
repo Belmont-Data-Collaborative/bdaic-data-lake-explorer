@@ -33,7 +33,7 @@ function Router() {
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No token found');
-      
+
       const res = await apiRequest('GET', '/api/auth/verify', null, {
         'Authorization': `Bearer ${token}`
       });
@@ -46,7 +46,7 @@ function Router() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
-    
+
     if (token && storedUser && !isVerifying) {
       try {
         const user = JSON.parse(storedUser);
@@ -64,7 +64,7 @@ function Router() {
         setIsAuthenticated(true);
       }
     }
-    
+
     setIsLoading(false);
   }, [isVerifying, verificationData]);
 
@@ -84,24 +84,50 @@ function Router() {
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
-      
+
       // Invalidate all queries to refresh with new authentication
       queryClient.invalidateQueries();
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
-      
+
       // Invalidate all queries for legacy login too
       queryClient.invalidateQueries();
     }
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    localStorage.removeItem('authenticated');
+  const handleLogout = async () => {
+    try {
+      // Call server logout endpoint if token exists
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          await apiRequest('POST', '/api/auth/logout', null, {
+            'Authorization': `Bearer ${token}`
+          });
+        } catch (error) {
+          // Continue with logout even if server call fails
+          console.warn('Server logout failed:', error);
+        }
+      }
+    } catch (error) {
+      console.warn('Logout endpoint error:', error);
+    }
+
+    // Always clear all authentication-related data
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated'); // Legacy cleanup
+
+    // Clear any cached user data
+    queryClient.clear();
+
+    // Reset state
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+
+    // Navigate to login
+    navigate("/");
   };
 
   if (isLoading || isVerifying) {

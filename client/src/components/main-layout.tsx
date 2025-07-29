@@ -64,6 +64,21 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
 
   });
 
+  const handleLogout = () => {
+    // Clear all authentication-related data
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');  
+    localStorage.removeItem('authenticated'); // Legacy cleanup
+
+    // Clear query cache to remove any cached user-specific data
+    const { queryClient } = require('@/lib/queryClient');
+    if (queryClient) {
+      queryClient.clear();
+    }
+
+    onLogout?.();
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-safe">
       {/* Skip Links for Screen Readers */}
@@ -75,7 +90,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           Skip to navigation
         </a>
       </nav>
-      
+
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm container-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 container-safe">
@@ -118,7 +133,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   </div>
                 </div>
               )}
-              
+
               {/* AWS Config Info */}
               <div 
                 className="hidden sm:flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg max-w-48"
@@ -130,12 +145,12 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   {awsConfig?.bucketName || "Not configured"}
                 </span>
               </div>
-              
+
               {onLogout && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onLogout}
+                  onClick={handleLogout}
                   className="flex items-center space-x-1 sm:space-x-2 touch-target focus-ring"
                   aria-label="Sign out of your account"
                 >
@@ -145,7 +160,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
               )}
             </div>
           </div>
-          
+
           {/* Navigation Tabs */}
           <nav id="navigation" className="border-t border-border overflow-x-auto" role="navigation" aria-label="Main navigation">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">

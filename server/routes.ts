@@ -322,6 +322,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Logout endpoint to clear server-side session data
+  app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      // For now, just confirm logout (JWT tokens are stateless)
+      // In the future, we could maintain a blacklist of revoked tokens
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
   // Admin routes - User management
   app.get("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
