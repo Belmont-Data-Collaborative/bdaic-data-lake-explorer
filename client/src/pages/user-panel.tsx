@@ -205,7 +205,7 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                             <div className="text-xs text-muted-foreground">visits</div>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <Badge className={getFolderColor(dataset.topLevelFolder)} variant="secondary">
@@ -280,7 +280,7 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center justify-between pt-2 border-t border-border">
                           <div className="text-xs text-muted-foreground">
                             Downloaded from {download.ipAddress}
