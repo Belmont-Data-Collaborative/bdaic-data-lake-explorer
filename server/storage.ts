@@ -78,17 +78,17 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
-    // If user is admin, always return all datasets
+    // If user is admin, always return all datasets (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       return this.getDatasets();
     }
 
-    // If user has no custom role, they have full access by default (return all datasets)
+    // For non-admin users: if they have no custom role, they have full access by default
     if (!user.customRoleId) {
       return this.getDatasets();
     }
 
-    // If user has a custom role, restrict access to only datasets in their role
+    // For non-admin users with custom roles: restrict access to only datasets in their role
     const accessibleDatasets = await db
       .select({
         id: datasets.id,
@@ -125,17 +125,17 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return undefined;
 
-    // If user is admin, return dataset directly
+    // If user is admin, return dataset directly (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       return this.getDataset(id);
     }
 
-    // If user has no custom role, no access
+    // For non-admin users: if they have no custom role, they have full access
     if (!user.customRoleId) {
-      return undefined;
+      return this.getDataset(id);
     }
 
-    // Check if dataset is accessible through the user's custom role
+    // For non-admin users with custom roles: check if dataset is accessible through their role
     const [accessibleDataset] = await db
       .select({
         id: datasets.id,
@@ -701,18 +701,19 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
-    // If user is admin, return all dataset IDs
+    // If user is admin, return all dataset IDs (bypass all role restrictions)
     if (user.systemRole === 'admin') {
       const allDatasets = await db.select({ id: datasets.id }).from(datasets);
       return allDatasets.map(d => d.id);
     }
 
-    // If user has no custom role, return empty array
+    // For non-admin users: if they have no custom role, return all dataset IDs (full access)
     if (!user.customRoleId) {
-      return [];
+      const allDatasets = await db.select({ id: datasets.id }).from(datasets);
+      return allDatasets.map(d => d.id);
     }
 
-    // Get dataset IDs accessible through the user's custom role
+    // For non-admin users with custom roles: return only accessible dataset IDs
     const accessibleDatasets = await db
       .select({ id: roleDatasets.datasetId })
       .from(roleDatasets)
