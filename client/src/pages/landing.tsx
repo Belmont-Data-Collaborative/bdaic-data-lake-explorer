@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+
 import Register from "./register";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -41,7 +41,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [activeTab, setActiveTab] useState("overview");
+  const [activeTab, setActiveTab] = useState("overview");
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const [docsError, setDocsError] = useState<string | null>(null);
@@ -258,14 +258,7 @@ For detailed API specifications, please contact the system administrator.`;
     onLogin({ token, user });
   };
 
-  const handleLogout = () => {
-    // Clear all authentication-related data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authenticated'); // Legacy cleanup
 
-    onLogin?.();
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -305,7 +298,7 @@ For detailed API specifications, please contact the system administrator.`;
             </div>
 
             <ErrorBoundary>
-              <StatsCards stats={stats || undefined} />
+              {stats ? <StatsCards stats={stats} /> : <StatsCards />}
             </ErrorBoundary>
 
             {stats && (
