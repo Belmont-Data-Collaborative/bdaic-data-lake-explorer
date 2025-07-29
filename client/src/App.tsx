@@ -40,8 +40,10 @@ function Router() {
       });
       return res.json();
     },
-    enabled: !!localStorage.getItem('authToken'),
+    enabled: !!localStorage.getItem('authToken') && !isAuthenticated,
     retry: false,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache verification results
   });
 
   useEffect(() => {
@@ -115,17 +117,18 @@ function Router() {
       console.warn('Logout endpoint error:', error);
     }
 
-    // Always clear all authentication-related data
+    // Reset state first to prevent re-authentication
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+
+    // Clear all authentication-related data
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authenticated'); // Legacy cleanup
 
-    // Clear any cached user data
+    // Clear query cache and remove auth verification query specifically
     queryClient.clear();
-
-    // Reset state
-    setIsAuthenticated(false);
-    setCurrentUser(null);
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
 
     // Navigate to login
     navigate("/");

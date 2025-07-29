@@ -47,6 +47,12 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   const [docsError, setDocsError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Clear form data when component mounts (after logout)
+  useEffect(() => {
+    setLoginData({ username: "", password: "" });
+    setShowPassword(false);
+  }, []);
+
   // Fetch global statistics for public display
   const { data: globalStats } = useQuery<GlobalStatsResponse>({
     queryKey: ['/api/stats'],
@@ -201,6 +207,10 @@ For detailed API specifications, please contact the system administrator.`;
       return response.json();
     },
     onSuccess: (data) => {
+      // Clear form after successful login
+      setLoginData({ username: "", password: "" });
+      setShowPassword(false);
+      
       if (data.token && data.user) {
         // JWT-based authentication
         localStorage.setItem('authToken', data.token);
