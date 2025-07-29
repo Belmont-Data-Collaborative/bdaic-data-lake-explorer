@@ -34,6 +34,10 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     username: decoded.username,
     role: decoded.systemRole || decoded.role || 'user' // Map systemRole to role for consistency
   };
+  
+  console.log(`🔐 AUTH DEBUG: JWT decoded for user ${decoded.id} (${decoded.username}) with systemRole: ${decoded.systemRole}`);
+  console.log(`🔐 AUTH DEBUG: Request user set to:`, req.user);
+  
   next();
 };
 

@@ -220,6 +220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Generate JWT token
           const token = storage.generateJWT(user);
           
+          console.log(`🔐 LOGIN DEBUG: Generated JWT for user ${user.id} (${user.username}) with systemRole: ${user.systemRole}, customRoleId: ${user.customRoleId}`);
+          
           return res.json({ 
             success: true,
             token,
