@@ -78,16 +78,21 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return [];
 
+    console.log(`Getting datasets for user ${userId}: systemRole=${user.systemRole}, customRoleId=${user.customRoleId}`);
+
     // 1. If user is admin, always return all datasets (bypass all role restrictions)
     if (user.systemRole === 'admin') {
+      console.log(`User ${userId} is admin - returning all datasets`);
       return this.getDatasets();
     } 
     // 2. If user has no custom role, they have full access by default
     else if (!user.customRoleId) {
+      console.log(`User ${userId} has no custom role - returning all datasets`);
       return this.getDatasets();
     } 
     // 3. If user has a custom role, restrict access to only datasets in their role
     else {
+      console.log(`User ${userId} has custom role ${user.customRoleId} - restricting access`);
       const accessibleDatasets = await db
         .select({
           id: datasets.id,
@@ -111,6 +116,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(roleDatasets.roleId, user.customRoleId))
         .orderBy(asc(datasets.source), asc(datasets.name));
 
+      console.log(`User ${userId} with role ${user.customRoleId} can access ${accessibleDatasets.length} datasets`);
       return accessibleDatasets;
     }
   }
