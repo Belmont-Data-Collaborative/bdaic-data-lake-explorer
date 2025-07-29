@@ -213,10 +213,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
-          // CRITICAL: Clear ALL caches that could contain role-specific data
-          // This prevents any possibility of cross-user data bleeding
-          cache.clear(); // Nuclear option - clear everything
-          console.log(`Login: Cleared ALL caches to prevent role-based data bleeding for user ${user.id}`);
+          // Since we removed user-specific caching, no cache clearing needed
+          // Fresh data is always fetched for proper role-based access control
+          console.log(`Login: Fresh data fetching enabled for user ${user.id}`);
           
           // Generate JWT token
           const token = storage.generateJWT(user);
@@ -330,10 +329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint to clear server-side session data
   app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      // CRITICAL: Clear ALL caches to prevent any possibility of data bleeding
-      // Role-based data can be cached in various keys, so nuclear option is safest
-      cache.clear();
-      console.log(`Logout: Cleared ALL caches to prevent role-based data bleeding`);
+      // Only clear general caches that don't affect role-based access
+      // User-specific data is now always fetched fresh
+      invalidateCache('quick-stats');
+      invalidateCache('precomputed-stats');
+      
+      console.log(`Logout: Cleared general caches only - user data always fresh`);
       
       res.json({ message: "Logged out successfully" });
     } catch (error) {
@@ -849,14 +850,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get datasets based on user role and permissions
       const userId = req.user!.id;
-      const userCacheKey = `datasets-user-${userId}`;
       
-      let allDatasets = getCached<any[]>(userCacheKey);
-      
-      if (!allDatasets) {
-        allDatasets = await storage.getDatasetsForUser(userId);
-        setCache(userCacheKey, allDatasets, 300000); // 5 minutes cache per user
-      }
+      // Always fetch fresh data - no caching to prevent role-based data bleeding
+      const allDatasets = await storage.getDatasetsForUser(userId);
       
       // Apply filters
       if (folder && folder !== "all") {
