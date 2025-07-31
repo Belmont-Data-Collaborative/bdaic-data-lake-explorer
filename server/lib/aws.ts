@@ -41,12 +41,8 @@ export class AwsS3Service {
       const prefix = ""; // Only look at root level
       const datasets = await this.getDatasetFromPrefix(bucketName, prefix);
 
-      // Filter to only include CSV datasets
-      const csvDatasets = datasets.filter(
-        (dataset) => dataset.format.toLowerCase() === "csv",
-      );
-
-      return csvDatasets;
+      // Return all datasets, not just CSV files
+      return datasets;
     } catch (error) {
       console.error("Error listing datasets:", error);
       return [];
