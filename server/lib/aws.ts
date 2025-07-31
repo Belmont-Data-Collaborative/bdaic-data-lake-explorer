@@ -816,7 +816,7 @@ export class AwsS3Service {
       return {
         stream: downloadResponse.Body,
         key: dataFile.Key,
-        size: dataFile.Size || undefined
+        ...(dataFile.Size && { size: dataFile.Size })
       };
     } catch (error) {
       console.error(`Error preparing full file stream for ${datasetName}:`, error);
@@ -1275,6 +1275,18 @@ export class AwsS3Service {
     fileKey: string,
   ): Promise<Partial<DatasetMetadata>> {
     try {
+      console.log(`Analyzing CSV file for comprehensive metadata: ${fileKey}`);
+      
+      // Get file size first for context
+      const headCommand = new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+      });
+      const headResponse = await this.s3Client.send(headCommand);
+      const fileSize = headResponse.ContentLength || 0;
+      
+      console.log(`File size: ${this.formatFileSize(fileSize)} - performing comprehensive analysis`);
+
       const getObjectCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: fileKey,
@@ -1285,12 +1297,17 @@ export class AwsS3Service {
 
       if (!stream) return {};
 
-      // Read first few lines to analyze headers
+      // For small files (< 10MB), analyze the full content
+      // For larger files, use sampling approach for performance
+      const shouldAnalyzeFullFile = fileSize < 10 * 1024 * 1024; // 10MB threshold
+      
       let content = "";
       const reader = stream as NodeJS.ReadableStream;
       let bytesRead = 0;
-      const maxBytes = 2048; // Read first 2KB to get headers
-
+      
+      // Determine how much to read based on file size
+      const maxBytes = shouldAnalyzeFullFile ? fileSize : (5 * 1024 * 1024); // Full file or 5MB sample
+      
       for await (const chunk of reader) {
         content += chunk.toString();
         bytesRead += chunk.length;
@@ -1301,36 +1318,96 @@ export class AwsS3Service {
       if (lines.length === 0) return {};
 
       const headerLine = lines[0];
+      if (!headerLine) return {};
+      
       const delimiter = this.detectDelimiter(headerLine);
       const headers = headerLine
         .split(delimiter)
-        .map((h) => h.trim().replace(/"/g, ""));
+        .map((h) => h.trim().replace(/"/g, ""))
+        .filter((h) => h.length > 0);
 
-      // Analyze a few data rows for type inference
-      const dataRows = lines
-        .slice(1, Math.min(6, lines.length))
+      console.log(`Found ${headers.length} columns in CSV file`);
+
+      // Analyze data rows for comprehensive statistics
+      const dataLines = lines.slice(1); // Exclude header
+      const totalDataRows = dataLines.length;
+      
+      // Calculate actual record count
+      let actualRecordCount = totalDataRows;
+      
+      // For large files, estimate total record count based on sample
+      if (!shouldAnalyzeFullFile && totalDataRows > 0) {
+        const bytesPerRow = bytesRead / totalDataRows;
+        const estimatedTotalRows = Math.floor(fileSize / bytesPerRow);
+        actualRecordCount = estimatedTotalRows;
+        console.log(`Estimated total records from ${totalDataRows} sample rows: ${actualRecordCount}`);
+      } else {
+        console.log(`Counted actual records: ${actualRecordCount}`);
+      }
+
+      // Parse data rows for completeness analysis
+      const parsedRows = dataLines
+        .slice(0, Math.min(1000, dataLines.length)) // Analyze up to 1000 rows for completeness
         .map((line) =>
-          line.split(delimiter).map((cell) => cell.trim().replace(/"/g, "")),
-        );
+          line.split(delimiter).map((cell) => cell.trim().replace(/"/g, ""))
+        )
+        .filter((row) => row.length === headers.length); // Only include properly formatted rows
 
+      console.log(`Analyzing ${parsedRows.length} rows for completeness score calculation`);
+
+      // Calculate completeness score (percentage of non-empty cells)
+      let totalCells = 0;
+      let filledCells = 0;
+
+      parsedRows.forEach((row) => {
+        row.forEach((cell) => {
+          totalCells++;
+          if (cell && cell.trim() !== "" && cell.toLowerCase() !== "null" && cell.toLowerCase() !== "na") {
+            filledCells++;
+          }
+        });
+      });
+
+      const completenessScore = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+      console.log(`Completeness analysis: ${filledCells}/${totalCells} cells filled = ${completenessScore}%`);
+
+      // Calculate community data points
+      const communityDataPoints = Math.round(actualRecordCount * headers.length * (completenessScore / 100));
+      console.log(`Community data points: ${actualRecordCount} records × ${headers.length} columns × ${completenessScore}% = ${communityDataPoints}`);
+
+      // Analyze column types using more sample data
       const columnMetadata = headers.map((header, index) => {
-        const values = dataRows
+        const values = parsedRows
           .map((row) => row[index])
-          .filter((val) => val && val !== "");
+          .filter((val) => val && val !== "" && val.toLowerCase() !== "null");
+        
         return {
           name: header,
-          type: this.inferColumnType(values),
+          dataType: this.inferColumnType(values),
+          description: this.generateColumnDescription(header, values.slice(0, 10))
         };
       });
 
       const tags = this.extractTagsFromHeaders(headers);
       const dataSource = this.inferDataSource(fileKey, headers);
 
-      return {
+      const metadata: Partial<DatasetMetadata> = {
+        recordCount: actualRecordCount,
+        columnCount: headers.length,
+        completenessScore: completenessScore,
         columns: columnMetadata,
         tags: tags.length > 0 ? tags : undefined,
         dataSource: dataSource || undefined,
+        encoding: "UTF-8", // Assume UTF-8 for CSV files
+        delimiter: delimiter,
+        hasHeader: true,
+        // Add community data points as a custom field
+        ...({ communityDataPoints } as any)
       };
+
+      console.log(`CSV analysis complete. Records: ${actualRecordCount}, Columns: ${headers.length}, Completeness: ${completenessScore}%, Community Points: ${communityDataPoints}`);
+
+      return metadata;
     } catch (error) {
       console.error(`Error analyzing CSV file ${fileKey}:`, error);
       return {};
@@ -1351,24 +1428,80 @@ export class AwsS3Service {
     return mostCommon.count > 0 ? mostCommon.delimiter : ",";
   }
 
+  private generateColumnDescription(columnName: string, sampleValues: string[]): string {
+    const name = columnName.toLowerCase();
+    
+    // Generate basic descriptions based on column names and sample data
+    if (name.includes('id') || name.includes('fips')) {
+      return 'Unique identifier';
+    }
+    if (name.includes('name') || name.includes('title')) {
+      return 'Descriptive name or title';
+    }
+    if (name.includes('date') || name.includes('time')) {
+      return 'Date or timestamp value';
+    }
+    if (name.includes('count') || name.includes('total') || name.includes('sum')) {
+      return 'Numeric count or total';
+    }
+    if (name.includes('rate') || name.includes('percent') || name.includes('ratio')) {
+      return 'Rate, percentage, or ratio value';
+    }
+    if (name.includes('state') || name.includes('county') || name.includes('city')) {
+      return 'Geographic location identifier';
+    }
+    if (name.includes('population') || name.includes('pop')) {
+      return 'Population count or demographic data';
+    }
+    
+    // Analyze sample values for additional context
+    if (sampleValues.length > 0) {
+      const dataType = this.inferColumnType(sampleValues);
+      const uniqueCount = new Set(sampleValues).size;
+      
+      if (dataType === 'integer' && uniqueCount < 20) {
+        return `Categorical numeric value (${uniqueCount} categories)`;
+      }
+      if (dataType === 'string' && uniqueCount < 10) {
+        return `Categorical text value (${uniqueCount} categories)`;
+      }
+    }
+    
+    return `Data field: ${columnName}`;
+  }
+
   private inferColumnType(values: string[]): string {
-    if (values.length === 0) return "text";
+    if (values.length === 0) return "string";
 
     let numericCount = 0;
+    let integerCount = 0;
     let dateCount = 0;
 
     for (const value of values) {
-      if (!isNaN(Number(value))) {
+      const trimmed = value.trim();
+      if (!trimmed) continue;
+      
+      // Check for integer
+      if (/^\d+$/.test(trimmed)) {
         numericCount++;
-      } else if (!isNaN(Date.parse(value))) {
+        integerCount++;
+      }
+      // Check for float
+      else if (/^-?\d*\.?\d+$/.test(trimmed)) {
+        numericCount++;
+      }
+      // Check for date
+      else if (!isNaN(Date.parse(trimmed)) && (trimmed.includes('-') || trimmed.includes('/') || trimmed.includes('T'))) {
         dateCount++;
       }
     }
 
     const total = values.length;
-    if (numericCount / total > 0.8) return "numeric";
+    if (numericCount / total > 0.8) {
+      return integerCount === numericCount ? "integer" : "float";
+    }
     if (dateCount / total > 0.8) return "date";
-    return "text";
+    return "string";
   }
 
   private extractTagsFromHeaders(headers: string[]): string[] {
