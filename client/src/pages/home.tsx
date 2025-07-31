@@ -325,7 +325,8 @@ export default function Home() {
   };
 
   // Filter folders to only show those with datasets
-  const foldersWithDatasets = folders.filter(folder => {
+  // If allDatasets is still loading, show all folders to prevent flickering
+  const foldersWithDatasets = allDatasetsLoading ? folders : folders.filter(folder => {
     const datasetCount = allDatasets.filter(d => d.topLevelFolder === folder).length;
     return datasetCount > 0;
   });
