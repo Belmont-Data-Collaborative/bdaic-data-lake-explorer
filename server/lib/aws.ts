@@ -77,6 +77,17 @@ export class AwsS3Service {
           return ext === "yaml" || ext === "yml";
         });
 
+        // Skip datasets that are purely YAML files (no CSV or other data files)
+        const hasDataFiles = files.some((file: any) => {
+          const ext = file.Key?.split(".").pop()?.toLowerCase();
+          return ext !== "yaml" && ext !== "yml";
+        });
+        
+        if (!hasDataFiles) {
+          console.log(`Skipping YAML-only dataset: ${datasetName}`);
+          continue;
+        }
+
         // For size calculation, exclude YAML metadata files if CSV is present
         const dataFiles =
           csvFile && yamlFile
@@ -215,12 +226,9 @@ export class AwsS3Service {
           }
           groups.get(datasetName)!.push(file);
         } else {
-          // If no matching CSV, treat YAML as standalone
-          const datasetName = this.extractDatasetName(fileName, prefix);
-          if (!groups.has(datasetName)) {
-            groups.set(datasetName, []);
-          }
-          groups.get(datasetName)!.push(file);
+          // If no matching CSV, skip standalone YAML files
+          console.log(`Skipping standalone YAML file: ${fileName}`);
+          continue;
         }
       } else {
         // For non-YAML files, use existing logic
