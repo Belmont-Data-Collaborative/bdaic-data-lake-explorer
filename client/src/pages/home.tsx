@@ -123,26 +123,19 @@ export default function Home() {
 
 
   const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
-    queryKey: ["/api/folders", tagFilter, Date.now()], // Force fresh fetch every time
+    queryKey: ["/api/folders", tagFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (tagFilter && tagFilter !== "all") {
         params.set("tag", tagFilter);
       }
-      // Add cache-busting parameter
-      params.set("_t", Date.now().toString());
-      const response = await fetch(`/api/folders?${params}`, {
-        cache: 'no-cache',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
+      const response = await fetch(`/api/folders?${params}`);
       const data = await response.json();
-      console.log("Fresh folders data:", data, "Length:", data.length);
+      console.log("Folders from API:", data);
       return data;
     },
-    staleTime: 0, // Disable cache
-    gcTime: 0, // Disable cache
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
   });
 
   // Debug logging
