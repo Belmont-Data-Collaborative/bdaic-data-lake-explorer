@@ -467,7 +467,9 @@ export function DatasetCard({
                         Record Count
                       </span>
                       <span className="text-sm font-medium text-foreground text-ellipsis">
-                        {metadata?.recordCount || "Unknown"}
+                        {metadata?.recordCount && metadata.recordCount !== "" 
+                          ? formatNumber(parseInt(metadata.recordCount))
+                          : "Unknown"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-border">
@@ -477,12 +479,12 @@ export function DatasetCard({
                       </span>
                     </div>
                     {metadata?.completenessScore !== undefined && (
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span className="text-sm text-gray-600 flex items-center">
+                      <div className="flex justify-between items-center py-2 border-b border-border">
+                        <span className="text-sm text-muted-foreground flex items-center">
                           Completeness Score
                           <Popover>
                             <PopoverTrigger asChild>
-                              <button className="ml-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                              <button className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer">
                                 <Info size={16} />
                               </button>
                             </PopoverTrigger>
@@ -491,9 +493,9 @@ export function DatasetCard({
                             </PopoverContent>
                           </Popover>
                         </span>
-                        <span className="text-sm font-medium text-gray-900 flex items-center">
+                        <span className="text-sm font-medium text-foreground flex items-center">
                           {metadata.completenessScore}%
-                          <div className="ml-2 w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="ml-2 w-16 h-2 bg-muted rounded-full overflow-hidden">
                             <div
                               className={`h-full transition-all duration-300 ${
                                 metadata.completenessScore >= 80
@@ -548,15 +550,16 @@ export function DatasetCard({
                       </div>
                     )}
 
-                    {metadata?.recordCount &&
+                    {metadata?.recordCount && 
+                      metadata.recordCount !== "" &&
                       metadata?.columnCount &&
                       metadata?.completenessScore && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                          <span className="text-sm text-gray-600 flex items-center">
+                        <div className="flex justify-between items-center py-2 border-b border-border">
+                          <span className="text-sm text-muted-foreground flex items-center">
                             Community Data Points
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button className="ml-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                                <button className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer">
                                   <Info size={16} />
                                 </button>
                               </PopoverTrigger>
@@ -565,7 +568,7 @@ export function DatasetCard({
                               </PopoverContent>
                             </Popover>
                           </span>
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-foreground">
                             {formatNumber(
                               parseInt(metadata.recordCount) *
                               metadata.columnCount *

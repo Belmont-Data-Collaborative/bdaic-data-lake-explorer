@@ -965,19 +965,46 @@ export class AwsS3Service {
       }
     }
 
-    // If no YAML or YAML parsing failed, analyze CSV file as fallback
-    if (!yamlFile || !finalMetadata.columns?.length) {
+    // Analyze CSV file as fallback if:
+    // 1. No YAML file exists, OR
+    // 2. YAML has no columns, OR  
+    // 3. YAML has missing critical fields (recordCount, columnCount)
+    const needsCsvAnalysis = !yamlFile || 
+                            !finalMetadata.columns?.length ||
+                            !finalMetadata.recordCount || 
+                            finalMetadata.recordCount === "" ||
+                            finalMetadata.columnCount === 0;
+                            
+    if (needsCsvAnalysis) {
       const csvFile = files.find(
         (file: any) =>
           this.getFileFormat(file.Key || "").toLowerCase() === "csv",
       );
       if (csvFile) {
         try {
+          console.log(`Using CSV analysis fallback for missing fields. Current recordCount: "${finalMetadata.recordCount}", columnCount: ${finalMetadata.columnCount}`);
           const csvMetadata = await this.analyzeCsvFile(
             bucketName,
             csvFile.Key,
           );
-          finalMetadata = { ...finalMetadata, ...csvMetadata };
+          
+          // Merge intelligently - prefer CSV values for missing/empty fields
+          Object.keys(csvMetadata).forEach(key => {
+            const csvValue = csvMetadata[key as keyof DatasetMetadata];
+            const currentValue = finalMetadata[key as keyof DatasetMetadata];
+            
+            // Use CSV value if current value is missing, empty, or zero
+            if (csvValue !== undefined && (
+                currentValue === undefined || 
+                currentValue === "" || 
+                currentValue === 0 ||
+                (Array.isArray(currentValue) && currentValue.length === 0)
+              )) {
+              (finalMetadata as any)[key] = csvValue;
+            }
+          });
+          
+          console.log(`After CSV analysis - recordCount: "${finalMetadata.recordCount}", columnCount: ${finalMetadata.columnCount}`);
         } catch (error: any) {
           console.log("Could not analyze CSV file:", error);
         }
@@ -1392,7 +1419,7 @@ export class AwsS3Service {
       const dataSource = this.inferDataSource(fileKey, headers);
 
       const metadata: Partial<DatasetMetadata> = {
-        recordCount: actualRecordCount,
+        recordCount: actualRecordCount.toString(),
         columnCount: headers.length,
         completenessScore: completenessScore,
         columns: columnMetadata,
@@ -1401,6 +1428,7 @@ export class AwsS3Service {
         encoding: "UTF-8", // Assume UTF-8 for CSV files
         delimiter: delimiter,
         hasHeader: true,
+        fileSizeBytes: fileSize,
         // Add community data points as a custom field
         ...({ communityDataPoints } as any)
       };
