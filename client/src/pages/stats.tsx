@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { StatsCards } from "@/components/stats-cards";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { formatNumber } from "@/lib/format-number";
 import type { Dataset } from "@shared/schema";
 
 interface Stats {
@@ -145,7 +146,7 @@ export default function StatsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Community Data Points</span>
-                <span className="font-medium">{stats.totalCommunityDataPoints?.toLocaleString() || 0}</span>
+                <span className="font-medium">{formatNumber(stats.totalCommunityDataPoints || 0)}</span>
               </div>
             </div>
           </div>

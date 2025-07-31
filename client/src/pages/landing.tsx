@@ -11,6 +11,7 @@ import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, User
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatNumber } from "@/lib/format-number";
 import Register from "./register";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -319,7 +320,7 @@ For detailed API specifications, please contact the system administrator.`;
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Community Data Points</span>
-                      <span className="font-medium">{stats.totalCommunityDataPoints?.toLocaleString() || 0}</span>
+                      <span className="font-medium">{formatNumber(stats.totalCommunityDataPoints || 0)}</span>
                     </div>
                   </CardContent>
                 </Card>
