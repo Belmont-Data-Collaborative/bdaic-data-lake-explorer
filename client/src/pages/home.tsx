@@ -123,7 +123,7 @@ export default function Home() {
 
 
   const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
-    queryKey: ["/api/folders", tagFilter],
+    queryKey: ["/api/folders", tagFilter, "v2"], // Added version to force cache refresh
     queryFn: async () => {
       const params = new URLSearchParams();
       if (tagFilter && tagFilter !== "all") {
@@ -132,8 +132,8 @@ export default function Home() {
       const response = await fetch(`/api/folders?${params}`);
       return response.json();
     },
-    staleTime: 300000, // 5 minutes cache (shorter since tag filtering affects results)
-    gcTime: 600000, // 10 minutes garbage collection
+    staleTime: 0, // Disable cache temporarily to debug
+    gcTime: 0, // Disable cache temporarily to debug
   });
 
   // Debug logging
