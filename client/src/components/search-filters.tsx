@@ -40,6 +40,9 @@ export function SearchFilters({
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
 
+  // Use currentFolder parameter for potential future enhancements
+  console.log("Current folder context:", currentFolder);
+
   // Fetch global tags (not folder-scoped anymore for top-level filtering)
   const { data: tagFrequencies = [] } = useQuery({
     queryKey: ["/api/tags"],

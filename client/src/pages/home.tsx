@@ -1,17 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Database, Settings, Cloud, LogOut, ArrowLeft } from "lucide-react";
+import { Database, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { SearchFilters } from "@/components/search-filters";
-import { MainPageActions } from "@/components/main-page-actions";
 import { StatsCards } from "@/components/stats-cards";
 import { DatasetList } from "@/components/dataset-list";
 import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { usePerformanceMonitor } from "@/hooks/use-performance-monitor";
-import type { Dataset, AwsConfig } from "@shared/schema";
+import type { Dataset } from "@shared/schema";
 
 interface Stats {
   totalDatasets: number;
@@ -22,8 +20,6 @@ interface Stats {
   totalCommunityDataPoints?: number;
 }
 
-interface HomeProps {}
-
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formatFilter, setFormatFilter] = useState("all");
@@ -33,16 +29,6 @@ export default function Home() {
     null,
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Monitor performance for optimization insights
-  const performanceMetrics = usePerformanceMonitor();
-
-  // Remove preload data reference for now - using direct queries
-
-  const { data: awsConfig } = useQuery<AwsConfig>({
-    queryKey: ["/api/aws-config"],
-    staleTime: 300000, // 5 minutes
-  });
 
   // Query for all datasets (used for folder cards and when no folder selected)
   const {
@@ -134,15 +120,7 @@ export default function Home() {
     gcTime: 3600000, // 1 hour garbage collection
   });
 
-  const { data: quickStats } = useQuery<{
-    totalCount: number;
-    folders: string[];  
-    lastUpdated: string;
-  }>({
-    queryKey: ["/api/datasets/quick-stats"],
-    staleTime: 300000, // 5 minutes cache
-    gcTime: 600000, // 10 minutes garbage collection
-  });
+
 
   const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
@@ -370,7 +348,7 @@ export default function Home() {
             </div>
           )}
           <ErrorBoundary>
-            <StatsCards stats={stats} />
+            <StatsCards {...(stats && { stats })} />
           </ErrorBoundary>
         </div>
 
@@ -474,7 +452,6 @@ export default function Home() {
                 onSelectDataset={handleSelectDataset}
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
-                currentFolder={undefined}
               />
             </div>
 
@@ -544,9 +521,9 @@ export default function Home() {
                             folderName={folderName}
                             datasets={folderDatasets}
                             onClick={() => handleFolderSelect(folderName)}
-                            totalCommunityDataPoints={
-                              folderDataPointsEntry?.total_community_data_points
-                            }
+                            {...(folderDataPointsEntry?.total_community_data_points !== undefined && {
+                              totalCommunityDataPoints: folderDataPointsEntry.total_community_data_points
+                            })}
                           />
                         </div>
                       );
