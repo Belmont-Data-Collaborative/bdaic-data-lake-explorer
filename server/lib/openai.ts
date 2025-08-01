@@ -445,6 +445,54 @@ Always specify which dataset(s) your insights are drawn from and how the dataset
 
 ${combinedContext}
 
+**Analysis Guidelines:**
+- Use the actual data samples provided to give specific, data-driven insights
+- Reference real values, ranges, and patterns found in the data
+- Provide statistical analysis based on actual observations
+- When appropriate, suggest or create visualizations to illustrate findings
+- Always ground your analysis in the actual data provided
+- Specify which dataset(s) your insights are drawn from and how datasets relate to each other
+
+**Visualization Triggers:**
+- User asks for charts, graphs, or visual analysis
+- Comparison requests (e.g., "compare states by...")
+- Trend analysis (e.g., "show trends over time")
+- Distribution questions (e.g., "what's the distribution of...")
+- Top/bottom ranking requests (e.g., "top 10 states by...")
+
+${shouldGenerateChart ? `
+IMPORTANT: If this question would benefit from a chart, include a JSON object at the end of your response in this exact format. Use the actual data from multiple datasets to create meaningful charts:
+
+CHART_DATA: {
+  "type": "bar" | "pie" | "line",
+  "title": "Descriptive Chart Title",
+  "data": {
+    "labels": ["label1", "label2", "label3"],
+    "datasets": [{
+      "label": "Data Series Name",
+      "data": [value1, value2, value3],
+      "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"]
+    }]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "legend": { "position": "top" },
+      "title": { "display": true, "text": "Chart Title" }
+    }
+  }
+}
+
+Chart Guidelines:
+- Use "bar" for comparisons, rankings, categorical data
+- Use "pie" for proportions, percentages, parts of a whole  
+- Use "line" for trends over time, continuous data
+- Base data on the actual sample data from all datasets
+- Use meaningful labels from the real column names
+- Include proper colors and formatting
+- Make sure all numbers are valid (no null/undefined)
+` : ''}
+
 Provide thorough, insightful analysis that leverages the strengths of each dataset. When possible, identify patterns that span across multiple datasets and provide a unified perspective.`;
 
       const userPrompt = `${message}
@@ -467,14 +515,92 @@ Please analyze this question using all ${datasets.length} available datasets. Pr
         temperature: 0.1,
       });
 
-      const responseText = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response.";
-
+      let responseText = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response.";
       let chartData = null;
-      if (shouldGenerateChart) {
+
+      // Extract chart data if present (same approach as single dataset chat)
+      if (shouldGenerateChart && responseText.includes('CHART_DATA:')) {
         try {
-          chartData = this.generateChartData(responseText, datasets);
+          // Find the CHART_DATA: line
+          const lines = responseText.split('\n');
+          let chartDataIndex = -1;
+          
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].trim().startsWith('CHART_DATA:')) {
+              chartDataIndex = i;
+              break;
+            }
+          }
+          
+          if (chartDataIndex !== -1) {
+            // Extract everything after CHART_DATA: on that line and subsequent lines
+            let jsonStr = lines[chartDataIndex].replace(/^.*CHART_DATA:\s*/, '').trim();
+            
+            // If the JSON continues on multiple lines, collect them
+            let braceCount = 0;
+            let foundOpenBrace = false;
+            let completeJson = '';
+            
+            for (let char of jsonStr) {
+              completeJson += char;
+              if (char === '{') {
+                braceCount++;
+                foundOpenBrace = true;
+              } else if (char === '}') {
+                braceCount--;
+              }
+              
+              // If we've closed all braces, we have complete JSON
+              if (foundOpenBrace && braceCount === 0) {
+                break;
+              }
+            }
+            
+            // If JSON is incomplete, check next lines
+            let lineIndex = chartDataIndex + 1;
+            while (foundOpenBrace && braceCount > 0 && lineIndex < lines.length) {
+              const nextLine = lines[lineIndex].trim();
+              for (let char of nextLine) {
+                completeJson += char;
+                if (char === '{') {
+                  braceCount++;
+                } else if (char === '}') {
+                  braceCount--;
+                }
+                
+                if (braceCount === 0) {
+                  break;
+                }
+              }
+              lineIndex++;
+            }
+            
+            if (completeJson && foundOpenBrace && braceCount === 0) {
+              try {
+                chartData = JSON.parse(completeJson);
+                
+                // Validate chart data structure
+                if (chartData && chartData.type && chartData.data && chartData.data.labels && chartData.data.datasets) {
+                  console.log("Successfully parsed multi-dataset chart data:", chartData.type);
+                  
+                  // Remove the CHART_DATA section from the response
+                  const beforeChart = lines.slice(0, chartDataIndex);
+                  const afterChart = lines.slice(lineIndex);
+                  responseText = [...beforeChart, ...afterChart].join('\n').trim();
+                } else {
+                  console.warn("Invalid multi-dataset chart data structure:", chartData);
+                  chartData = null;
+                }
+              } catch (parseError) {
+                console.error("Error parsing multi-dataset chart JSON:", parseError);
+                console.error("JSON string was:", completeJson);
+                chartData = null;
+              }
+            }
+          }
         } catch (chartError) {
-          console.error("Error generating chart for multi-dataset analysis:", chartError);
+          console.error("Error parsing chart data from multi-dataset analysis:", chartError);
+          chartData = null;
         }
       }
 
