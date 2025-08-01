@@ -196,9 +196,41 @@ export default function Home() {
     
     if (forFolder) {
       // Get community data points for specific folder
-      const folderData = folderDataPoints.find(
-        (fp) => fp.folder_label.toLowerCase() === forFolder.toLowerCase()
-      );
+      // Handle both display names (e.g., "CDC PLACES(496,496,210)") and raw folder names (e.g., "cdc_places")
+      const folderData = folderDataPoints.find((fp) => {
+        const displayLabel = fp.folder_label.toLowerCase();
+        const rawFolder = forFolder.toLowerCase();
+        
+        // Direct match
+        if (displayLabel === rawFolder) return true;
+        
+        // Match by extracting folder name from display label
+        // Convert "CDC PLACES(496,496,210)" -> "cdc_places"
+        const extractedName = displayLabel
+          .split('(')[0] // Remove parentheses part
+          .trim()
+          .replace(/\s+/g, '_') // Replace spaces with underscores
+          .toLowerCase();
+        
+        // Convert "cdc_places" -> "cdc places" for reverse matching
+        const normalizedRaw = rawFolder.replace(/_/g, ' ');
+        
+        const isMatch = extractedName === rawFolder || displayLabel.includes(normalizedRaw);
+        
+        // Debug logging for folder matching
+        if (rawFolder === 'cdc_svi' || rawFolder === 'irs_990_efile') {
+          console.log(`Folder matching debug for ${rawFolder}:`, {
+            displayLabel,
+            extractedName,
+            normalizedRaw,
+            isMatch,
+            totalPoints: fp.total_community_data_points
+          });
+        }
+        
+        return isMatch;
+      });
+      
       return folderData?.total_community_data_points || 0;
     }
     
