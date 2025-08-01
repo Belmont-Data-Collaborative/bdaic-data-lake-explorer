@@ -188,8 +188,29 @@ export default function Home() {
     return sources;
   };
 
+  // Calculate total community data points from API data
+  const getTotalCommunityDataPoints = (forFolder?: string): number => {
+    if (!folderDataPoints || folderDataPoints.length === 0) {
+      return 0;
+    }
+    
+    if (forFolder) {
+      // Get community data points for specific folder
+      const folderData = folderDataPoints.find(
+        (fp) => fp.folder_label.toLowerCase() === forFolder.toLowerCase()
+      );
+      return folderData?.total_community_data_points || 0;
+    }
+    
+    // Get total community data points across all folders
+    return folderDataPoints.reduce(
+      (total, fp) => total + (fp.total_community_data_points || 0),
+      0
+    );
+  };
+
   // Calculate stats based on current selection (folder or global)
-  const calculateStats = (datasetsToCalculate: Dataset[]): Stats => {
+  const calculateStats = (datasetsToCalculate: Dataset[], forFolder?: string): Stats => {
     const totalDatasets = datasetsToCalculate.length;
     const totalSizeBytes = datasetsToCalculate.reduce(
       (total, dataset) => total + (dataset.sizeBytes || 0),
@@ -206,29 +227,13 @@ export default function Home() {
 
     const uniqueDataSources = extractDataSources(datasetsToCalculate);
 
-    // Calculate community data points for the filtered datasets
-    const totalCommunityDataPoints = datasetsToCalculate
-      .filter(
-        (d) =>
-          d.metadata &&
-          (d.metadata as any).recordCount &&
-          (d.metadata as any).columnCount &&
-          (d.metadata as any).completenessScore,
-      )
-      .reduce((total, d) => {
-        const recordCount = parseInt((d.metadata as any).recordCount);
-        const columnCount = (d.metadata as any).columnCount;
-        const completenessScore = (d.metadata as any).completenessScore / 100.0;
-        return total + recordCount * columnCount * completenessScore;
-      }, 0);
-
     return {
       totalDatasets,
       totalSize: formatFileSize(totalSizeBytes),
       dataSources: uniqueDataSources.size,
       lastUpdated: globalStats?.lastUpdated || "Never",
       lastRefreshTime: globalStats?.lastRefreshTime || null,
-      totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
+      totalCommunityDataPoints: getTotalCommunityDataPoints(forFolder),
     };
   };
 
@@ -238,20 +243,20 @@ export default function Home() {
         // For folder view, calculate stats based on the selected folder's datasets only
         const folderDatasets = datasetsByFolder[selectedFolder] || [];
         if (folderDatasets.length === 0 && datasetsLoading) {
-          // If data is still loading, show loading state
+          // If data is still loading, show loading state but use API data points if available
           return {
             totalDatasets: 0,
             totalSize: "Loading...",
             dataSources: 0,
             lastUpdated: globalStats?.lastUpdated || "Never",
             lastRefreshTime: globalStats?.lastRefreshTime || null,
-            totalCommunityDataPoints: 0,
+            totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
           };
         }
 
         // If we have folder datasets from allDatasets, use those for accurate stats
         if (folderDatasets.length > 0) {
-          return calculateStats(folderDatasets);
+          return calculateStats(folderDatasets, selectedFolder);
         }
 
         // Fallback: use server response count but calculate other stats from available data
@@ -261,10 +266,15 @@ export default function Home() {
           dataSources: 0,
           lastUpdated: globalStats?.lastUpdated || "Never",
           lastRefreshTime: globalStats?.lastRefreshTime || null,
-          totalCommunityDataPoints: 0,
+          totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
         };
       })()
-    : globalStats;
+    : globalStats
+      ? {
+          ...globalStats,
+          totalCommunityDataPoints: getTotalCommunityDataPoints(), // Ensure global stats always use API data
+        }
+      : undefined;
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;
