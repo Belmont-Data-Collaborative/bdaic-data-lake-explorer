@@ -65,6 +65,12 @@ export class IntelligentDataSampler {
       description: 'Smart sampling targeting key columns and patterns'
     },
     {
+      name: 'balanced',
+      maxSizeBytes: 8 * 1024 * 1024, // 8MB
+      sampleRows: 750,
+      description: 'Balanced sampling for multi-dataset analysis'
+    },
+    {
       name: 'lightweight',
       maxSizeBytes: 5 * 1024 * 1024, // 5MB
       sampleRows: 500,

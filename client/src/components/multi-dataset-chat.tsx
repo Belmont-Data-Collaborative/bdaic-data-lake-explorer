@@ -18,6 +18,31 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Dataset } from "@shared/schema";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+} from "chart.js";
+import { Bar, Pie, Line } from "react-chartjs-2";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+);
 
 interface Message {
   id: string;
@@ -129,16 +154,59 @@ export function MultiDatasetChat({ datasets, isOpen, onClose }: MultiDatasetChat
     }
   };
 
-  const renderChart = (chartData: any) => {
-    // Basic chart rendering - could be enhanced with actual chart library
-    return (
-      <div className="text-sm text-muted-foreground">
-        <p>Chart visualization: {chartData.type}</p>
-        <pre className="text-xs mt-2 bg-muted p-2 rounded">
-          {JSON.stringify(chartData, null, 2)}
-        </pre>
-      </div>
-    );
+  const renderChart = (chart: any) => {
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top" as const,
+          labels: {
+            boxWidth: 12,
+            padding: 10,
+            font: {
+              size: 11,
+            },
+          },
+        },
+        title: {
+          display: !!chart.title,
+          text: chart.title || "",
+          font: {
+            size: 14,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            font: {
+              size: 10,
+            },
+            maxRotation: 45,
+          },
+        },
+        y: {
+          ticks: {
+            font: {
+              size: 10,
+            },
+          },
+        },
+      },
+      ...chart.options,
+    };
+
+    switch (chart.type) {
+      case "bar":
+        return <Bar data={chart.data} options={commonOptions} />;
+      case "pie":
+        return <Pie data={chart.data} options={commonOptions} />;
+      case "line":
+        return <Line data={chart.data} options={commonOptions} />;
+      default:
+        return null;
+    }
   };
 
   if (!isOpen) return null;

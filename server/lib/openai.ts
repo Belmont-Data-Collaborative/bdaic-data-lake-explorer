@@ -406,13 +406,13 @@ Chart Guidelines:
     try {
       console.log(`Starting multi-dataset analysis for ${datasets.length} datasets: ${datasets.map(d => d.name).join(', ')}`);
 
-      // Build context for all datasets
+      // Build context for all datasets with optimized sampling for speed
       const datasetContexts = await Promise.all(
         datasets.map(async (dataset) => {
-          // Get intelligent sample for each dataset
+          // Use a faster, lighter sampling strategy for multi-dataset analysis
           const intelligentSample = await intelligentDataSampler.getIntelligentSample(
             dataset, 
-            'focused', // Use focused strategy for multi-dataset analysis
+            'lightweight', // Use lightweight strategy for faster multi-dataset analysis
             message
           );
           
