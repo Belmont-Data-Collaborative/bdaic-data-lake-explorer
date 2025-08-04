@@ -74,9 +74,21 @@ export function UserRoleAssignment() {
   });
 
   // Fetch roles for selected user
-  const { data: userRoles = [] } = useQuery<Role[]>({
+  const { data: userRoles = [], refetch: refetchUserRoles } = useQuery<Role[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "roles"],
     enabled: !!selectedUser,
+    queryFn: async () => {
+      if (!selectedUser?.id) return [];
+      console.log('Fetching roles for user:', selectedUser.id);
+      const response = await apiRequest("GET", `/api/admin/users/${selectedUser.id}/roles`);
+      if (!response.ok) {
+        console.error('Failed to fetch user roles:', response.statusText);
+        return [];
+      }
+      const data = await response.json();
+      console.log('User roles response:', data);
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   // Assign role to user mutation
@@ -135,20 +147,20 @@ export function UserRoleAssignment() {
     if (!selectedUser || !selectedRoleId) return;
 
     try {
-      // First, remove any existing roles (single role per user) - only if they exist
-      const currentRoles = userRoles;
-      if (currentRoles.length > 0) {
-        for (const role of currentRoles) {
-          await removeRoleMutation.mutateAsync({ userId: selectedUser.id, roleId: role.id });
-        }
-      }
-
-      // Then assign the new role
+      console.log('Starting role assignment for user', selectedUser.id, 'with role', selectedRoleId);
+      console.log('Current user roles:', userRoles);
+      
+      // For single role per user, we'll simply assign the new role
+      // The backend can handle removing existing roles if needed
       const roleId = parseInt(selectedRoleId);
       await assignRoleMutation.mutateAsync({ userId: selectedUser.id, roleId });
 
       setIsAssignRolesDialogOpen(false);
       setSelectedRoleId("");
+      
+      // Refresh user roles after successful assignment
+      await refetchUserRoles();
+      
       toast({
         title: "Role assigned",
         description: "User role has been updated successfully.",
@@ -159,10 +171,13 @@ export function UserRoleAssignment() {
     }
   };
 
-  const openAssignRolesDialog = (user: User) => {
+  const openAssignRolesDialog = async (user: User) => {
+    console.log('Opening assign roles dialog for user:', user);
     setSelectedUser(user);
     setSelectedRoleId("");
     setIsAssignRolesDialogOpen(true);
+    // Force refresh of user roles when opening dialog
+    await queryClient.invalidateQueries({ queryKey: ["/api/admin/users", user.id, "roles"] });
   };
 
   // Merge user roles for display

@@ -571,6 +571,10 @@ export class DatabaseStorage implements IStorage {
 
   // User-Role assignment operations
   async assignUserToRole(userId: number, roleId: number, assignedBy: number): Promise<UserRole> {
+    // For single role per user, first remove any existing roles
+    await db.delete(userRoles).where(eq(userRoles.userId, userId));
+    
+    // Then insert the new role assignment
     const [assignment] = await db
       .insert(userRoles)
       .values({ userId, roleId, assignedBy })
