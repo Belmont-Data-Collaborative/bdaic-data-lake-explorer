@@ -426,6 +426,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role Management Routes (Admin only)
+  app.get("/api/admin/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roles = await storage.getAllRoles();
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      res.status(500).json({ message: "Failed to fetch roles" });
+    }
+  });
+
+  app.post("/api/admin/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { name, description } = req.body;
+      
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({ message: "Role name is required" });
+      }
+
+      // Check if role already exists
+      const existingRole = await storage.getRoleByName(name);
+      if (existingRole) {
+        return res.status(409).json({ message: "Role with this name already exists" });
+      }
+
+      const role = await storage.createRole({
+        name,
+        description: description || null,
+      });
+
+      res.status(201).json(role);
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Failed to create role" });
+    }
+  });
+
+  app.put("/api/admin/roles/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const { name, description } = req.body;
+
+      const updatedRole = await storage.updateRole(roleId, {
+        name,
+        description,
+      });
+
+      if (!updatedRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.json(updatedRole);
+    } catch (error) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/admin/roles/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      
+      const success = await storage.deleteRole(roleId);
+      if (!success) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.json({ message: "Role deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ message: "Failed to delete role" });
+    }
+  });
+
+  // Role-Dataset Assignment Routes (Admin only)
+  app.get("/api/admin/roles/:id/datasets", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const datasets = await storage.getDatasetsForRole(roleId);
+      res.json(datasets);
+    } catch (error) {
+      console.error("Error fetching role datasets:", error);
+      res.status(500).json({ message: "Failed to fetch role datasets" });
+    }
+  });
+
+  app.post("/api/admin/roles/:id/datasets", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const { datasetId } = req.body;
+
+      if (!datasetId || typeof datasetId !== 'number') {
+        return res.status(400).json({ message: "Dataset ID is required" });
+      }
+
+      const assignment = await storage.assignDatasetToRole(roleId, datasetId);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning dataset to role:", error);
+      res.status(500).json({ message: "Failed to assign dataset to role" });
+    }
+  });
+
+  app.delete("/api/admin/roles/:roleId/datasets/:datasetId", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.roleId);
+      const datasetId = parseInt(req.params.datasetId);
+      
+      const success = await storage.removeDatasetFromRole(roleId, datasetId);
+      if (!success) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      res.json({ message: "Dataset removed from role successfully" });
+    } catch (error) {
+      console.error("Error removing dataset from role:", error);
+      res.status(500).json({ message: "Failed to remove dataset from role" });
+    }
+  });
+
+  // User-Role Assignment Routes (Admin only)
+  app.get("/api/admin/users/:id/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const roles = await storage.getRolesForUser(userId);
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      res.status(500).json({ message: "Failed to fetch user roles" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/roles", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { roleId } = req.body;
+
+      if (!roleId || typeof roleId !== 'number') {
+        return res.status(400).json({ message: "Role ID is required" });
+      }
+
+      const assignment = await storage.assignUserToRole(userId, roleId, req.user!.id);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning role to user:", error);
+      res.status(500).json({ message: "Failed to assign role to user" });
+    }
+  });
+
+  app.delete("/api/admin/users/:userId/roles/:roleId", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const roleId = parseInt(req.params.roleId);
+      
+      const success = await storage.removeUserFromRole(userId, roleId);
+      if (!success) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      res.json({ message: "Role removed from user successfully" });
+    } catch (error) {
+      console.error("Error removing role from user:", error);
+      res.status(500).json({ message: "Failed to remove role from user" });
+    }
+  });
+
+  // User's own role information
+  app.get("/api/user/roles", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const roles = await storage.getRolesForUser(req.user!.id);
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      res.status(500).json({ message: "Failed to fetch user roles" });
+    }
+  });
+
+  // Public endpoints for landing page (no authentication required)
+  app.get("/api/stats/public", async (req, res) => {
+    try {
+      // Get precomputed stats from cache or compute them
+      let stats = getCached<any>('public-stats');
+      
+      if (!stats) {
+        const datasets = await storage.getDatasets();
+        const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+        const uniqueDataSources = new Set();
+        
+        datasets.forEach(d => {
+          if (d.metadata && (d.metadata as any).dataSource) {
+            (d.metadata as any).dataSource
+              .split(',')
+              .map((s: string) => s.trim())
+              .forEach((s: string) => uniqueDataSources.add(s));
+          }
+        });
+        
+        const lastRefreshTime = await storage.getLastRefreshTime();
+        
+        stats = {
+          totalDatasets: datasets.length,
+          totalSize: formatFileSize(totalSize),
+          dataSources: uniqueDataSources.size,
+          lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+          lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+        };
+        
+        setCache('public-stats', stats, 1800000); // 30 minutes cache
+      }
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching public stats:", error);
+      res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  app.get("/api/datasets/public", async (req, res) => {
+    try {
+      const { limit = "100" } = req.query;
+      const limitNum = Math.min(parseInt(limit as string) || 100, 100); // Max 100 for public access
+      
+      // Get cached public datasets
+      let datasets = getCached<any[]>('public-datasets');
+      
+      if (!datasets) {
+        datasets = await storage.getDatasets();
+        // Return only basic metadata for public access
+        datasets = datasets.slice(0, limitNum).map(d => ({
+          id: d.id,
+          name: d.name,
+          source: d.source,
+          format: d.format,
+          size: d.size,
+          sizeBytes: d.sizeBytes,
+          metadata: d.metadata,
+          topLevelFolder: d.topLevelFolder,
+        }));
+        setCache('public-datasets', datasets, 1800000); // 30 minutes cache
+      }
+      
+      res.json({
+        datasets: datasets.slice(0, limitNum),
+        totalCount: datasets.length,
+        page: 1,
+        limit: limitNum,
+        totalPages: Math.ceil(datasets.length / limitNum)
+      });
+    } catch (error) {
+      console.error("Error fetching public datasets:", error);
+      res.status(500).json({ message: "Failed to fetch datasets" });
+    }
+  });
+
   // AWS Configuration endpoints
   app.get("/api/aws-config", async (req, res) => {
     try {
@@ -591,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dataset endpoints with pagination and filtering
-  app.get("/api/datasets", async (req, res) => {
+  app.get("/api/datasets", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { 
         page = "1", 
@@ -609,13 +863,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Request params - page: ${page}, limit: ${limit}`);
       console.log(`Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
 
-      // Use preloaded cached datasets for maximum performance
-      let allDatasets = getCached<any[]>('datasets-all');
+      // Get datasets based on user's roles (cached with user ID)
+      const cacheKey = `datasets-user-${req.user!.id}`;
+      let allDatasets = getCached<any[]>(cacheKey);
       
       if (!allDatasets) {
-        console.log('Cache miss - loading datasets from storage');
-        allDatasets = await storage.getDatasets();
-        setCache('datasets-all', allDatasets, 300000); // 5 minutes cache
+        console.log('Cache miss - loading datasets for user from storage');
+        allDatasets = await storage.getDatasetsForUser(req.user!.id);
+        setCache(cacheKey, allDatasets, 300000); // 5 minutes cache
       }
       
       // Apply filters
@@ -687,13 +942,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Optimized quick stats endpoint using precomputed cache
-  app.get("/api/datasets/quick-stats", async (req, res) => {
+  app.get("/api/datasets/quick-stats", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      let stats = getCached<any>('quick-stats');
+      const cacheKey = `quick-stats-user-${req.user!.id}`;
+      let stats = getCached<any>(cacheKey);
       
       if (!stats) {
-        const datasets = getCached<any[]>('datasets-all') || await storage.getDatasets();
-        const folders = getCached<string[]>('folders') || Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
+        const datasets = await storage.getDatasetsForUser(req.user!.id);
+        const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
         
         stats = {
           totalCount: datasets.length,
@@ -701,7 +957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastUpdated: new Date().toISOString()
         };
         
-        setCache('quick-stats', stats, 300000); // 5 minutes cache
+        setCache(cacheKey, stats, 300000); // 5 minutes cache
       }
       
       res.set('Cache-Control', 'public, max-age=300'); // 5 minutes browser cache
@@ -713,10 +969,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Preload endpoint for critical data
-  app.get("/api/preload", async (req, res) => {
+  app.get("/api/preload", authenticateToken, async (req: AuthRequest, res) => {
     try {
+      const userId = req.user!.id;
       const [stats, folders, quickStats] = await Promise.all([
-        getCached<any>('precomputed-stats') || storage.getDatasets().then(async datasets => {
+        getCached<any>(`precomputed-stats-user-${userId}`) || storage.getDatasetsForUser(userId).then(async datasets => {
           const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
           const uniqueDataSources = new Set();
           datasets.forEach(d => {

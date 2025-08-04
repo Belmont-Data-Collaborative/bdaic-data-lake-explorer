@@ -108,6 +108,50 @@ export const downloads = pgTable("downloads", {
   datasetTypeIdx: index("idx_downloads_dataset_type").on(table.datasetId, table.downloadType),
 }));
 
+// New roles table for RBAC
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => ({
+  // Index on name for fast role lookups
+  nameIdx: index("idx_roles_name").on(table.name),
+}));
+
+// Many-to-many relationship between roles and datasets
+export const roleDatasets = pgTable("role_datasets", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  datasetId: integer("dataset_id").notNull().references(() => datasets.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate role-dataset assignments
+  roleDatasetUnique: index("idx_role_dataset_unique").on(table.roleId, table.datasetId),
+  // Index on roleId for fast lookups by role
+  roleIdIdx: index("idx_role_datasets_role_id").on(table.roleId),
+  // Index on datasetId for fast lookups by dataset
+  datasetIdIdx: index("idx_role_datasets_dataset_id").on(table.datasetId),
+}));
+
+// Many-to-many relationship between users and roles
+export const userRoles = pgTable("user_roles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+  assignedBy: integer("assigned_by").references(() => users.id),
+}, (table) => ({
+  // Unique constraint to prevent duplicate user-role assignments
+  userRoleUnique: index("idx_user_role_unique").on(table.userId, table.roleId),
+  // Index on userId for fast lookups by user
+  userIdIdx: index("idx_user_roles_user_id").on(table.userId),
+  // Index on roleId for fast lookups by role
+  roleIdIdx: index("idx_user_roles_role_id").on(table.roleId),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -138,6 +182,22 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,
+});
+
+export const insertRoleSchema = createInsertSchema(roles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoleDatasetSchema = createInsertSchema(roleDatasets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserRoleSchema = createInsertSchema(userRoles).omit({
+  id: true,
+  assignedAt: true,
 });
 
 // Registration schema with password confirmation
@@ -219,20 +279,17 @@ export const datasetMetadata = z.object({
 
 export type DatasetInsights = z.infer<typeof datasetInsights>;
 export type DatasetMetadata = z.infer<typeof datasetMetadata>;
-
-// Type definitions
-export type Dataset = typeof datasets.$inferSelect;
-export type InsertDataset = z.infer<typeof insertDatasetSchema>;
-export type AwsConfig = typeof awsConfig.$inferSelect;
-export type InsertAwsConfig = z.infer<typeof insertAwsConfigSchema>;
-export type AuthConfig = typeof authConfig.$inferSelect;
-export type InsertAuthConfig = z.infer<typeof insertAuthConfigSchema>;
-export type RefreshLog = typeof refreshLog.$inferSelect;
-export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
 export type Download = typeof downloads.$inferSelect;
 export type InsertDownload = z.infer<typeof insertDownloadSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type RoleDataset = typeof roleDatasets.$inferSelect;
+export type InsertRoleDataset = z.infer<typeof insertRoleDatasetSchema>;
+export type UserRole = typeof userRoles.$inferSelect;
+export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;

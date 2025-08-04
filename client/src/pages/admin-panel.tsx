@@ -7,10 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw, UserPlus } from "lucide-react";
 import { format } from "date-fns";
+import { RoleManagement } from "@/components/role-management";
+import { UserRoleAssignment } from "@/components/user-role-assignment";
 
 interface User {
   id: number;
@@ -130,13 +133,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'destructive' : 'secondary';
-  };
 
-  const getStatusBadgeVariant = (isActive: boolean) => {
-    return isActive ? 'default' : 'outline';
-  };
 
   if (isLoading) {
     return (
@@ -190,71 +187,93 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage users and system settings</p>
+          <p className="text-muted-foreground">Manage users, roles, and system settings</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-            toast({
-              title: "Refreshing data",
-              description: "User data is being refreshed...",
-            });
-          }}
-          className="flex items-center space-x-2"
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Reload</span>
-        </Button>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users?.length || 0}</div>
-          </CardContent>
-        </Card>
+      {/* Tab Navigation */}
+      <Tabs defaultValue="users" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="users">
+            <Users className="h-4 w-4 mr-2" />
+            User Management
+          </TabsTrigger>
+          <TabsTrigger value="roles">
+            <Shield className="h-4 w-4 mr-2" />
+            Role Management
+          </TabsTrigger>
+          <TabsTrigger value="assignments">
+            <UserPlus className="h-4 w-4 mr-2" />
+            User Role Assignments
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users?.filter((user: User) => user.role === 'admin').length || 0}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-6">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+                toast({
+                  title: "Refreshing data",
+                  description: "User data is being refreshed...",
+                });
+              }}
+              className="flex items-center space-x-2"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Reload</span>
+            </Button>
+          </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users?.filter((user: User) => user.isActive).length || 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{users?.length || 0}</div>
+              </CardContent>
+            </Card>
 
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>
-            View and manage all registered users
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {users?.filter((user: User) => user.role === 'admin').length || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {users?.filter((user: User) => user.isActive).length || 0}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Users Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>
+                View and manage all registered users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
@@ -383,7 +402,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                             <div>
                               <label className="text-sm font-medium">Role</label>
                               <Select
-                                defaultValue={editingUser?.role}
+                                defaultValue={editingUser?.role || "user"}
                                 onValueChange={(value) => {
                                   if (editingUser) {
                                     setEditingUser({ ...editingUser, role: value });
@@ -419,10 +438,14 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                               </Select>
                             </div>
                             <Button
-                              onClick={() => handleUpdateUser({
-                                role: editingUser?.role,
-                                isActive: editingUser?.isActive,
-                              })}
+                              onClick={() => {
+                                if (editingUser) {
+                                  handleUpdateUser({
+                                    role: editingUser.role,
+                                    isActive: editingUser.isActive,
+                                  });
+                                }
+                              }}
                               disabled={updateUserMutation.isPending}
                             >
                               {updateUserMutation.isPending ? "Updating..." : "Update User"}
@@ -453,7 +476,16 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           </Tooltip>
                         </DialogTrigger>
                         <DialogContent>
-
+                          <DialogHeader>
+                            <DialogTitle>Delete User</DialogTitle>
+                            <DialogDescription>
+                              <div className="flex items-center space-x-2 text-destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <span>Are you sure you want to delete {user.username}?</span>
+                              </div>
+                              <p className="mt-2">This action cannot be undone.</p>
+                            </DialogDescription>
+                          </DialogHeader>
                           <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
@@ -479,6 +511,18 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </Table>
         </CardContent>
       </Card>
-    </div>
-  );
+    </TabsContent>
+
+    {/* Roles Tab */}
+    <TabsContent value="roles">
+      <RoleManagement />
+    </TabsContent>
+
+    {/* User Role Assignments Tab */}
+    <TabsContent value="assignments">
+      <UserRoleAssignment />
+    </TabsContent>
+  </Tabs>
+</div>
+);
 }

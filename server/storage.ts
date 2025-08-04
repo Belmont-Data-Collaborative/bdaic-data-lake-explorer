@@ -1,4 +1,11 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, users, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser } from "@shared/schema";
+import { 
+  datasets, awsConfig, authConfig, refreshLog, downloads, users, roles, roleDatasets, userRoles,
+  type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, 
+  type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, 
+  type Download, type InsertDownload, type User, type InsertUser, type UpdateUser,
+  type Role, type InsertRole, type RoleDataset, type InsertRoleDataset,
+  type UserRole, type InsertUserRole
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -39,6 +46,41 @@ export interface IStorage {
   
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
+  
+  // User management operations
+  createUser(userData: InsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  verifyUserPassword(username: string, password: string): Promise<User | null>;
+  updateLastLogin(userId: number): Promise<void>;
+  
+  // Role management operations
+  createRole(roleData: InsertRole): Promise<Role>;
+  getRole(id: number): Promise<Role | undefined>;
+  getRoleByName(name: string): Promise<Role | undefined>;
+  getAllRoles(): Promise<Role[]>;
+  updateRole(id: number, updates: Partial<InsertRole>): Promise<Role | undefined>;
+  deleteRole(id: number): Promise<boolean>;
+  
+  // Role-Dataset assignment operations
+  assignDatasetToRole(roleId: number, datasetId: number): Promise<RoleDataset>;
+  removeDatasetFromRole(roleId: number, datasetId: number): Promise<boolean>;
+  getDatasetsForRole(roleId: number): Promise<Dataset[]>;
+  getRolesForDataset(datasetId: number): Promise<Role[]>;
+  
+  // User-Role assignment operations
+  assignUserToRole(userId: number, roleId: number, assignedBy: number): Promise<UserRole>;
+  removeUserFromRole(userId: number, roleId: number): Promise<boolean>;
+  getRolesForUser(userId: number): Promise<Role[]>;
+  getUsersForRole(roleId: number): Promise<User[]>;
+  
+  // Access control operations
+  userHasAccessToDataset(userId: number, datasetId: number): Promise<boolean>;
+  getDatasetsForUser(userId: number): Promise<Dataset[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -422,6 +464,180 @@ export class DatabaseStorage implements IStorage {
     // Execute raw SQL query for performance monitoring
     const result = await db.execute(sql as any);
     return result.rows || [];
+  }
+
+  async updateLastLogin(userId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  // Role management operations
+  async createRole(roleData: InsertRole): Promise<Role> {
+    const [role] = await db
+      .insert(roles)
+      .values(roleData)
+      .returning();
+    return role;
+  }
+
+  async getRole(id: number): Promise<Role | undefined> {
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id))
+      .limit(1);
+    return role || undefined;
+  }
+
+  async getRoleByName(name: string): Promise<Role | undefined> {
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.name, name))
+      .limit(1);
+    return role || undefined;
+  }
+
+  async getAllRoles(): Promise<Role[]> {
+    return await db
+      .select()
+      .from(roles)
+      .orderBy(asc(roles.name));
+  }
+
+  async updateRole(id: number, updates: Partial<InsertRole>): Promise<Role | undefined> {
+    const [updated] = await db
+      .update(roles)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(roles.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    const result = await db
+      .delete(roles)
+      .where(eq(roles.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Role-Dataset assignment operations
+  async assignDatasetToRole(roleId: number, datasetId: number): Promise<RoleDataset> {
+    const [assignment] = await db
+      .insert(roleDatasets)
+      .values({ roleId, datasetId })
+      .returning();
+    return assignment;
+  }
+
+  async removeDatasetFromRole(roleId: number, datasetId: number): Promise<boolean> {
+    const result = await db
+      .delete(roleDatasets)
+      .where(and(
+        eq(roleDatasets.roleId, roleId),
+        eq(roleDatasets.datasetId, datasetId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getDatasetsForRole(roleId: number): Promise<Dataset[]> {
+    const results = await db
+      .select({ dataset: datasets })
+      .from(roleDatasets)
+      .innerJoin(datasets, eq(roleDatasets.datasetId, datasets.id))
+      .where(eq(roleDatasets.roleId, roleId));
+    return results.map(r => r.dataset);
+  }
+
+  async getRolesForDataset(datasetId: number): Promise<Role[]> {
+    const results = await db
+      .select({ role: roles })
+      .from(roleDatasets)
+      .innerJoin(roles, eq(roleDatasets.roleId, roles.id))
+      .where(eq(roleDatasets.datasetId, datasetId));
+    return results.map(r => r.role);
+  }
+
+  // User-Role assignment operations
+  async assignUserToRole(userId: number, roleId: number, assignedBy: number): Promise<UserRole> {
+    const [assignment] = await db
+      .insert(userRoles)
+      .values({ userId, roleId, assignedBy })
+      .returning();
+    return assignment;
+  }
+
+  async removeUserFromRole(userId: number, roleId: number): Promise<boolean> {
+    const result = await db
+      .delete(userRoles)
+      .where(and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.roleId, roleId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getRolesForUser(userId: number): Promise<Role[]> {
+    const results = await db
+      .select({ role: roles })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, userId));
+    return results.map(r => r.role);
+  }
+
+  async getUsersForRole(roleId: number): Promise<User[]> {
+    const results = await db
+      .select({ user: users })
+      .from(userRoles)
+      .innerJoin(users, eq(userRoles.userId, users.id))
+      .where(eq(userRoles.roleId, roleId));
+    return results.map(r => r.user);
+  }
+
+  // Access control operations
+  async userHasAccessToDataset(userId: number, datasetId: number): Promise<boolean> {
+    // Check if user is admin - admins have access to all datasets
+    const user = await this.getUserById(userId);
+    if (user?.role === 'admin') {
+      return true;
+    }
+
+    // Check if user has access through their roles
+    const result = await db
+      .select({ count: sql<number>`count(*)`.as('count') })
+      .from(userRoles)
+      .innerJoin(roleDatasets, eq(userRoles.roleId, roleDatasets.roleId))
+      .where(and(
+        eq(userRoles.userId, userId),
+        eq(roleDatasets.datasetId, datasetId)
+      ));
+    
+    return (result[0]?.count || 0) > 0;
+  }
+
+  async getDatasetsForUser(userId: number): Promise<Dataset[]> {
+    // Check if user is admin - admins see all datasets
+    const user = await this.getUserById(userId);
+    if (user?.role === 'admin') {
+      return await this.getDatasets();
+    }
+
+    // Get datasets through user's roles
+    const results = await db
+      .selectDistinct({ dataset: datasets })
+      .from(userRoles)
+      .innerJoin(roleDatasets, eq(userRoles.roleId, roleDatasets.roleId))
+      .innerJoin(datasets, eq(roleDatasets.datasetId, datasets.id))
+      .where(eq(userRoles.userId, userId))
+      .orderBy(asc(datasets.source), asc(datasets.name));
+    
+    return results.map(r => r.dataset);
   }
 }
 

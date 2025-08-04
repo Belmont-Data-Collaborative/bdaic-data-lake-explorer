@@ -50,7 +50,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
   // Fetch global statistics for public display
   const { data: globalStats } = useQuery<GlobalStatsResponse>({
-    queryKey: ['/api/stats'],
+    queryKey: ['/api/stats/public'],
   });
 
   // Fetch datasets for comprehensive stats
@@ -59,9 +59,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
     totalCount: number;
     totalPages: number;
   }>({
-    queryKey: ['/api/datasets'],
+    queryKey: ['/api/datasets/public'],
     queryFn: async () => {
-      const response = await fetch('/api/datasets?page=1&limit=10000&folder=all');
+      const response = await fetch('/api/datasets/public?limit=100');
       if (!response.ok) {
         throw new Error('Failed to fetch datasets');
       }
