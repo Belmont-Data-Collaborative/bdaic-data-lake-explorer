@@ -633,28 +633,35 @@ export function RoleManagement() {
                     <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
                       {allFolders.map((folderName) => {
                         const isAssigned = roleFolders.includes(folderName);
+                        const isLoading = assignFolderMutation.isPending || removeFolderMutation.isPending;
+                        
                         return (
-                          <div key={folderName} className="flex items-center space-x-2">
+                          <div key={folderName} className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
                             <Checkbox
                               id={`folder-${folderName}`}
                               checked={isAssigned}
                               onCheckedChange={(checked) => {
-                                console.log(`Checkbox for ${folderName} changed to:`, checked, 'current state:', isAssigned);
-                                if (checked && !isAssigned) {
+                                if (isLoading) return;
+                                
+                                if (checked === true && !isAssigned) {
                                   handleAssignFolder(folderName);
-                                } else if (!checked && isAssigned) {
+                                } else if (checked === false && isAssigned) {
                                   handleRemoveFolder(folderName);
                                 }
                               }}
-                              disabled={assignFolderMutation.isPending || removeFolderMutation.isPending}
+                              disabled={isLoading}
+                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <label
                               htmlFor={`folder-${folderName}`}
-                              className="flex items-center gap-2 text-sm cursor-pointer"
+                              className="flex items-center gap-2 text-sm cursor-pointer flex-1 select-none"
                             >
-                              <Folder className="h-4 w-4" />
-                              {folderName}
+                              <Folder className="h-4 w-4 text-muted-foreground" />
+                              <span className="truncate">{folderName.replace(/_/g, ' ')}</span>
                             </label>
+                            {isLoading && (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                            )}
                           </div>
                         );
                       })}
