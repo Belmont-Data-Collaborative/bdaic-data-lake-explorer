@@ -576,8 +576,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignment = await storage.assignUserToRole(userId, roleId, req.user!.id);
       
       // Clear the user's dataset cache since their access has changed
-      const userCacheKey = `datasets-user-${userId}`;
-      setCache(userCacheKey, null, 0); // Clear the cache
+      const userCachePattern = `datasets-user-${userId}`;
+      invalidateCache(userCachePattern);
       
       res.status(201).json(assignment);
     } catch (error) {
@@ -603,8 +603,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Clear the user's dataset cache since their access has changed  
-      const userCacheKey = `datasets-user-${userId}`;
-      setCache(userCacheKey, null, 0); // Clear the cache
+      const userCachePattern = `datasets-user-${userId}`;
+      invalidateCache(userCachePattern);
 
       res.json({ message: "Role removed from user successfully" });
     } catch (error) {
@@ -890,8 +890,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Request params - page: ${page}, limit: ${limit}`);
       console.log(`Parsed - pageNum: ${pageNum}, limitNum: ${limitNum}`);
 
-      // Get datasets based on user's roles (cached with user ID)
-      const cacheKey = `datasets-user-${req.user!.id}`;
+      // Get datasets based on user's roles (cached with user ID and role)
+      const cacheKey = `datasets-user-${req.user!.id}-role-${req.user!.role}`;
       let allDatasets = getCached<any[]>(cacheKey);
       
       if (!allDatasets) {

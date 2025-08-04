@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation, useNavigate } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,6 +25,7 @@ function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Verify JWT token on app start
   const { data: verificationData, isLoading: isVerifying } = useQuery({
@@ -32,7 +33,7 @@ function Router() {
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No token found');
-      
+
       const res = await apiRequest('GET', '/api/auth/verify', null, {
         'Authorization': `Bearer ${token}`
       });
@@ -45,7 +46,7 @@ function Router() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
-    
+
     if (token && storedUser && !isVerifying) {
       try {
         const user = JSON.parse(storedUser);
@@ -55,6 +56,9 @@ function Router() {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
+        // Clear cache when stored user data is invalid
+        const { clearUserCache } = require("@/lib/queryClient");
+        clearUserCache();
       }
     } else if (!token) {
       // Check legacy authentication for backwards compatibility
@@ -63,7 +67,7 @@ function Router() {
         setIsAuthenticated(true);
       }
     }
-    
+
     setIsLoading(false);
   }, [isVerifying, verificationData]);
 
@@ -73,6 +77,9 @@ function Router() {
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
+    } else if (verificationData && !verificationData.user) {
+      // Token is valid, but no user data (e.g., expired token or server issue)
+      handleLogout();
     }
   }, [verificationData]);
 
@@ -95,6 +102,11 @@ function Router() {
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    // Clear all cache data on logout
+    const { clearUserCache } = require("@/lib/queryClient");
+    clearUserCache();
+    queryClient.clear();
+    navigate("/login");
   };
 
   if (isLoading || isVerifying) {

@@ -46,7 +46,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim()) {
       toast({
         title: "Username required",
@@ -55,7 +55,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
       });
       return;
     }
-    
+
     if (!password.trim()) {
       toast({
         title: "Password required",
@@ -64,7 +64,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
       });
       return;
     }
-    
+
     loginMutation.mutate({ username, password });
   };
 
@@ -80,7 +80,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
             Sign in to access the data lake
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -99,7 +99,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -125,7 +125,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
                 </Button>
               </div>
             </div>
-            
+
             <Button
               type="submit"
               className="w-full"
@@ -135,7 +135,7 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
             </Button>
           </form>
         </CardContent>
-        
+
         <CardFooter className="text-center text-sm text-muted-foreground">
           <div className="w-full space-y-2">
             <p>Don't have an account?</p>

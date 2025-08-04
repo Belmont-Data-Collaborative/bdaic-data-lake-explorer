@@ -14,17 +14,17 @@ export async function apiRequest(
   customHeaders?: Record<string, string>,
 ): Promise<Response> {
   const headers: Record<string, string> = {};
-  
+
   if (data) {
     headers["Content-Type"] = "application/json";
   }
-  
+
   // Add JWT token from localStorage if available
   const token = localStorage.getItem('authToken');
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  
+
   if (customHeaders) {
     Object.assign(headers, customHeaders);
   }
@@ -47,13 +47,13 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const headers: Record<string, string> = {};
-    
+
     // Add JWT token from localStorage if available
     const token = localStorage.getItem('authToken');
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     const res = await fetch(queryKey[0] as string, {
       headers,
       credentials: "include",
@@ -81,3 +81,26 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Function to clear all user-specific cache data
+export const clearUserCache = () => {
+  console.log('Clearing user-specific cache data');
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const queryKey = query.queryKey[0] as string;
+      return queryKey.includes('/api/datasets') || 
+             queryKey.includes('/api/folders') || 
+             queryKey.includes('/api/stats') ||
+             queryKey.includes('/api/user') ||
+             queryKey.includes('/api/admin');
+    }
+  });
+  queryClient.removeQueries({
+    predicate: (query) => {
+      const queryKey = query.queryKey[0] as string;
+      return queryKey.includes('/api/datasets') || 
+             queryKey.includes('/api/folders') || 
+             queryKey.includes('/api/stats');
+    }
+  });
+};
