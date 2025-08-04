@@ -82,13 +82,23 @@ export function UserRoleAssignment() {
   // Assign role to user mutation
   const assignRoleMutation = useMutation({
     mutationFn: async ({ userId, roleId }: { userId: number; roleId: number }) => {
+      console.log('Assigning role', roleId, 'to user', userId);
       const response = await apiRequest("POST", `/api/admin/users/${userId}/roles`, { roleId });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users", selectedUser?.id, "roles"] });
+      toast({
+        title: "Role assigned",
+        description: "Role has been assigned to the user successfully.",
+      });
     },
     onError: (error: any) => {
+      console.error('Assignment error:', error);
       toast({
         title: "Error assigning role",
         description: error.message || "Failed to assign role",
@@ -100,17 +110,19 @@ export function UserRoleAssignment() {
   // Remove role from user mutation
   const removeRoleMutation = useMutation({
     mutationFn: async ({ userId, roleId }: { userId: number; roleId: number }) => {
+      console.log('Removing role', roleId, 'from user', userId);
       const response = await apiRequest("DELETE", `/api/admin/users/${userId}/roles/${roleId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users", selectedUser?.id, "roles"] });
-      toast({
-        title: "Role removed",
-        description: "The role has been removed from the user.",
-      });
     },
     onError: (error: any) => {
+      console.error('Removal error:', error);
       toast({
         title: "Error removing role",
         description: error.message || "Failed to remove role",
@@ -123,10 +135,12 @@ export function UserRoleAssignment() {
     if (!selectedUser || !selectedRoleId) return;
 
     try {
-      // First, remove any existing roles (single role per user)
+      // First, remove any existing roles (single role per user) - only if they exist
       const currentRoles = userRoles;
-      for (const role of currentRoles) {
-        await removeRoleMutation.mutateAsync({ userId: selectedUser.id, roleId: role.id });
+      if (currentRoles.length > 0) {
+        for (const role of currentRoles) {
+          await removeRoleMutation.mutateAsync({ userId: selectedUser.id, roleId: role.id });
+        }
       }
 
       // Then assign the new role
@@ -140,6 +154,7 @@ export function UserRoleAssignment() {
         description: "User role has been updated successfully.",
       });
     } catch (error) {
+      console.error("Error in handleAssignRole:", error);
       // Error handling is done in mutations
     }
   };
