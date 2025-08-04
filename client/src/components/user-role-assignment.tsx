@@ -61,6 +61,7 @@ export function UserRoleAssignment() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAssignRolesDialogOpen, setIsAssignRolesDialogOpen] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+  const [userRolesMap, setUserRolesMap] = useState<Map<number, Role[]>>(new Map());
   const { toast } = useToast();
 
   // Fetch all users
@@ -87,6 +88,14 @@ export function UserRoleAssignment() {
       }
       const data = await response.json();
       console.log('User roles response:', data);
+      
+      // Update the user roles map with the fetched data
+      setUserRolesMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(selectedUser.id, Array.isArray(data) ? data : []);
+        return newMap;
+      });
+      
       return Array.isArray(data) ? data : [];
     },
   });
@@ -179,11 +188,10 @@ export function UserRoleAssignment() {
     await queryClient.invalidateQueries({ queryKey: ["/api/admin/users", user.id, "roles"] });
   };
 
-  // For displaying roles in the table, we need to fetch roles for each user
-  // Currently we only fetch roles for the selected user, so we'll show those when available
+  // For displaying roles in the table, use the cached user roles map
   const usersWithRoles: UserWithRoles[] = users.map((user) => {
-    // Show roles for the selected user, empty array for others (they'll show "-")
-    const roles = selectedUser?.id === user.id ? userRoles : [];
+    // Get roles from the map, or use current userRoles if it's the selected user
+    const roles = selectedUser?.id === user.id ? userRoles : (userRolesMap.get(user.id) || []);
     return { ...user, roles };
   });
 
@@ -233,26 +241,26 @@ export function UserRoleAssignment() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {user.id === selectedUser?.id && userRoles.length > 0 ? (
+                  {user.roles.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {userRoles.map((role) => (
+                      {user.roles.map((role) => (
                         <Badge key={role.id} variant="outline">
                           {role.name}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 ml-1"
-                            onClick={() => removeRoleMutation.mutate({ userId: user.id, roleId: role.id })}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+                          {user.id === selectedUser?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 ml-1"
+                              onClick={() => removeRoleMutation.mutate({ userId: user.id, roleId: role.id })}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
                         </Badge>
                       ))}
                     </div>
-                  ) : user.id === selectedUser?.id && userRoles.length === 0 ? (
-                    <span className="text-muted-foreground">No roles assigned</span>
                   ) : (
-                    <span className="text-muted-foreground">Click "Manage Roles" to view</span>
+                    <span className="text-muted-foreground">No roles assigned</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -264,12 +272,18 @@ export function UserRoleAssignment() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={async () => {
+                      // Fetch roles for this user before opening dialog
+                      const response = await apiRequest("GET", `/api/admin/users/${user.id}/roles`);
+                      if (response.ok) {
+                        const roles = await response.json();
+                        setUserRolesMap(prev => {
+                          const newMap = new Map(prev);
+                          newMap.set(user.id, Array.isArray(roles) ? roles : []);
+                          return newMap;
+                        });
+                      }
                       openAssignRolesDialog(user);
-                      // Load current roles for this user
-                      queryClient.invalidateQueries({ 
-                        queryKey: ["/api/admin/users", user.id, "roles"] 
-                      });
                     }}
                   >
                     <Shield className="h-4 w-4 mr-2" />
