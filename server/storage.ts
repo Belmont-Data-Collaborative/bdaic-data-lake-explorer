@@ -1,10 +1,10 @@
 import { 
-  datasets, awsConfig, authConfig, refreshLog, downloads, users, roles, roleDatasets, userRoles,
+  datasets, awsConfig, authConfig, refreshLog, downloads, users, roles, roleDatasets, userRoles, roleFolders,
   type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, 
   type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, 
   type Download, type InsertDownload, type User, type InsertUser, type UpdateUser,
   type Role, type InsertRole, type RoleDataset, type InsertRoleDataset,
-  type UserRole, type InsertUserRole
+  type UserRole, type InsertUserRole, type RoleFolder, type InsertRoleFolder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
@@ -77,6 +77,12 @@ export interface IStorage {
   removeUserFromRole(userId: number, roleId: number): Promise<boolean>;
   getRolesForUser(userId: number): Promise<Role[]>;
   getUsersForRole(roleId: number): Promise<User[]>;
+  
+  // Role-Folder assignment operations
+  assignFolderToRole(roleId: number, folderName: string): Promise<RoleFolder>;
+  removeFolderFromRole(roleId: number, folderName: string): Promise<boolean>;
+  getFoldersForRole(roleId: number): Promise<string[]>;
+  getRolesForFolder(folderName: string): Promise<Role[]>;
   
   // Access control operations
   userHasAccessToDataset(userId: number, datasetId: number): Promise<boolean>;
@@ -600,6 +606,42 @@ export class DatabaseStorage implements IStorage {
     return results.map(r => r.user);
   }
 
+  // Role-Folder assignment operations
+  async assignFolderToRole(roleId: number, folderName: string): Promise<RoleFolder> {
+    const [assignment] = await db
+      .insert(roleFolders)
+      .values({ roleId, folderName })
+      .returning();
+    return assignment;
+  }
+
+  async removeFolderFromRole(roleId: number, folderName: string): Promise<boolean> {
+    const result = await db
+      .delete(roleFolders)
+      .where(and(
+        eq(roleFolders.roleId, roleId),
+        eq(roleFolders.folderName, folderName)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getFoldersForRole(roleId: number): Promise<string[]> {
+    const results = await db
+      .select({ folderName: roleFolders.folderName })
+      .from(roleFolders)
+      .where(eq(roleFolders.roleId, roleId));
+    return results.map(r => r.folderName);
+  }
+
+  async getRolesForFolder(folderName: string): Promise<Role[]> {
+    const results = await db
+      .select({ role: roles })
+      .from(roleFolders)
+      .innerJoin(roles, eq(roleFolders.roleId, roles.id))
+      .where(eq(roleFolders.folderName, folderName));
+    return results.map(r => r.role);
+  }
+
   // Access control operations
   async userHasAccessToDataset(userId: number, datasetId: number): Promise<boolean> {
     // Check if user is admin - admins have access to all datasets
@@ -628,16 +670,36 @@ export class DatabaseStorage implements IStorage {
       return await this.getDatasets();
     }
 
-    // Get datasets through user's roles
-    const results = await db
+    // Get datasets through user's roles (both direct dataset assignments and folder-based access)
+    const directDatasets = await db
       .selectDistinct({ dataset: datasets })
       .from(userRoles)
       .innerJoin(roleDatasets, eq(userRoles.roleId, roleDatasets.roleId))
       .innerJoin(datasets, eq(roleDatasets.datasetId, datasets.id))
-      .where(eq(userRoles.userId, userId))
-      .orderBy(asc(datasets.source), asc(datasets.name));
+      .where(eq(userRoles.userId, userId));
+
+    const folderDatasets = await db
+      .selectDistinct({ dataset: datasets })
+      .from(userRoles)
+      .innerJoin(roleFolders, eq(userRoles.roleId, roleFolders.roleId))
+      .innerJoin(datasets, eq(roleFolders.folderName, datasets.topLevelFolder))
+      .where(eq(userRoles.userId, userId));
+
+    // Combine and deduplicate datasets
+    const allDatasets = [...directDatasets, ...folderDatasets];
+    const uniqueDatasets = allDatasets.filter((dataset, index, self) => 
+      index === self.findIndex(d => d.dataset.id === dataset.dataset.id)
+    ).map(r => r.dataset);
+
+    // Sort by source and name
+    uniqueDatasets.sort((a, b) => {
+      if (a.source === b.source) {
+        return a.name.localeCompare(b.name);
+      }
+      return a.source.localeCompare(b.source);
+    });
     
-    return results.map(r => r.dataset);
+    return uniqueDatasets;
   }
 }
 

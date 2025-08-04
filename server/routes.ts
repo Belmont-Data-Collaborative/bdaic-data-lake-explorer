@@ -592,6 +592,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Role-Folder Assignment Routes (Admin only)
+  app.get("/api/admin/roles/:id/folders", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const folders = await storage.getFoldersForRole(roleId);
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching role folders:", error);
+      res.status(500).json({ message: "Failed to fetch role folders" });
+    }
+  });
+
+  app.post("/api/admin/roles/:id/folders", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const { folderName } = req.body;
+
+      if (!folderName || typeof folderName !== 'string') {
+        return res.status(400).json({ message: "Folder name is required" });
+      }
+
+      const assignment = await storage.assignFolderToRole(roleId, folderName);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning folder to role:", error);
+      res.status(500).json({ message: "Failed to assign folder to role" });
+    }
+  });
+
+  app.delete("/api/admin/roles/:roleId/folders/:folderName", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.roleId);
+      const folderName = decodeURIComponent(req.params.folderName);
+      
+      const success = await storage.removeFolderFromRole(roleId, folderName);
+      if (!success) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      res.json({ message: "Folder removed from role successfully" });
+    } catch (error) {
+      console.error("Error removing folder from role:", error);
+      res.status(500).json({ message: "Failed to remove folder from role" });
+    }
+  });
+
+  // Get all unique top-level folders for role assignment
+  app.get("/api/admin/folders", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const result = await storage.query("SELECT DISTINCT top_level_folder FROM datasets WHERE top_level_folder IS NOT NULL ORDER BY top_level_folder");
+      const folders = result.map((row: any) => row.top_level_folder);
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching folders:", error);
+      res.status(500).json({ message: "Failed to fetch folders" });
+    }
+  });
+
   // User's own role information
   app.get("/api/user/roles", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {

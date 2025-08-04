@@ -152,6 +152,21 @@ export const userRoles = pgTable("user_roles", {
   roleIdIdx: index("idx_user_roles_role_id").on(table.roleId),
 }));
 
+// Many-to-many relationship between roles and folders (folder-level access control)
+export const roleFolders = pgTable("role_folders", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  folderName: text("folder_name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate role-folder assignments
+  roleFolderUnique: index("idx_role_folder_unique").on(table.roleId, table.folderName),
+  // Index on roleId for fast lookups by role
+  roleIdIdx: index("idx_role_folders_role_id").on(table.roleId),
+  // Index on folderName for fast lookups by folder
+  folderNameIdx: index("idx_role_folders_folder_name").on(table.folderName),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -198,6 +213,11 @@ export const insertRoleDatasetSchema = createInsertSchema(roleDatasets).omit({
 export const insertUserRoleSchema = createInsertSchema(userRoles).omit({
   id: true,
   assignedAt: true,
+});
+
+export const insertRoleFolderSchema = createInsertSchema(roleFolders).omit({
+  id: true,
+  createdAt: true,
 });
 
 // Registration schema with password confirmation
@@ -289,7 +309,8 @@ export type RoleDataset = typeof roleDatasets.$inferSelect;
 export type InsertRoleDataset = z.infer<typeof insertRoleDatasetSchema>;
 export type UserRole = typeof userRoles.$inferSelect;
 export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
+export type RoleFolder = typeof roleFolders.$inferSelect;
+export type InsertRoleFolder = z.infer<typeof insertRoleFolderSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
-export type UpdateUser = z.infer<typeof updateUserSchema>;

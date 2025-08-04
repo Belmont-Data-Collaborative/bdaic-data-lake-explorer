@@ -29,7 +29,10 @@ import {
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Shield, Plus, Pencil, Trash2, Database } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Shield, Plus, Pencil, Trash2, Database, Folder, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -53,9 +56,11 @@ export function RoleManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAssignDatasetsDialogOpen, setIsAssignDatasetsDialogOpen] = useState(false);
+  const [isAssignFoldersDialogOpen, setIsAssignFoldersDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({ name: "", description: "" });
   const [selectedDatasets, setSelectedDatasets] = useState<number[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch all roles
@@ -71,6 +76,17 @@ export function RoleManagement() {
       const data = await response.json();
       return data.datasets || [];
     },
+  });
+
+  // Fetch all folders for assignment
+  const { data: allFolders = [] } = useQuery<string[]>({
+    queryKey: ["/api/admin/folders"],
+  });
+
+  // Fetch folders for selected role
+  const { data: roleFolders = [], refetch: refetchRoleFolders } = useQuery<string[]>({
+    queryKey: ["/api/admin/roles", selectedRole?.id, "folders"],
+    enabled: !!selectedRole?.id,
   });
 
   // Fetch datasets for a specific role
@@ -186,6 +202,53 @@ export function RoleManagement() {
     },
   });
 
+  // Assign folder to role mutation
+  const assignFolderMutation = useMutation({
+    mutationFn: async ({ roleId, folderName }: { roleId: number; folderName: string }) => {
+      const response = await apiRequest("POST", `/api/admin/roles/${roleId}/folders`, { folderName });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+      refetchRoleFolders();
+      setSelectedFolder("");
+      toast({
+        title: "Folder assigned",
+        description: "The folder has been assigned to the role successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error assigning folder",
+        description: error.message || "Failed to assign folder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Remove folder from role mutation
+  const removeFolderMutation = useMutation({
+    mutationFn: async ({ roleId, folderName }: { roleId: number; folderName: string }) => {
+      const response = await apiRequest("DELETE", `/api/admin/roles/${roleId}/folders/${encodeURIComponent(folderName)}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+      refetchRoleFolders();
+      toast({
+        title: "Folder removed",
+        description: "The folder has been removed from the role successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error removing folder",
+        description: error.message || "Failed to remove folder",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateRole = () => {
     if (!newRole.name.trim()) {
       toast({
@@ -237,6 +300,16 @@ export function RoleManagement() {
     } catch (error) {
       // Error handling is done in mutations
     }
+  };
+
+  const handleAssignFolder = () => {
+    if (!selectedRole || !selectedFolder) return;
+    assignFolderMutation.mutate({ roleId: selectedRole.id, folderName: selectedFolder });
+  };
+
+  const handleRemoveFolder = (folderName: string) => {
+    if (!selectedRole) return;
+    removeFolderMutation.mutate({ roleId: selectedRole.id, folderName });
   };
 
   if (rolesLoading) {
@@ -343,12 +416,10 @@ export function RoleManagement() {
                         size="sm"
                         onClick={() => {
                           setSelectedRole(role);
-                          const currentDatasetIds = roleDatasets.map((d) => d.id);
-                          setSelectedDatasets(currentDatasetIds);
-                          setIsAssignDatasetsDialogOpen(true);
+                          setIsAssignFoldersDialogOpen(true);
                         }}
                       >
-                        <Database className="h-4 w-4" />
+                        <Folder className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -491,6 +562,79 @@ export function RoleManagement() {
                 {assignDatasetMutation.isPending || removeDatasetMutation.isPending
                   ? "Updating..."
                   : "Save Assignments"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Folders Dialog */}
+        <Dialog open={isAssignFoldersDialogOpen} onOpenChange={setIsAssignFoldersDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Manage Folder Access for {selectedRole?.name}</DialogTitle>
+              <DialogDescription>
+                Assign data folders to this role. Users with this role will have access to all datasets in these folders.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Current folder assignments */}
+              <div>
+                <h4 className="font-medium mb-2">Current Folder Access</h4>
+                {roleFolders.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {roleFolders.map((folder) => (
+                      <Badge key={folder} variant="secondary" className="flex items-center gap-1">
+                        <Folder className="h-3 w-3" />
+                        {folder}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => handleRemoveFolder(folder)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No folders assigned to this role</p>
+                )}
+              </div>
+
+              {/* Add new folder */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-2">Add Folder Access</h4>
+                <div className="flex gap-2">
+                  <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select a folder to assign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allFolders
+                        .filter((folder) => !roleFolders.includes(folder))
+                        .map((folder) => (
+                          <SelectItem key={folder} value={folder}>
+                            <div className="flex items-center gap-2">
+                              <Folder className="h-4 w-4" />
+                              {folder}
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleAssignFolder}
+                    disabled={!selectedFolder || assignFolderMutation.isPending}
+                  >
+                    {assignFolderMutation.isPending ? "Adding..." : "Add"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignFoldersDialogOpen(false)}>
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>
