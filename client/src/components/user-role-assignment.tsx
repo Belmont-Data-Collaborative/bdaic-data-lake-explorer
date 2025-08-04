@@ -180,6 +180,16 @@ export function UserRoleAssignment() {
   };
 
   const openAssignRolesDialog = async (user: User) => {
+    // Don't allow role assignment for admin users
+    if (user.role === "admin") {
+      toast({
+        title: "Cannot assign roles to admin",
+        description: "Admin users have full access to all folders and don't need role assignments.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     console.log('Opening assign roles dialog for user:', user);
     setSelectedUser(user);
     setSelectedRoleId("");
@@ -241,7 +251,9 @@ export function UserRoleAssignment() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {user.roles.length > 0 ? (
+                  {user.role === "admin" ? (
+                    <Badge variant="default">Full Access (All Folders)</Badge>
+                  ) : user.roles.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {user.roles.map((role) => (
                         <Badge key={role.id} variant="outline">
@@ -269,26 +281,30 @@ export function UserRoleAssignment() {
                     : "Never"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      // Fetch roles for this user before opening dialog
-                      const response = await apiRequest("GET", `/api/admin/users/${user.id}/roles`);
-                      if (response.ok) {
-                        const roles = await response.json();
-                        setUserRolesMap(prev => {
-                          const newMap = new Map(prev);
-                          newMap.set(user.id, Array.isArray(roles) ? roles : []);
-                          return newMap;
-                        });
-                      }
-                      openAssignRolesDialog(user);
-                    }}
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Manage Roles
-                  </Button>
+                  {user.role === "admin" ? (
+                    <span className="text-sm text-muted-foreground">Admin - No roles needed</span>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        // Fetch roles for this user before opening dialog
+                        const response = await apiRequest("GET", `/api/admin/users/${user.id}/roles`);
+                        if (response.ok) {
+                          const roles = await response.json();
+                          setUserRolesMap(prev => {
+                            const newMap = new Map(prev);
+                            newMap.set(user.id, Array.isArray(roles) ? roles : []);
+                            return newMap;
+                          });
+                        }
+                        openAssignRolesDialog(user);
+                      }}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Manage Roles
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

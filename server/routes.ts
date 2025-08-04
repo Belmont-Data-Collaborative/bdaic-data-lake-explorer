@@ -567,6 +567,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Role ID is required" });
       }
 
+      // Check if the target user is an admin
+      const targetUser = await storage.getUserById(userId);
+      if (targetUser?.role === 'admin') {
+        return res.status(400).json({ message: "Cannot assign roles to admin users. Admin users have full access to all folders." });
+      }
+
       const assignment = await storage.assignUserToRole(userId, roleId, req.user!.id);
       res.status(201).json(assignment);
     } catch (error) {
@@ -579,6 +585,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const roleId = parseInt(req.params.roleId);
+      
+      // Check if the target user is an admin
+      const targetUser = await storage.getUserById(userId);
+      if (targetUser?.role === 'admin') {
+        return res.status(400).json({ message: "Cannot remove roles from admin users. Admin users have full access to all folders." });
+      }
       
       const success = await storage.removeUserFromRole(userId, roleId);
       if (!success) {
