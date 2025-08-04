@@ -103,7 +103,9 @@ export function UserRoleAssignment() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate multiple cache keys to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users", selectedUser?.id, "roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
         title: "Role assigned",
         description: "Role has been assigned to the user successfully.",
@@ -159,12 +161,9 @@ export function UserRoleAssignment() {
       setSelectedRoleId("");
       
       // Refresh user roles after successful assignment
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/users", selectedUser.id, "roles"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       await refetchUserRoles();
-      
-      toast({
-        title: "Role assigned",
-        description: "User role has been updated successfully.",
-      });
     } catch (error) {
       console.error("Error in handleAssignRole:", error);
       // Error handling is done in mutations
@@ -180,8 +179,10 @@ export function UserRoleAssignment() {
     await queryClient.invalidateQueries({ queryKey: ["/api/admin/users", user.id, "roles"] });
   };
 
-  // Merge user roles for display
+  // For displaying roles in the table, we need to fetch roles for each user
+  // Currently we only fetch roles for the selected user, so we'll show those when available
   const usersWithRoles: UserWithRoles[] = users.map((user) => {
+    // Show roles for the selected user, empty array for others (they'll show "-")
     const roles = selectedUser?.id === user.id ? userRoles : [];
     return { ...user, roles };
   });
@@ -232,7 +233,7 @@ export function UserRoleAssignment() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {user.id === selectedUser?.id ? (
+                  {user.id === selectedUser?.id && userRoles.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {userRoles.map((role) => (
                         <Badge key={role.id} variant="outline">
@@ -248,8 +249,10 @@ export function UserRoleAssignment() {
                         </Badge>
                       ))}
                     </div>
+                  ) : user.id === selectedUser?.id && userRoles.length === 0 ? (
+                    <span className="text-muted-foreground">No roles assigned</span>
                   ) : (
-                    <span className="text-muted-foreground">-</span>
+                    <span className="text-muted-foreground">Click "Manage Roles" to view</span>
                   )}
                 </TableCell>
                 <TableCell>
