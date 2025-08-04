@@ -597,6 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const roleId = parseInt(req.params.id);
       const folders = await storage.getFoldersForRole(roleId);
+      console.log(`Folders for role ${roleId}:`, folders);
       res.json(folders);
     } catch (error) {
       console.error("Error fetching role folders:", error);

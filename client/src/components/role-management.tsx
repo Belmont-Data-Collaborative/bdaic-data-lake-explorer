@@ -86,6 +86,14 @@ export function RoleManagement() {
   const { data: roleFolders = [], refetch: refetchRoleFolders } = useQuery<string[]>({
     queryKey: ["/api/admin/roles", selectedRole?.id, "folders"],
     enabled: !!selectedRole?.id,
+    queryFn: async () => {
+      if (!selectedRole?.id) return [];
+      console.log('Fetching folders for role:', selectedRole.id);
+      const response = await apiRequest("GET", `/api/admin/roles/${selectedRole.id}/folders`);
+      const data = await response.json();
+      console.log('Role folders response:', data);
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   // Fetch datasets for a specific role
