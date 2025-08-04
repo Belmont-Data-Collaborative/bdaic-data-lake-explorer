@@ -31,8 +31,17 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
       console.log(`Frontend: Login success data:`, data);
       if (data.token && data.user) {
         console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
-        // Store JWT token in localStorage
+        
+        // Critical: Clear any existing authentication state first
+        console.log(`Frontend: Clearing existing auth state before setting new user`);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authenticated');
+        
+        // Set new authentication data
         localStorage.setItem('authToken', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        
         toast({
           title: "Login successful",
           description: `Welcome back, ${data.user.username}!`,

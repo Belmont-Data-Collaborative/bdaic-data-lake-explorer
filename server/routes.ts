@@ -310,11 +310,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User verification endpoint for JWT tokens
   app.get("/api/auth/verify", authenticateToken, async (req: AuthRequest, res) => {
     try {
+      console.log(`JWT verify endpoint: Checking user ID ${req.user!.id} (${req.user!.username})`);
       const user = await storage.getUserById(req.user!.id);
       if (!user || !user.isActive) {
+        console.log(`JWT verify: User ${req.user!.id} not found or inactive`);
         return res.status(403).json({ message: "User account is inactive" });
       }
       
+      console.log(`JWT verify: Returning user data: ID=${user.id}, username="${user.username}", role="${user.role}"`);
       res.json({
         user: {
           id: user.id,

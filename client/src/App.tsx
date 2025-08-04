@@ -34,10 +34,13 @@ function Router() {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No token found');
 
+      console.log(`Frontend: Verifying JWT token: ${token.substring(0, 50)}...`);
       const res = await apiRequest('GET', '/api/auth/verify', null, {
         'Authorization': `Bearer ${token}`
       });
-      return res.json();
+      const data = await res.json();
+      console.log(`Frontend: JWT verification result:`, data);
+      return data;
     },
     enabled: !!localStorage.getItem('authToken'),
     retry: false,

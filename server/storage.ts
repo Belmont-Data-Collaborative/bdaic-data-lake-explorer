@@ -418,8 +418,10 @@ export class DatabaseStorage implements IStorage {
     try {
       const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
       const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
+      console.log(`JWT verification: Token decoded to user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
       return decoded;
     } catch (error) {
+      console.log(`JWT verification failed:`, error);
       return null;
     }
   }
