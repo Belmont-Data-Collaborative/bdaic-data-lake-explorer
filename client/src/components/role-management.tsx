@@ -225,10 +225,18 @@ export function RoleManagement() {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      // Force immediate refresh of folder data
-      await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      await refetchRoleFolders();
+    onSuccess: async (data, { roleId, folderName }) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], (old: string[] = []) => {
+        if (!old.includes(folderName)) {
+          return [...old, folderName];
+        }
+        return old;
+      });
+      
+      // Also invalidate to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
+      
       toast({
         title: "Folder assigned",
         description: "The folder has been assigned to the role successfully.",
@@ -249,10 +257,15 @@ export function RoleManagement() {
       const response = await apiRequest("DELETE", `/api/admin/roles/${roleId}/folders/${encodeURIComponent(folderName)}`);
       return response.json();
     },
-    onSuccess: async () => {
-      // Force immediate refresh of folder data
-      await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      await refetchRoleFolders();
+    onSuccess: async (data, { roleId, folderName }) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], (old: string[] = []) => {
+        return old.filter(folder => folder !== folderName);
+      });
+      
+      // Also invalidate to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
+      
       toast({
         title: "Folder removed",
         description: "The folder has been removed from the role successfully.",
@@ -635,22 +648,30 @@ export function RoleManagement() {
                         const isAssigned = roleFolders.includes(folderName);
                         const isLoading = assignFolderMutation.isPending || removeFolderMutation.isPending;
                         
+                        console.log(`Folder ${folderName}: assigned=${isAssigned}, roleFolders=`, roleFolders);
+                        
                         return (
                           <div key={folderName} className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
                             <Checkbox
                               id={`folder-${folderName}`}
                               checked={isAssigned}
                               onCheckedChange={(checked) => {
-                                if (isLoading) return;
+                                console.log(`Checkbox clicked for ${folderName}: checked=${checked}, currentlyAssigned=${isAssigned}`);
                                 
-                                if (checked === true && !isAssigned) {
+                                if (isLoading) {
+                                  console.log('Ignoring click - mutation in progress');
+                                  return;
+                                }
+                                
+                                if (checked && !isAssigned) {
+                                  console.log(`Assigning folder ${folderName} to role ${selectedRole?.id}`);
                                   handleAssignFolder(folderName);
-                                } else if (checked === false && isAssigned) {
+                                } else if (!checked && isAssigned) {
+                                  console.log(`Removing folder ${folderName} from role ${selectedRole?.id}`);
                                   handleRemoveFolder(folderName);
                                 }
                               }}
                               disabled={isLoading}
-                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <label
                               htmlFor={`folder-${folderName}`}
