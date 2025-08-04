@@ -29,10 +29,9 @@ import {
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Plus, Pencil, Trash2, Database, Folder, X } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, Folder, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -582,15 +581,15 @@ export function RoleManagement() {
                 <h4 className="font-medium mb-2">Current Folder Access</h4>
                 {roleFolders.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {roleFolders.map((folder) => (
-                      <Badge key={folder} variant="secondary" className="flex items-center gap-1">
+                    {roleFolders.map((folderName) => (
+                      <Badge key={folderName} variant="secondary" className="flex items-center gap-1">
                         <Folder className="h-3 w-3" />
-                        {folder}
+                        {folderName}
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={() => handleRemoveFolder(folder)}
+                          onClick={() => handleRemoveFolder(folderName)}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -612,12 +611,12 @@ export function RoleManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {allFolders
-                        .filter((folder) => !roleFolders.includes(folder))
-                        .map((folder) => (
-                          <SelectItem key={folder} value={folder}>
+                        .filter((folderName) => !roleFolders.includes(folderName))
+                        .map((folderName) => (
+                          <SelectItem key={folderName} value={folderName}>
                             <div className="flex items-center gap-2">
                               <Folder className="h-4 w-4" />
-                              {folder}
+                              {folderName}
                             </div>
                           </SelectItem>
                         ))}
