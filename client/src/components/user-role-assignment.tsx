@@ -24,6 +24,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserPlus, Shield, X } from "lucide-react";
@@ -53,7 +60,7 @@ interface UserWithRoles extends User {
 export function UserRoleAssignment() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAssignRolesDialogOpen, setIsAssignRolesDialogOpen] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch all users
@@ -112,28 +119,25 @@ export function UserRoleAssignment() {
     },
   });
 
-  const handleAssignRoles = async () => {
-    if (!selectedUser) return;
-
-    const currentRoleIds = userRoles.map((r) => r.id);
-    const toAdd = selectedRoles.filter((id) => !currentRoleIds.includes(id));
-    const toRemove = currentRoleIds.filter((id) => !selectedRoles.includes(id));
+  const handleAssignRole = async () => {
+    if (!selectedUser || !selectedRoleId) return;
 
     try {
-      // Add new roles
-      for (const roleId of toAdd) {
-        await assignRoleMutation.mutateAsync({ userId: selectedUser.id, roleId });
+      // First, remove any existing roles (single role per user)
+      const currentRoles = userRoles;
+      for (const role of currentRoles) {
+        await removeRoleMutation.mutateAsync({ userId: selectedUser.id, roleId: role.id });
       }
 
-      // Remove deselected roles
-      for (const roleId of toRemove) {
-        await removeRoleMutation.mutateAsync({ userId: selectedUser.id, roleId });
-      }
+      // Then assign the new role
+      const roleId = parseInt(selectedRoleId);
+      await assignRoleMutation.mutateAsync({ userId: selectedUser.id, roleId });
 
       setIsAssignRolesDialogOpen(false);
+      setSelectedRoleId("");
       toast({
-        title: "Roles updated",
-        description: "User role assignments have been updated successfully.",
+        title: "Role assigned",
+        description: "User role has been updated successfully.",
       });
     } catch (error) {
       // Error handling is done in mutations
@@ -142,6 +146,7 @@ export function UserRoleAssignment() {
 
   const openAssignRolesDialog = (user: User) => {
     setSelectedUser(user);
+    setSelectedRoleId("");
     setIsAssignRolesDialogOpen(true);
   };
 
@@ -247,56 +252,64 @@ export function UserRoleAssignment() {
         <Dialog open={isAssignRolesDialogOpen} onOpenChange={setIsAssignRolesDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign Roles to {selectedUser?.username}</DialogTitle>
+              <DialogTitle>Assign Role to {selectedUser?.username}</DialogTitle>
               <DialogDescription>
-                Select which roles to assign to this user. Users with admin system role have access to all datasets regardless of role assignments.
+                Select a role to assign to this user. Each user can only have one role at a time. Users with admin system role have access to all datasets regardless of role assignments.
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="h-64 pr-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                {allRoles.map((role) => (
-                  <label
-                    key={role.id}
-                    className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedRoles.includes(role.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedRoles([...selectedRoles, role.id]);
-                        } else {
-                          setSelectedRoles(selectedRoles.filter((id) => id !== role.id));
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium">{role.name}</div>
-                      {role.description && (
-                        <div className="text-sm text-muted-foreground">{role.description}</div>
-                      )}
-                    </div>
-                  </label>
-                ))}
+                <label className="text-sm font-medium">Current Role</label>
+                <div className="flex flex-wrap gap-1">
+                  {userRoles.length > 0 ? (
+                    userRoles.map((role) => (
+                      <Badge key={role.id} variant="outline">
+                        {role.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No roles assigned</span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assign New Role</label>
+                <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role to assign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allRoles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{role.name}</span>
+                          {role.description && (
+                            <span className="text-sm text-muted-foreground">{role.description}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {allRoles.length === 0 && (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className="text-sm text-muted-foreground">
                     No roles available. Create roles first to assign them to users.
                   </p>
                 )}
               </div>
-            </ScrollArea>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAssignRolesDialogOpen(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={handleAssignRoles}
-                disabled={assignRoleMutation.isPending || removeRoleMutation.isPending}
+                onClick={handleAssignRole}
+                disabled={assignRoleMutation.isPending || removeRoleMutation.isPending || !selectedRoleId}
               >
                 {assignRoleMutation.isPending || removeRoleMutation.isPending
                   ? "Updating..."
-                  : "Save Assignments"}
+                  : "Assign Role"}
               </Button>
             </DialogFooter>
           </DialogContent>
