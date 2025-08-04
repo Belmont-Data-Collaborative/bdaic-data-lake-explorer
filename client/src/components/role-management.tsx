@@ -225,8 +225,14 @@ export function RoleManagement() {
       }
       return response.json();
     },
-    onSuccess: async (data, { roleId, folderName }) => {
-      // Optimistically update the cache
+    onMutate: async ({ roleId, folderName }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
+      
+      // Snapshot the previous value
+      const previousFolders = queryClient.getQueryData<string[]>(["/api/admin/roles", roleId, "folders"]);
+      
+      // Optimistically update to the new value
       queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], (old: string[] = []) => {
         if (!old.includes(folderName)) {
           return [...old, folderName];
@@ -234,12 +240,24 @@ export function RoleManagement() {
         return old;
       });
       
-      // Also invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
-      
+      // Return a context object with the snapshotted value
+      return { previousFolders, roleId, folderName };
+    },
+    onSuccess: (data, { roleId, folderName }) => {
       toast({
         title: "Folder assigned",
         description: "The folder has been assigned to the role successfully.",
+      });
+    },
+    onError: (err, { roleId, folderName }, context) => {
+      // Revert the optimistic update on error
+      if (context?.previousFolders) {
+        queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], context.previousFolders);
+      }
+      toast({
+        title: "Error assigning folder",
+        description: err.message || "Failed to assign folder",
+        variant: "destructive",
       });
     },
     onError: (error: any) => {
@@ -257,18 +275,36 @@ export function RoleManagement() {
       const response = await apiRequest("DELETE", `/api/admin/roles/${roleId}/folders/${encodeURIComponent(folderName)}`);
       return response.json();
     },
-    onSuccess: async (data, { roleId, folderName }) => {
-      // Optimistically update the cache
+    onMutate: async ({ roleId, folderName }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
+      
+      // Snapshot the previous value
+      const previousFolders = queryClient.getQueryData<string[]>(["/api/admin/roles", roleId, "folders"]);
+      
+      // Optimistically update to the new value
       queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], (old: string[] = []) => {
         return old.filter(folder => folder !== folderName);
       });
       
-      // Also invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", roleId, "folders"] });
-      
+      // Return a context object with the snapshotted value
+      return { previousFolders, roleId, folderName };
+    },
+    onSuccess: (data, { roleId, folderName }) => {
       toast({
         title: "Folder removed",
         description: "The folder has been removed from the role successfully.",
+      });
+    },
+    onError: (err, { roleId, folderName }, context) => {
+      // Revert the optimistic update on error
+      if (context?.previousFolders) {
+        queryClient.setQueryData(["/api/admin/roles", roleId, "folders"], context.previousFolders);
+      }
+      toast({
+        title: "Error removing folder",
+        description: err.message || "Failed to remove folder",
+        variant: "destructive",
       });
     },
     onError: (error: any) => {
@@ -445,13 +481,10 @@ export function RoleManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
+                        onClick={() => {
                           console.log('Opening folder dialog for role:', role);
                           setSelectedRole(role);
                           setIsAssignFoldersDialogOpen(true);
-                          // Force immediate fetch when opening dialog
-                          await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", role.id, "folders"] });
-                          await queryClient.refetchQueries({ queryKey: ["/api/admin/roles", role.id, "folders"] });
                         }}
                       >
                         <Folder className="h-4 w-4" />
