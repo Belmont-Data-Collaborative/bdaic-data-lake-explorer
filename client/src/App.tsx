@@ -62,8 +62,7 @@ function Router() {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
         // Clear cache when stored user data is invalid
-        const { clearUserCache } = require("@/lib/queryClient");
-        clearUserCache();
+        queryClient.clear();
       }
     } else if (!token) {
       // Check legacy authentication for backwards compatibility
@@ -113,10 +112,7 @@ function Router() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     // Clear all cache data on logout
-    const { clearUserCache } = require("@/lib/queryClient");
-    clearUserCache();
     queryClient.clear();
-    navigate("/login");
   };
 
   if (isLoading || isVerifying) {
