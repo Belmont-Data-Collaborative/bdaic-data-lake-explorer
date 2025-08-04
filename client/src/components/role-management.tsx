@@ -82,15 +82,17 @@ export function RoleManagement() {
   });
 
   // Fetch folders for selected role
-  const { data: roleFolders = [], refetch: refetchRoleFolders } = useQuery<string[]>({
+  const { data: roleFolders = [], refetch: refetchRoleFolders, isLoading: roleFoldersLoading } = useQuery<string[]>({
     queryKey: ["/api/admin/roles", selectedRole?.id, "folders"],
     enabled: !!selectedRole?.id,
-    staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the data
     queryFn: async () => {
       if (!selectedRole?.id) return [];
       console.log('Fetching folders for role:', selectedRole.id);
       const response = await apiRequest("GET", `/api/admin/roles/${selectedRole.id}/folders`);
+      if (!response.ok) {
+        console.error('Failed to fetch folders:', response.statusText);
+        return [];
+      }
       const data = await response.json();
       console.log('Role folders response:', data);
       return Array.isArray(data) ? data : [];
@@ -223,10 +225,10 @@ export function RoleManagement() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      // Force refresh of folder data
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      queryClient.refetchQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+    onSuccess: async () => {
+      // Force immediate refresh of folder data
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+      await refetchRoleFolders();
       toast({
         title: "Folder assigned",
         description: "The folder has been assigned to the role successfully.",
@@ -247,10 +249,10 @@ export function RoleManagement() {
       const response = await apiRequest("DELETE", `/api/admin/roles/${roleId}/folders/${encodeURIComponent(folderName)}`);
       return response.json();
     },
-    onSuccess: () => {
-      // Force refresh of folder data
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      queryClient.refetchQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+    onSuccess: async () => {
+      // Force immediate refresh of folder data
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
+      await refetchRoleFolders();
       toast({
         title: "Folder removed",
         description: "The folder has been removed from the role successfully.",
@@ -430,9 +432,13 @@ export function RoleManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
+                          console.log('Opening folder dialog for role:', role);
                           setSelectedRole(role);
                           setIsAssignFoldersDialogOpen(true);
+                          // Force immediate fetch when opening dialog
+                          await queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", role.id, "folders"] });
+                          await queryClient.refetchQueries({ queryKey: ["/api/admin/roles", role.id, "folders"] });
                         }}
                       >
                         <Folder className="h-4 w-4" />
@@ -584,7 +590,16 @@ export function RoleManagement() {
         </Dialog>
 
         {/* Assign Folders Dialog */}
-        <Dialog open={isAssignFoldersDialogOpen} onOpenChange={setIsAssignFoldersDialogOpen}>
+        <Dialog 
+          open={isAssignFoldersDialogOpen} 
+          onOpenChange={(open) => {
+            setIsAssignFoldersDialogOpen(open);
+            if (!open) {
+              // Clear selected role when closing
+              setSelectedRole(null);
+            }
+          }}
+        >
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Manage Folder Access for {selectedRole?.name}</DialogTitle>
@@ -608,34 +623,44 @@ export function RoleManagement() {
               {/* All folders with checkboxes */}
               <div className="border-t pt-4">
                 <h4 className="font-medium mb-2">Folder Access ({roleFolders.length}/{allFolders.length} assigned)</h4>
-                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                  {allFolders.map((folderName) => {
-                    const isAssigned = roleFolders.includes(folderName);
-                    return (
-                      <div key={folderName} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`folder-${folderName}`}
-                          checked={isAssigned}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              handleAssignFolder(folderName);
-                            } else {
-                              handleRemoveFolder(folderName);
-                            }
-                          }}
-                          disabled={assignFolderMutation.isPending || removeFolderMutation.isPending}
-                        />
-                        <label
-                          htmlFor={`folder-${folderName}`}
-                          className="flex items-center gap-2 text-sm cursor-pointer"
-                        >
-                          <Folder className="h-4 w-4" />
-                          {folderName}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
+                {roleFoldersLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading folder assignments...</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Role {selectedRole?.id} has folders: {JSON.stringify(roleFolders)}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                      {allFolders.map((folderName) => {
+                        const isAssigned = roleFolders.includes(folderName);
+                        return (
+                          <div key={folderName} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`folder-${folderName}`}
+                              checked={isAssigned}
+                              onCheckedChange={(checked) => {
+                                console.log(`Checkbox for ${folderName} changed to:`, checked, 'current state:', isAssigned);
+                                if (checked && !isAssigned) {
+                                  handleAssignFolder(folderName);
+                                } else if (!checked && isAssigned) {
+                                  handleRemoveFolder(folderName);
+                                }
+                              }}
+                              disabled={assignFolderMutation.isPending || removeFolderMutation.isPending}
+                            />
+                            <label
+                              htmlFor={`folder-${folderName}`}
+                              className="flex items-center gap-2 text-sm cursor-pointer"
+                            >
+                              <Folder className="h-4 w-4" />
+                              {folderName}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <DialogFooter>
