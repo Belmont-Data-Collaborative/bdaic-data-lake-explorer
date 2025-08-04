@@ -78,12 +78,17 @@ function Router() {
   // Handle JWT verification result
   useEffect(() => {
     if (verificationData?.user) {
+      // Clear all caches when user verification succeeds to ensure clean session
+      queryClient.clear();
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
+      console.log(`Frontend: Cleared caches for verified user: ${verificationData.user.username} (${verificationData.user.role})`);
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
-      console.log('Token verification failed, clearing authentication');
+      console.log('Token verification failed, clearing authentication and ALL caches');
+      queryClient.clear();
+      queryClient.invalidateQueries();
       setIsAuthenticated(false);
       setCurrentUser(null);
       localStorage.removeItem('authToken');
@@ -93,26 +98,40 @@ function Router() {
   }, [verificationData]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
+    // CRITICAL: Clear ALL caches before setting new authentication to prevent data bleeding
+    queryClient.clear();
+    queryClient.invalidateQueries();
+    
     setIsAuthenticated(true);
     if (userData) {
       // JWT-based login
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      console.log(`Frontend: Cleared all caches for new user login: ${userData.user.username} (${userData.user.role})`);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
+      console.log(`Frontend: Cleared all caches for legacy authentication`);
     }
   };
 
   const handleLogout = () => {
+    console.log(`Frontend: Logout - clearing ALL data and caches to prevent session bleeding`);
+    
+    // CRITICAL: Clear everything before logout to prevent data bleeding
+    queryClient.clear();
+    queryClient.invalidateQueries();
+    queryClient.removeQueries();
+    
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    // Clear all cache data on logout
-    queryClient.clear();
+    
+    // Clear any other potential browser storage
+    sessionStorage.clear();
   };
 
   if (isLoading || isVerifying) {

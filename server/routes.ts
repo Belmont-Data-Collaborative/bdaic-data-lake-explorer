@@ -202,6 +202,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Generate JWT token
           const token = storage.generateJWT(user);
           
+          // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
+          clearCache(`datasets-user-${user.id}`);
+          clearCache(`stats-user-${user.id}`);
+          clearCache(`folders-user-${user.id}`);
+          clearCache(`user-data-${user.id}`);
+          
+          // Also clear any general caches that might persist cross-user data
+          clearCache('datasets-all');
+          clearCache('folders-all');
+          clearCache('stats-all');
+          
+          console.log(`Login: Aggressively cleared ALL caches for user ${user.id} (${user.role}) to prevent data bleeding`);
+          
           return res.json({ 
             success: true,
             token,
@@ -225,6 +238,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.verifyPassword(password);
       
       if (isValid) {
+        // Clear all caches for legacy authentication to prevent data bleeding
+        clearCache('datasets-all');
+        clearCache('folders-all');
+        clearCache('stats-all');
+        console.log(`Legacy login: Cleared all general caches to prevent data bleeding`);
+        
         res.json({ success: true });
       } else {
         res.status(401).json({ message: "Invalid password" });
