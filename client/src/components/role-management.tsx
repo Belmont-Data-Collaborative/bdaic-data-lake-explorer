@@ -30,7 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Shield, Plus, Pencil, Trash2, Folder, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -59,7 +59,6 @@ export function RoleManagement() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({ name: "", description: "" });
   const [selectedDatasets, setSelectedDatasets] = useState<number[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch all roles
@@ -309,9 +308,9 @@ export function RoleManagement() {
     }
   };
 
-  const handleAssignFolder = () => {
-    if (!selectedRole || !selectedFolder) return;
-    assignFolderMutation.mutate({ roleId: selectedRole.id, folderName: selectedFolder });
+  const handleAssignFolder = (folderName: string) => {
+    if (!selectedRole || !folderName) return;
+    assignFolderMutation.mutate({ roleId: selectedRole.id, folderName });
   };
 
   const handleRemoveFolder = (folderName: string) => {
@@ -588,16 +587,19 @@ export function RoleManagement() {
               <div>
                 <h4 className="font-medium mb-2">Current Folder Access</h4>
                 {roleFolders.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
                     {roleFolders.map((folderName) => (
-                      <Badge key={folderName} variant="secondary" className="flex items-center gap-1">
-                        <Folder className="h-3 w-3" />
-                        {folderName}
+                      <Badge key={folderName} variant="default" className="flex items-center justify-between gap-1 p-2">
+                        <div className="flex items-center gap-1">
+                          <Folder className="h-3 w-3" />
+                          <span className="text-xs">{folderName}</span>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
                           onClick={() => handleRemoveFolder(folderName)}
+                          disabled={removeFolderMutation.isPending}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -609,33 +611,36 @@ export function RoleManagement() {
                 )}
               </div>
 
-              {/* Add new folder */}
+              {/* Available folders to assign */}
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Add Folder Access</h4>
-                <div className="flex gap-2">
-                  <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select a folder to assign" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allFolders
-                        .filter((folderName) => !roleFolders.includes(folderName))
-                        .map((folderName) => (
-                          <SelectItem key={folderName} value={folderName}>
-                            <div className="flex items-center gap-2">
-                              <Folder className="h-4 w-4" />
-                              {folderName}
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleAssignFolder}
-                    disabled={!selectedFolder || assignFolderMutation.isPending}
-                  >
-                    {assignFolderMutation.isPending ? "Adding..." : "Add"}
-                  </Button>
+                <h4 className="font-medium mb-2">Available Folders</h4>
+                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                  {allFolders
+                    .filter((folderName) => !roleFolders.includes(folderName))
+                    .map((folderName) => (
+                      <div key={folderName} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`folder-${folderName}`}
+                          checked={false}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              handleAssignFolder(folderName);
+                            }
+                          }}
+                          disabled={assignFolderMutation.isPending}
+                        />
+                        <label
+                          htmlFor={`folder-${folderName}`}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
+                        >
+                          <Folder className="h-4 w-4" />
+                          {folderName}
+                        </label>
+                      </div>
+                    ))}
+                  {allFolders.filter((folderName) => !roleFolders.includes(folderName)).length === 0 && (
+                    <p className="text-sm text-muted-foreground col-span-2">All folders are already assigned to this role</p>
+                  )}
                 </div>
               </div>
             </div>
