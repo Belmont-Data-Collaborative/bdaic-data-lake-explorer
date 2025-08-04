@@ -21,18 +21,23 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
 
   const loginMutation = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
+      console.log(`Frontend: Attempting login with username: "${username}"`);
       const res = await apiRequest('POST', '/api/auth/login', { username, password });
-      return res.json();
+      const data = await res.json();
+      console.log(`Frontend: Login response for "${username}":`, data);
+      return data;
     },
     onSuccess: (data) => {
-      if (data.token) {
+      console.log(`Frontend: Login success data:`, data);
+      if (data.token && data.user) {
+        console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
         // Store JWT token in localStorage
         localStorage.setItem('authToken', data.token);
         toast({
           title: "Login successful",
           description: `Welcome back, ${data.user.username}!`,
         });
-        onLogin(data.user);
+        onLogin(data);
       }
     },
     onError: (error: any) => {

@@ -193,9 +193,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userValidation.success) {
         const { username, password } = userValidation.data;
         
+        console.log(`Login attempt for username: "${username}"`);
         const user = await storage.verifyUserPassword(username, password);
         
         if (user) {
+          console.log(`Authentication SUCCESS for user: ${user.id} (${user.username}) with role: ${user.role}`);
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
@@ -225,7 +227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               role: user.role,
             },
           });
+        } else {
+          console.log(`Authentication FAILED for username: "${username}"`);
         }
+      } else {
+        console.log('Login validation failed:', userValidation.error);
       }
 
       // Fall back to legacy password authentication

@@ -369,13 +369,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async verifyUserPassword(username: string, password: string): Promise<User | null> {
+    console.log(`Verifying password for username: "${username}"`);
     const user = await this.getUserByUsername(username);
-    if (!user || !user.isActive) {
+    
+    if (!user) {
+      console.log(`User not found for username: "${username}"`);
       return null;
     }
     
+    if (!user.isActive) {
+      console.log(`User inactive for username: "${username}" (ID: ${user.id})`);
+      return null;
+    }
+    
+    console.log(`Found user: ID=${user.id}, username="${user.username}", role="${user.role}"`);
     const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : null;
+    
+    if (isValid) {
+      console.log(`Password verification SUCCESS for user: ${user.id} (${user.username})`);
+      return user;
+    } else {
+      console.log(`Password verification FAILED for user: ${user.id} (${user.username})`);
+      return null;
+    }
   }
 
   async updateUserLastLogin(id: number): Promise<void> {
