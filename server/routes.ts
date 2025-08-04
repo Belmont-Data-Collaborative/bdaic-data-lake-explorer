@@ -574,6 +574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assignment = await storage.assignUserToRole(userId, roleId, req.user!.id);
+      
+      // Clear the user's dataset cache since their access has changed
+      const userCacheKey = `datasets-user-${userId}`;
+      setCache(userCacheKey, null, 0); // Clear the cache
+      
       res.status(201).json(assignment);
     } catch (error) {
       console.error("Error assigning role to user:", error);
@@ -596,6 +601,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!success) {
         return res.status(404).json({ message: "Assignment not found" });
       }
+
+      // Clear the user's dataset cache since their access has changed  
+      const userCacheKey = `datasets-user-${userId}`;
+      setCache(userCacheKey, null, 0); // Clear the cache
 
       res.json({ message: "Role removed from user successfully" });
     } catch (error) {
@@ -949,8 +958,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!allDatasets) {
         console.log('Cache miss - loading datasets for user from storage');
+        console.log(`User details: ID=${req.user!.id}, role=${req.user!.role}`);
         allDatasets = await storage.getDatasetsForUser(req.user!.id);
+        console.log(`Datasets loaded for user ${req.user!.id}: ${allDatasets.length} datasets`);
         setCache(cacheKey, allDatasets, 300000); // 5 minutes cache
+      } else {
+        console.log(`Cache hit for user ${req.user!.id}: ${allDatasets.length} datasets`);
       }
       
       // Apply filters

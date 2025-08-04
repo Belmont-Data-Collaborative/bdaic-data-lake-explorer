@@ -672,9 +672,16 @@ export class DatabaseStorage implements IStorage {
   async getDatasetsForUser(userId: number): Promise<Dataset[]> {
     // Check if user is admin - admins see all datasets
     const user = await this.getUserById(userId);
+    console.log(`getDatasetsForUser: user ${userId} has role: ${user?.role}`);
+    
     if (user?.role === 'admin') {
-      return await this.getDatasets();
+      console.log(`Admin user detected - returning all datasets`);
+      const allDatasets = await this.getDatasets();
+      console.log(`Returning ${allDatasets.length} datasets for admin user`);
+      return allDatasets;
     }
+    
+    console.log(`Regular user detected - applying role-based filtering`);
 
     // Get datasets through user's roles (both direct dataset assignments and folder-based access)
     const directDatasets = await db
