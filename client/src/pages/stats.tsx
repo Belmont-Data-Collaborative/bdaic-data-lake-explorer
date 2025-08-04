@@ -35,7 +35,17 @@ export default function StatsPage() {
   }>({
     queryKey: ['/api/datasets'],
     queryFn: async () => {
-      const response = await fetch('/api/datasets?page=1&limit=10000&folder=all');
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/datasets?page=1&limit=10000&folder=all', { headers });
       if (!response.ok) {
         throw new Error('Failed to fetch datasets');
       }

@@ -692,81 +692,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public endpoints for landing page (no authentication required)
+  // Public endpoints DISABLED for security - all access requires authentication
   app.get("/api/stats/public", async (req, res) => {
-    try {
-      // Get precomputed stats from cache or compute them
-      let stats = getCached<any>('public-stats');
-      
-      if (!stats) {
-        const datasets = await storage.getDatasets();
-        const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
-        const uniqueDataSources = new Set();
-        
-        datasets.forEach(d => {
-          if (d.metadata && (d.metadata as any).dataSource) {
-            (d.metadata as any).dataSource
-              .split(',')
-              .map((s: string) => s.trim())
-              .forEach((s: string) => uniqueDataSources.add(s));
-          }
-        });
-        
-        const lastRefreshTime = await storage.getLastRefreshTime();
-        
-        stats = {
-          totalDatasets: datasets.length,
-          totalSize: formatFileSize(totalSize),
-          dataSources: uniqueDataSources.size,
-          lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
-          lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
-        };
-        
-        setCache('public-stats', stats, 1800000); // 30 minutes cache
-      }
-      
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching public stats:", error);
-      res.status(500).json({ message: "Failed to fetch statistics" });
-    }
+    res.status(401).json({ 
+      message: "Authentication required. Please log in to access statistics.",
+      requiresAuth: true 
+    });
   });
 
   app.get("/api/datasets/public", async (req, res) => {
-    try {
-      const { limit = "100" } = req.query;
-      const limitNum = Math.min(parseInt(limit as string) || 100, 100); // Max 100 for public access
-      
-      // Get cached public datasets
-      let datasets = getCached<any[]>('public-datasets');
-      
-      if (!datasets) {
-        datasets = await storage.getDatasets();
-        // Return only basic metadata for public access
-        datasets = datasets.slice(0, limitNum).map(d => ({
-          id: d.id,
-          name: d.name,
-          source: d.source,
-          format: d.format,
-          size: d.size,
-          sizeBytes: d.sizeBytes,
-          metadata: d.metadata,
-          topLevelFolder: d.topLevelFolder,
-        }));
-        setCache('public-datasets', datasets, 1800000); // 30 minutes cache
-      }
-      
-      res.json({
-        datasets: datasets.slice(0, limitNum),
-        totalCount: datasets.length,
-        page: 1,
-        limit: limitNum,
-        totalPages: Math.ceil(datasets.length / limitNum)
-      });
-    } catch (error) {
-      console.error("Error fetching public datasets:", error);
-      res.status(500).json({ message: "Failed to fetch datasets" });
-    }
+    res.status(401).json({ 
+      message: "Authentication required. Please log in to access datasets.",
+      requiresAuth: true 
+    });
   });
 
   // AWS Configuration endpoints

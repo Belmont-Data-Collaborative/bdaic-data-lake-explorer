@@ -51,6 +51,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   // Fetch global statistics for public display
   const { data: globalStats } = useQuery<GlobalStatsResponse>({
     queryKey: ['/api/stats/public'],
+    enabled: false, // Disable for unauthenticated landing page
   });
 
   // Fetch datasets for comprehensive stats
@@ -60,6 +61,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
     totalPages: number;
   }>({
     queryKey: ['/api/datasets/public'],
+    enabled: false, // Disable for unauthenticated landing page
     queryFn: async () => {
       const response = await fetch('/api/datasets/public?limit=100');
       if (!response.ok) {
