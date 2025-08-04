@@ -47,7 +47,12 @@ function Router() {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
 
-    if (token && storedUser && !isVerifying) {
+    // Don't process authentication if we're still verifying the token
+    if (isVerifying) {
+      return;
+    }
+
+    if (token && storedUser) {
       try {
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
@@ -69,7 +74,7 @@ function Router() {
     }
 
     setIsLoading(false);
-  }, [isVerifying, verificationData]);
+  }, [isVerifying]);
 
   // Handle JWT verification result
   useEffect(() => {
@@ -77,9 +82,14 @@ function Router() {
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
-    } else if (verificationData && !verificationData.user) {
-      // Token is valid, but no user data (e.g., expired token or server issue)
-      handleLogout();
+    } else if (verificationData === null || (verificationData && !verificationData.user)) {
+      // Token is invalid or expired
+      console.log('Token verification failed, clearing authentication');
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('authenticated');
     }
   }, [verificationData]);
 

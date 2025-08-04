@@ -92,7 +92,8 @@ export const clearUserCache = () => {
              queryKey.includes('/api/folders') || 
              queryKey.includes('/api/stats') ||
              queryKey.includes('/api/user') ||
-             queryKey.includes('/api/admin');
+             queryKey.includes('/api/admin') ||
+             queryKey.includes('/api/preload');
     }
   });
   queryClient.removeQueries({
@@ -100,7 +101,8 @@ export const clearUserCache = () => {
       const queryKey = query.queryKey[0] as string;
       return queryKey.includes('/api/datasets') || 
              queryKey.includes('/api/folders') || 
-             queryKey.includes('/api/stats');
+             queryKey.includes('/api/stats') ||
+             queryKey.includes('/api/preload');
     }
   });
 };
