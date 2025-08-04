@@ -614,10 +614,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Folder name is required" });
       }
 
+      // Check if assignment already exists
+      const existingFolders = await storage.getFoldersForRole(roleId);
+      if (existingFolders.includes(folderName)) {
+        return res.status(409).json({ message: "Folder is already assigned to this role" });
+      }
+
       const assignment = await storage.assignFolderToRole(roleId, folderName);
       res.status(201).json(assignment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error assigning folder to role:", error);
+      if (error.code === '23505') {
+        return res.status(409).json({ message: "Folder is already assigned to this role" });
+      }
       res.status(500).json({ message: "Failed to assign folder to role" });
     }
   });

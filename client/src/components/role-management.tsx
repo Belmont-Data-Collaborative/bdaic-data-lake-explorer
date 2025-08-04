@@ -212,12 +212,18 @@ export function RoleManagement() {
   const assignFolderMutation = useMutation({
     mutationFn: async ({ roleId, folderName }: { roleId: number; folderName: string }) => {
       const response = await apiRequest("POST", `/api/admin/roles/${roleId}/folders`, { folderName });
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409) {
+          throw new Error("This folder is already assigned to this role");
+        }
+        throw new Error(errorData.message || "Failed to assign folder to role");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
       refetchRoleFolders();
-      setSelectedFolder("");
       toast({
         title: "Folder assigned",
         description: "The folder has been assigned to the role successfully.",
