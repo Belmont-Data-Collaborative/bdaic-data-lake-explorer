@@ -50,7 +50,21 @@ export default function Home() {
         folder: "all",
       });
       console.log("All datasets query URL:", `/api/datasets?${params}`);
-      const response = await fetch(`/api/datasets?${params}`);
+      
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/datasets?${params}`, { headers });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch datasets: ${response.statusText}`);
+      }
       return response.json();
     },
     staleTime: 60000, // 1 minute cache
@@ -86,7 +100,20 @@ export default function Home() {
         ...(selectedFolder && formatFilter !== "all" && { format: formatFilter }),
         ...(selectedFolder && tagFilter !== "all" && { tag: tagFilter }),
       });
-      const response = await fetch(`/api/datasets?${params}`);
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/datasets?${params}`, { headers });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch datasets: ${response.statusText}`);
+      }
       return response.json();
     },
     enabled: !!selectedFolder, // Only run when folder is selected
@@ -116,6 +143,23 @@ export default function Home() {
   // Use direct API queries with enhanced caching for maximum performance
   const { data: globalStats } = useQuery<Stats>({
     queryKey: ["/api/stats"],
+    queryFn: async () => {
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch("/api/stats", { headers });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.statusText}`);
+      }
+      return response.json();
+    },
     staleTime: 1800000, // 30 minutes cache
     gcTime: 3600000, // 1 hour garbage collection
   });
@@ -129,7 +173,20 @@ export default function Home() {
       if (tagFilter && tagFilter !== "all") {
         params.set("tag", tagFilter);
       }
-      const response = await fetch(`/api/folders?${params}`);
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/folders?${params}`, { headers });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch folders: ${response.statusText}`);
+      }
       const data = await response.json();
       console.log("Folders from API:", data);
       return data;

@@ -21,7 +21,17 @@ export function usePreloadData() {
   return useQuery<PreloadData>({
     queryKey: ["/api/preload"],
     queryFn: async () => {
-      const response = await fetch("/api/preload");
+      // Get auth token from localStorage
+      const token = localStorage.getItem("authToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await fetch("/api/preload", { headers });
       if (!response.ok) {
         throw new Error("Failed to preload data");
       }
