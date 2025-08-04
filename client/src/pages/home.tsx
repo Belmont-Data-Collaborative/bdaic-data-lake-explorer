@@ -207,10 +207,10 @@ export default function Home() {
         // Match by extracting folder name from display label
         // Convert "CDC PLACES(496,496,210)" -> "cdc_places"
         const extractedName = displayLabel
-          .split('(')[0] // Remove parentheses part
-          .trim()
-          .replace(/\s+/g, '_') // Replace spaces with underscores
-          .toLowerCase();
+          ?.split('(')[0] // Remove parentheses part
+          ?.trim()
+          ?.replace(/\s+/g, '_') // Replace spaces with underscores
+          ?.toLowerCase() || '';
         
         // Convert "cdc_places" -> "cdc places" for reverse matching
         const normalizedRaw = rawFolder.replace(/_/g, ' ');

@@ -42,8 +42,6 @@ import {
 } from "@/components/ui/collapsible";
 
 import { useToast } from "@/hooks/use-toast";
-import { useErrorHandler } from "@/hooks/use-error-handler";
-import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DatasetChat } from "@/components/dataset-chat";
 import { formatNumber } from "@/lib/format-number";
@@ -71,12 +69,6 @@ export function DatasetCard({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { toast } = useToast();
-  const { handleError } = useErrorHandler();
-  const chatFocusTrapRef = useFocusTrap({ 
-    isActive: isChatOpen, 
-    restoreFocus: true, 
-    autoFocus: true 
-  });
 
   const metadata = dataset.metadata as DatasetMetadata | null;
   const insights = dataset.insights as DatasetInsights | null;
@@ -169,7 +161,7 @@ export function DatasetCard({
 
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
+        if (filenameMatch && filenameMatch[1]) {
           fileName = filenameMatch[1];
         }
       }
@@ -224,7 +216,7 @@ export function DatasetCard({
 
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
+        if (filenameMatch && filenameMatch[1]) {
           fileName = filenameMatch[1];
         }
       }
@@ -279,7 +271,7 @@ export function DatasetCard({
 
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
+        if (filenameMatch && filenameMatch[1]) {
           fileName = filenameMatch[1];
         }
       }
@@ -964,7 +956,7 @@ export function DatasetCard({
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => downloadSampleMutation.mutate(dataset.id)}
+                    onClick={() => downloadSampleMutation.mutate()}
                     disabled={downloadSampleMutation.isPending}
                     className="touch-target"
                     aria-label={`Download 10% sample of ${dataset.name}`}
@@ -984,7 +976,7 @@ export function DatasetCard({
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => downloadFullMutation.mutate(dataset.id)}
+                    onClick={() => downloadFullMutation.mutate()}
                     disabled={downloadFullMutation.isPending}
                     className="touch-target"
                     aria-label={`Download full file of ${dataset.name}`}
@@ -1004,7 +996,7 @@ export function DatasetCard({
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => downloadMetadataMutation.mutate(dataset.id)}
+                    onClick={() => downloadMetadataMutation.mutate()}
                     disabled={downloadMetadataMutation.isPending}
                     className="touch-target"
                     aria-label={`Download metadata file for ${dataset.name}`}
