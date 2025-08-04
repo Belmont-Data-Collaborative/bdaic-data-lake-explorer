@@ -78,12 +78,18 @@ function Router() {
   // Handle JWT verification result
   useEffect(() => {
     if (verificationData?.user) {
-      // Clear all caches when user verification succeeds to ensure clean session
-      queryClient.clear();
+      // Only clear caches if this is a different user to prevent infinite loops
+      const storedUser = localStorage.getItem('currentUser');
+      const previousUser = storedUser ? JSON.parse(storedUser) : null;
+      
+      if (!previousUser || previousUser.id !== verificationData.user.id || previousUser.role !== verificationData.user.role) {
+        queryClient.clear();
+        console.log(`Frontend: Cleared caches for new/changed user: ${verificationData.user.username} (${verificationData.user.role})`);
+      }
+      
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
-      console.log(`Frontend: Cleared caches for verified user: ${verificationData.user.username} (${verificationData.user.role})`);
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
       console.log('Token verification failed, clearing authentication and ALL caches');
