@@ -626,10 +626,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFoldersForRole(roleId: number): Promise<string[]> {
+    console.log(`DatabaseStorage.getFoldersForRole called with roleId: ${roleId}`);
     const results = await db
       .select({ folderName: roleFolders.folderName })
       .from(roleFolders)
       .where(eq(roleFolders.roleId, roleId));
+    console.log(`Found ${results.length} folders for role ${roleId}:`, results);
     return results.map(r => r.folderName);
   }
 

@@ -85,6 +85,8 @@ export function RoleManagement() {
   const { data: roleFolders = [], refetch: refetchRoleFolders } = useQuery<string[]>({
     queryKey: ["/api/admin/roles", selectedRole?.id, "folders"],
     enabled: !!selectedRole?.id,
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the data
     queryFn: async () => {
       if (!selectedRole?.id) return [];
       console.log('Fetching folders for role:', selectedRole.id);
@@ -222,8 +224,9 @@ export function RoleManagement() {
       return response.json();
     },
     onSuccess: () => {
+      // Force refresh of folder data
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      refetchRoleFolders();
+      queryClient.refetchQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
       toast({
         title: "Folder assigned",
         description: "The folder has been assigned to the role successfully.",
@@ -245,8 +248,9 @@ export function RoleManagement() {
       return response.json();
     },
     onSuccess: () => {
+      // Force refresh of folder data
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
-      refetchRoleFolders();
+      queryClient.refetchQueries({ queryKey: ["/api/admin/roles", selectedRole?.id, "folders"] });
       toast({
         title: "Folder removed",
         description: "The folder has been removed from the role successfully.",
