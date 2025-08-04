@@ -589,51 +589,37 @@ export function RoleManagement() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {/* Current folder assignments */}
+              {/* Summary of current assignments */}
               <div>
-                <h4 className="font-medium mb-2">Current Folder Access</h4>
+                <h4 className="font-medium mb-2">Assignment Summary</h4>
                 {roleFolders.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                    {roleFolders.map((folderName) => (
-                      <Badge key={folderName} variant="default" className="flex items-center justify-between gap-1 p-2">
-                        <div className="flex items-center gap-1">
-                          <Folder className="h-3 w-3" />
-                          <span className="text-xs">{folderName}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={() => handleRemoveFolder(folderName)}
-                          disabled={removeFolderMutation.isPending}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    This role has access to {roleFolders.length} folder{roleFolders.length !== 1 ? 's' : ''}: {roleFolders.join(', ')}
+                  </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">No folders assigned to this role</p>
                 )}
               </div>
 
-              {/* Available folders to assign */}
+              {/* All folders with checkboxes */}
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Available Folders</h4>
+                <h4 className="font-medium mb-2">Folder Access ({roleFolders.length}/{allFolders.length} assigned)</h4>
                 <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                  {allFolders
-                    .filter((folderName) => !roleFolders.includes(folderName))
-                    .map((folderName) => (
+                  {allFolders.map((folderName) => {
+                    const isAssigned = roleFolders.includes(folderName);
+                    return (
                       <div key={folderName} className="flex items-center space-x-2">
                         <Checkbox
                           id={`folder-${folderName}`}
-                          checked={false}
+                          checked={isAssigned}
                           onCheckedChange={(checked) => {
                             if (checked) {
                               handleAssignFolder(folderName);
+                            } else {
+                              handleRemoveFolder(folderName);
                             }
                           }}
-                          disabled={assignFolderMutation.isPending}
+                          disabled={assignFolderMutation.isPending || removeFolderMutation.isPending}
                         />
                         <label
                           htmlFor={`folder-${folderName}`}
@@ -643,10 +629,8 @@ export function RoleManagement() {
                           {folderName}
                         </label>
                       </div>
-                    ))}
-                  {allFolders.filter((folderName) => !roleFolders.includes(folderName)).length === 0 && (
-                    <p className="text-sm text-muted-foreground col-span-2">All folders are already assigned to this role</p>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             </div>
