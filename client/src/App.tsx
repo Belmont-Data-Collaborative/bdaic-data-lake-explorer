@@ -27,7 +27,7 @@ function Router() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false); // Prevent race conditions during login
 
-  // Verify JWT token on app start - DISABLED during login to prevent race conditions
+  // Verify JWT token on app start - DISABLED during login to prevent race conditions  
   const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
     queryFn: async () => {
@@ -127,7 +127,6 @@ function Router() {
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries({ queryKey: ['/api/auth/verify'] }); // Remove old verification
-    queryClient.setQueryData(['/api/auth/verify'], null); // Clear cached verification data
     
     if (userData) {
       // JWT-based login - Set everything atomically
@@ -141,15 +140,12 @@ function Router() {
       setCurrentUser(userData.user);
       setIsAuthenticated(true);
       
-      // Set the verification data immediately to prevent race conditions
-      queryClient.setQueryData(['/api/auth/verify'], { user: userData.user });
-      
-      // Re-enable JWT verification after a short delay to ensure state is settled
+      // Re-enable JWT verification after a short delay and trigger fresh verification
       setTimeout(() => {
         setIsLoggingIn(false);
         console.log(`Frontend: Login complete, re-enabling JWT verification`);
-        // Don't refetch immediately - let the cached data be used
-      }, 200);
+        refetchVerification(); // Trigger fresh verification to get proper role-based data
+      }, 250);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
