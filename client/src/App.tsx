@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,10 +25,10 @@ function Router() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Navigation handled via Link components and useLocation
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // Prevent race conditions during login
 
-  // Verify JWT token on app start
-  const { data: verificationData, isLoading: isVerifying } = useQuery({
+  // Verify JWT token on app start - DISABLED during login to prevent race conditions
+  const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -42,7 +42,7 @@ function Router() {
       console.log(`Frontend: JWT verification result:`, data);
       return data;
     },
-    enabled: !!localStorage.getItem('authToken'),
+    enabled: !!localStorage.getItem('authToken') && !isLoggingIn, // Disable during login
     retry: false,
   });
 
@@ -78,21 +78,23 @@ function Router() {
     setIsLoading(false);
   }, [isVerifying]);
 
-  // Handle JWT verification result
+  // Handle JWT verification result - but NOT during login
   useEffect(() => {
+    // Skip JWT verification effects during login to prevent race conditions
+    if (isLoggingIn) {
+      console.log('Frontend: Skipping JWT verification effect during login');
+      return;
+    }
+
     if (verificationData?.user) {
-      // Only clear caches if this is a different user to prevent infinite loops
-      const storedUser = localStorage.getItem('currentUser');
-      const previousUser = storedUser ? JSON.parse(storedUser) : null;
-      
-      if (!previousUser || previousUser.id !== verificationData.user.id || previousUser.role !== verificationData.user.role) {
+      // Only update state if it's actually different from current state
+      if (currentUser?.id !== verificationData.user.id) {
+        console.log(`Frontend: JWT verification: Updating user from ${currentUser?.username || 'none'} to ${verificationData.user.username}`);
         queryClient.clear();
-        console.log(`Frontend: Cleared caches for new/changed user: ${verificationData.user.username} (${verificationData.user.role})`);
+        setCurrentUser(verificationData.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
       }
-      
-      setCurrentUser(verificationData.user);
-      setIsAuthenticated(true);
-      localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
       console.log('Token verification failed, clearing authentication and ALL caches');
@@ -104,31 +106,51 @@ function Router() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authenticated');
     }
-  }, [verificationData]);
+  }, [verificationData, isLoggingIn, currentUser]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
-    // CRITICAL: Clear ALL caches before setting new authentication to prevent data bleeding
+    console.log(`Frontend: Login initiated - setting isLoggingIn flag to prevent JWT verification race`);
+    setIsLoggingIn(true); // Prevent JWT verification during login
+    
+    // CRITICAL: Clear ALL state and caches before setting new authentication
+    queryClient.cancelQueries(); // Cancel any pending queries
     queryClient.clear();
     queryClient.invalidateQueries();
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] }); // Remove old verification
     
-    setIsAuthenticated(true);
     if (userData) {
-      // JWT-based login
+      // JWT-based login - Set everything atomically
+      console.log(`Frontend: Setting new user atomically: ${userData.user.username} (${userData.user.role})`);
+      
+      // Update localStorage first
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
+      
+      // Then update React state
       setCurrentUser(userData.user);
-      console.log(`Frontend: Cleared all caches for new user login: ${userData.user.username} (${userData.user.role})`);
+      setIsAuthenticated(true);
+      
+      // Re-enable JWT verification after a short delay to ensure state is settled
+      setTimeout(() => {
+        setIsLoggingIn(false);
+        console.log(`Frontend: Login complete, re-enabling JWT verification`);
+        refetchVerification(); // Trigger a fresh verification with new token
+      }, 100);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
-      console.log(`Frontend: Cleared all caches for legacy authentication`);
+      setIsAuthenticated(true);
+      setIsLoggingIn(false);
+      console.log(`Frontend: Legacy authentication complete`);
     }
   };
 
   const handleLogout = () => {
     console.log(`Frontend: Logout - clearing ALL data and caches to prevent session bleeding`);
+    setIsLoggingIn(true); // Prevent JWT verification during logout
     
     // CRITICAL: Clear everything before logout to prevent data bleeding
+    queryClient.cancelQueries(); // Cancel all pending queries
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries();
@@ -141,6 +163,12 @@ function Router() {
     
     // Clear any other potential browser storage
     sessionStorage.clear();
+    
+    // Reset login flag after logout is complete
+    setTimeout(() => {
+      setIsLoggingIn(false);
+      console.log(`Frontend: Logout complete`);
+    }, 100);
   };
 
   if (isLoading || isVerifying) {
