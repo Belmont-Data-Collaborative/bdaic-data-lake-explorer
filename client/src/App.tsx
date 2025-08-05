@@ -130,22 +130,22 @@ function Router() {
     }
   }, [verificationData, currentUser]);
 
-  const handleLogin = (userData?: { sessionId: string; user: User }) => {
-    // Clear caches before setting new authentication
+  const handleLogin = (userData?: { token: string; user: User }) => {
+    // CRITICAL: Clear ALL caches before setting new authentication to prevent data bleeding
     queryClient.clear();
     queryClient.invalidateQueries();
 
     setIsAuthenticated(true);
     if (userData) {
-      // Session-based login
-      localStorage.setItem('sessionId', userData.sessionId);
+      // JWT-based login
+      localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
-      console.log(`Frontend: User login: ${userData.user.username} (${userData.user.role})`);
+      console.log(`Frontend: Cleared all caches for new user login: ${userData.user.username} (${userData.user.role})`);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
-      console.log(`Frontend: Legacy authentication`);
+      console.log(`Frontend: Cleared all caches for legacy authentication`);
     }
   };
 

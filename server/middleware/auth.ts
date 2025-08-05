@@ -9,32 +9,54 @@ export interface AuthRequest extends Request {
   };
 }
 
-// Simple session-based authentication middleware 
+// Middleware to verify JWT token
 export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const sessionId = req.headers['x-session-id'] as string;
-  
-  if (!sessionId) {
-    console.log(`Auth failed: No session ID provided for ${req.method} ${req.path}`);
-    return res.status(401).json({ message: "Session required" });
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    console.log(`Auth failed: No token provided for ${req.method} ${req.path}`);
+    return res.status(401).json({ message: "Access token required" });
   }
 
-  // Extract user ID from session ID (simple approach)
-  const userIdMatch = sessionId.match(/session_(\d+)_/);
-  if (!userIdMatch) {
-    console.log(`Auth failed: Invalid session format for ${req.method} ${req.path}`);
-    return res.status(403).json({ message: "Invalid session" });
+  console.log(`Auth middleware: Verifying token for ${req.method} ${req.path}`);
+  console.log(`Auth middleware: Token (first 50 chars): ${token.substring(0, 50)}...`);
+  
+  const decoded = storage.verifyJWT(token);
+  if (!decoded) {
+    console.log(`Auth failed: Invalid token for ${req.method} ${req.path}`);
+    return res.status(403).json({ message: "Invalid or expired token" });
   }
 
-  const userId = parseInt(userIdMatch[1]);
-  const user = await storage.getUserById(userId);
+  console.log(`Auth middleware: JWT decoded to user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
+
+  // Check if user still exists and is active
+  console.log(`Auth middleware: Looking up user ID ${decoded.id} in database...`);
+  const user = await storage.getUserById(decoded.id);
   
-  if (!user || !user.isActive) {
-    console.log(`Auth failed: User ${userId} not found or inactive for ${req.method} ${req.path}`);
-    return res.status(403).json({ message: "User not found or inactive" });
+  if (!user) {
+    console.log(`Auth failed: User ${decoded.id} not found in database for ${req.method} ${req.path}`);
+    return res.status(403).json({ message: "User not found" });
+  }
+  
+  if (!user.isActive) {
+    console.log(`Auth failed: User ${decoded.id} inactive for ${req.method} ${req.path}`);
+    return res.status(403).json({ message: "User account is inactive" });
   }
 
-  console.log(`Auth success: User ${userId} (${user.role}) accessing ${req.method} ${req.path}`);
+  console.log(`Auth middleware: Database user lookup returned ID=${user.id}, username="${user.username}", role="${user.role}"`);
   
+  // CRITICAL: Check for user data consistency between JWT and database
+  if (user.id !== decoded.id || user.username !== decoded.username || user.role !== decoded.role) {
+    console.log(`Auth middleware: CRITICAL ERROR - User data mismatch!`);
+    console.log(`Auth middleware: JWT says user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
+    console.log(`Auth middleware: Database says user ID=${user.id}, username="${user.username}", role="${user.role}"`);
+    return res.status(403).json({ message: "Authentication data inconsistency detected" });
+  }
+
+  console.log(`Auth success: User ${decoded.id} (${decoded.role}) accessing ${req.method} ${req.path}`);
+  
+  // Use the database user data to ensure consistency
   req.user = {
     id: user.id,
     username: user.username,
