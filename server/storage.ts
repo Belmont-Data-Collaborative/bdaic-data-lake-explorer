@@ -334,11 +334,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserById(id: number): Promise<User | undefined> {
+    console.log(`DatabaseStorage.getUserById: Looking up user with ID ${id}`);
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
+    
+    if (user) {
+      console.log(`DatabaseStorage.getUserById: Found user ID=${user.id}, username="${user.username}", role="${user.role}"`);
+    } else {
+      console.log(`DatabaseStorage.getUserById: No user found with ID ${id}`);
+    }
+    
     return user || undefined;
   }
 
