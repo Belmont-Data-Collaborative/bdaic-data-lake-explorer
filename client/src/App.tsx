@@ -47,6 +47,11 @@ function Router() {
   });
 
   useEffect(() => {
+    // Skip localStorage loading during login to prevent interference
+    if (isLoggingIn) {
+      return;
+    }
+
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
 
@@ -76,7 +81,7 @@ function Router() {
     }
 
     setIsLoading(false);
-  }, [isVerifying]);
+  }, [isVerifying, isLoggingIn]);
 
   // Handle JWT verification result - but NOT during login
   useEffect(() => {
@@ -87,14 +92,19 @@ function Router() {
     }
 
     if (verificationData?.user) {
-      // Only update state if it's actually different from current state
-      if (currentUser?.id !== verificationData.user.id) {
-        console.log(`Frontend: JWT verification: Updating user from ${currentUser?.username || 'none'} to ${verificationData.user.username}`);
+      // JWT is the source of truth - always update to match JWT user
+      console.log(`Frontend: JWT verification returned user: ${verificationData.user.username} (${verificationData.user.role})`);
+      
+      // Only clear cache if user actually changed
+      const needsCacheClear = currentUser?.id !== verificationData.user.id;
+      if (needsCacheClear) {
+        console.log(`Frontend: User changed from ${currentUser?.username || 'none'} to ${verificationData.user.username} - clearing cache`);
         queryClient.clear();
-        setCurrentUser(verificationData.user);
-        setIsAuthenticated(true);
-        localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
       }
+      
+      setCurrentUser(verificationData.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
       console.log('Token verification failed, clearing authentication and ALL caches');
@@ -106,7 +116,7 @@ function Router() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authenticated');
     }
-  }, [verificationData, isLoggingIn, currentUser]);
+  }, [verificationData, isLoggingIn]); // Removed currentUser from dependencies to prevent loops
 
   const handleLogin = (userData?: { token: string; user: User }) => {
     console.log(`Frontend: Login initiated - setting isLoggingIn flag to prevent JWT verification race`);
@@ -117,6 +127,7 @@ function Router() {
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries({ queryKey: ['/api/auth/verify'] }); // Remove old verification
+    queryClient.setQueryData(['/api/auth/verify'], null); // Clear cached verification data
     
     if (userData) {
       // JWT-based login - Set everything atomically
@@ -126,16 +137,19 @@ function Router() {
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       
-      // Then update React state
+      // Then update React state atomically
       setCurrentUser(userData.user);
       setIsAuthenticated(true);
+      
+      // Set the verification data immediately to prevent race conditions
+      queryClient.setQueryData(['/api/auth/verify'], { user: userData.user });
       
       // Re-enable JWT verification after a short delay to ensure state is settled
       setTimeout(() => {
         setIsLoggingIn(false);
         console.log(`Frontend: Login complete, re-enabling JWT verification`);
-        refetchVerification(); // Trigger a fresh verification with new token
-      }, 100);
+        // Don't refetch immediately - let the cached data be used
+      }, 200);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
