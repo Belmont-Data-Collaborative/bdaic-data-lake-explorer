@@ -201,25 +201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
-          // Generate JWT token with immediate verification
-          console.log(`Login: About to generate JWT for user ${user.id} (${user.username})`);
+          // Generate JWT token
+          console.log(`Login: Generating JWT for user ${user.id} (${user.username})`);
           const token = storage.generateJWT(user);
-          console.log(`Login: JWT generated for user ${user.id}, verifying immediately...`);
-          
-          // Immediate verification test to ensure token consistency
-          const verificationTest = storage.verifyJWT(token);
-          if (!verificationTest) {
-            console.log(`Login: CRITICAL ERROR - Generated token failed verification!`);
-            return res.status(500).json({ message: "Token generation failed" });
-          }
-          
-          if (verificationTest.id !== user.id) {
-            console.log(`Login: CRITICAL ERROR - Token verification mismatch!`);
-            console.log(`Login: Expected user ${user.id} (${user.username}), token verified to user ${verificationTest.id} (${verificationTest.username})`);
-            return res.status(500).json({ message: "Token generation mismatch - authentication failed" });
-          }
-          
-          console.log(`Login: Token verification test PASSED for user ${user.id} (${user.username})`)
+          console.log(`Login: JWT generated successfully`)
           
           // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
           invalidateCache(`datasets-user-${user.id}`);
@@ -327,20 +312,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User verification endpoint for JWT tokens
   app.get("/api/auth/verify", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      console.log(`JWT verify endpoint: Checking user ID ${req.user!.id} (${req.user!.username})`);
-      const user = await storage.getUserById(req.user!.id);
-      if (!user || !user.isActive) {
-        console.log(`JWT verify: User ${req.user!.id} not found or inactive`);
+      console.log(`JWT verify endpoint: Decoded JWT contains user ID ${req.user!.id} (${req.user!.username})`);
+      
+      // CRITICAL: Get fresh user data from database based on JWT token ID
+      const freshUser = await storage.getUserById(req.user!.id);
+      
+      if (!freshUser) {
+        console.log(`JWT verify: User ${req.user!.id} not found in database`);
+        return res.status(403).json({ message: "User not found" });
+      }
+      
+      if (!freshUser.isActive) {
+        console.log(`JWT verify: User ${req.user!.id} is inactive`);
         return res.status(403).json({ message: "User account is inactive" });
       }
       
-      console.log(`JWT verify: Returning user data: ID=${user.id}, username="${user.username}", role="${user.role}"`);
+      // CRITICAL: Return the fresh user data from database, not cached data
+      console.log(`JWT verify: Fresh database lookup returned user ID=${freshUser.id}, username="${freshUser.username}", role="${freshUser.role}"`);
+      
+      // Double-check for data consistency
+      if (freshUser.id !== req.user!.id) {
+        console.error(`JWT verify: CRITICAL ERROR - JWT user ID ${req.user!.id} doesn't match database user ID ${freshUser.id}`);
+        return res.status(403).json({ message: "Authentication data mismatch" });
+      }
+      
+      // Return fresh user data
       res.json({
         user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
+          id: freshUser.id,
+          username: freshUser.username,
+          email: freshUser.email,
+          role: freshUser.role,
         },
       });
     } catch (error) {
