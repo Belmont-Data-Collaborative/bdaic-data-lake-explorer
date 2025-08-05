@@ -205,6 +205,8 @@ function Router() {
   };
 
   const handleLogout = () => {
+    // Add a visible alert to confirm the function is called
+    alert('🔐 LOGOUT BUTTON CLICKED - Check console for detailed logs');
     console.log(`🔐 LOGOUT: Starting complete authentication cleanup`);
 
     // Log what tokens we're about to delete
