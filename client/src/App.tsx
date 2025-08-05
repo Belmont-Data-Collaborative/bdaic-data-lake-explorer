@@ -166,9 +166,27 @@ function Router() {
   };
 
   const handleLogout = () => {
-    console.log(`Frontend: Logout - clearing ALL data and caches to prevent session bleeding`);
+    console.log(`Frontend: Logout - immediately deleting JWT tokens and clearing ALL authentication data`);
 
-    // CRITICAL: Clear everything before logout to prevent data bleeding
+    // CRITICAL: Immediately delete JWT tokens and all authentication data
+    const tokenToDelete = localStorage.getItem('authToken');
+    if (tokenToDelete) {
+      console.log(`Frontend: Deleting JWT token: ${tokenToDelete.substring(0, 50)}...`);
+      localStorage.removeItem('authToken');
+    }
+    
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated');
+    
+    // Clear all browser storage to prevent any residual authentication state
+    sessionStorage.clear();
+    
+    // Verify tokens are completely removed
+    const remainingToken = localStorage.getItem('authToken');
+    const remainingUser = localStorage.getItem('currentUser');
+    console.log(`Frontend: Post-logout verification - Token exists: ${!!remainingToken}, User exists: ${!!remainingUser}`);
+
+    // Clear all queries and caches
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries();
@@ -176,14 +194,11 @@ function Router() {
     // Specifically clear the JWT verification query
     queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
 
+    // Reset authentication state
     setIsAuthenticated(false);
     setCurrentUser(null);
-    localStorage.removeItem('authenticated');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('currentUser');
-
-    // Clear any other potential browser storage
-    sessionStorage.clear();
+    
+    console.log(`Frontend: JWT tokens and authentication data completely deleted`);
   };
 
   if (isLoading || isVerifying) {

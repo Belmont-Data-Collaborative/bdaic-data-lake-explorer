@@ -190,11 +190,17 @@ For detailed API specifications, please contact the system administrator.`;
   // Enhanced login mutation supporting both JWT and legacy auth
   const loginMutation = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      // CRITICAL: Clear any existing authentication before new login attempt
-      console.log(`Frontend: Clearing existing auth before login attempt for user: ${username}`);
+      // CRITICAL: Immediately delete any existing JWT tokens before new login attempt
+      const existingToken = localStorage.getItem('authToken');
+      if (existingToken) {
+        console.log(`Frontend: Deleting existing JWT token: ${existingToken.substring(0, 50)}...`);
+      }
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authenticated');
+      sessionStorage.clear();
+      
+      console.log(`Frontend: All existing authentication data deleted before login attempt for user: ${username}`);
 
       const res = await apiRequest('POST', '/api/auth/login', { username, password });
       return res.json();
