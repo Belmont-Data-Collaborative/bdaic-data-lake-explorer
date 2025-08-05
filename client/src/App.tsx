@@ -94,17 +94,23 @@ function Router() {
             console.log(`Frontend: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
             console.log(`Frontend: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
 
-            // Force complete logout and re-authentication
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('authenticated');
+            // Force complete logout and reload page to ensure clean state
+            console.log(`Frontend: Forcing complete authentication reset and page reload`);
+            localStorage.clear();
+            sessionStorage.clear();
             queryClient.clear();
-            setIsAuthenticated(false);
-            setCurrentUser(null);
+            window.location.href = '/';
             return;
           }
         } catch (e) {
           console.log('Frontend: Error parsing stored user during verification check');
+          // If we can't parse stored user data, clear everything
+          localStorage.clear();
+          sessionStorage.clear();
+          queryClient.clear();
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          return;
         }
       }
 
