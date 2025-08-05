@@ -46,15 +46,22 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
   console.log(`Auth middleware: Database user lookup returned ID=${user.id}, username="${user.username}", role="${user.role}"`);
   
-  // CRITICAL: Check for user ID mismatch between JWT and database
-  if (user.id !== decoded.id) {
-    console.log(`Auth middleware: CRITICAL ERROR - User ID mismatch!`);
-    console.log(`Auth middleware: JWT says user ID=${decoded.id}, database returned user ID=${user.id}`);
-    return res.status(403).json({ message: "Authentication data mismatch" });
+  // CRITICAL: Check for user data consistency between JWT and database
+  if (user.id !== decoded.id || user.username !== decoded.username || user.role !== decoded.role) {
+    console.log(`Auth middleware: CRITICAL ERROR - User data mismatch!`);
+    console.log(`Auth middleware: JWT says user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
+    console.log(`Auth middleware: Database says user ID=${user.id}, username="${user.username}", role="${user.role}"`);
+    return res.status(403).json({ message: "Authentication data inconsistency detected" });
   }
 
   console.log(`Auth success: User ${decoded.id} (${decoded.role}) accessing ${req.method} ${req.path}`);
-  req.user = decoded;
+  
+  // Use the database user data to ensure consistency
+  req.user = {
+    id: user.id,
+    username: user.username,
+    role: user.role
+  };
   next();
 };
 

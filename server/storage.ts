@@ -421,50 +421,68 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id));
   }
 
-  generateJWT(user: any): string {
-    console.log(`JWT generation: Creating token for user: { id: ${user.id}, username: '${user.username}', role: '${user.role}' }`);
+  generateJWT(user: { id: number; username: string; role: string }): string {
+    console.log(`JWT generation: Creating token for user: ${JSON.stringify(user)}`);
     console.log(`JWT generation: Using secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
 
-    const payload = {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+    // Ensure user object is clean and consistent
+    const cleanUser = {
+      id: Number(user.id), // Ensure it's a number
+      username: String(user.username).trim(), // Ensure it's a clean string
+      role: String(user.role).trim(), // Ensure it's a clean string
     };
 
-    console.log(`JWT generation: Creating token with payload:`, payload);
+    const payload = {
+      id: cleanUser.id,
+      username: cleanUser.username,
+      role: cleanUser.role,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
+    };
+
+    console.log(`JWT generation: Creating token with payload: ${JSON.stringify(payload, null, 2)}`);
+
+    // Generate token with clean secret
     const token = jwt.sign(payload, this.jwtSecret);
     console.log(`JWT generation: Token created, length: ${token.length}, preview: ${token.substring(0, 50)}...`);
 
-    // Immediate verification test to ensure consistency
-    const verificationTest = this.verifyJWT(token);
-    if (verificationTest && verificationTest.id === user.id && verificationTest.username === user.username) {
+    // CRITICAL: Immediate verification test with same secret to ensure consistency
+    try {
+      const verificationTest = jwt.verify(token, this.jwtSecret) as any;
+
+      if (!verificationTest || verificationTest.id !== cleanUser.id || verificationTest.username !== cleanUser.username) {
+        console.error(`JWT generation: CRITICAL ERROR - Token verification mismatch!`);
+        console.error(`JWT generation: Expected user ${cleanUser.id} (${cleanUser.username}), token verified to user ${verificationTest?.id} (${verificationTest?.username})`);
+        throw new Error("Token generation consistency check failed");
+      }
+
       console.log(`JWT generation: Token verification test PASSED - consistent user data`);
-    } else {
-      console.log(`JWT generation: CRITICAL ERROR - Token verification test FAILED!`);
-      console.log(`JWT generation: Expected user ${user.id} (${user.username}), got ${verificationTest?.id || 'null'} (${verificationTest?.username || 'null'})`);
-      throw new Error(`JWT generation failed - token verification mismatch for user ${user.id}`);
+    } catch (error) {
+      console.error(`JWT generation: Token verification failed:`, error);
+      throw new Error("Token generation failed verification");
     }
 
     return token;
   }
 
-  verifyJWT(token: string): any {
+  verifyJWT(token: string): { id: number; username: string; role: string } | null {
     try {
       console.log(`JWT verification: Verifying token, secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
       console.log(`JWT verification: Token preview: ${token.substring(0, 50)}...`);
 
+      // Use the exact same secret for verification
       const decoded = jwt.verify(token, this.jwtSecret) as any;
-      console.log(`JWT verification: Token successfully decoded to user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
 
-      // Additional validation
-      if (!decoded.id || !decoded.username || !decoded.role) {
-        console.log(`JWT verification: Invalid token payload - missing required fields`);
-        return null;
-      }
+      // Ensure decoded data is clean and consistent
+      const verifiedUser = {
+        id: Number(decoded.id),
+        username: String(decoded.username).trim(),
+        role: String(decoded.role).trim(),
+      };
 
-      return decoded;
+      console.log(`JWT verification: Token successfully decoded to user ID=${verifiedUser.id}, username="${verifiedUser.username}", role="${verifiedUser.role}"`);
+
+      return verifiedUser;
     } catch (error) {
       console.log(`JWT verification: Token verification failed:`, error);
       return null;
