@@ -85,29 +85,44 @@ function Router() {
 
   // Handle JWT verification result
   useEffect(() => {
+    console.log(`🔐 STEP 11: JWT verification useEffect triggered`);
+    console.log(`🔐 STEP 11a: verificationData:`, verificationData);
+    console.log(`🔐 STEP 11b: currentUser:`, currentUser);
+    
     if (verificationData?.user) {
+      console.log(`🔐 STEP 12: Processing verified user data`);
+      console.log(`🔐 STEP 12a: Verified user: ${verificationData.user.username} (ID: ${verificationData.user.id}, Role: ${verificationData.user.role})`);
+      
       // Check for token/user mismatch - but only clear data, don't force reload
       const storedUser = localStorage.getItem('currentUser');
+      console.log(`🔐 STEP 12b: Current stored user in localStorage:`, storedUser);
+      
       if (storedUser) {
         try {
           const previousUser = JSON.parse(storedUser);
+          console.log(`🔐 STEP 12c: Parsed stored user: ${previousUser.username} (ID: ${previousUser.id})`);
+          
           if (previousUser.id !== verificationData.user.id) {
-            console.log(`Frontend: Token/User mismatch detected - updating to correct user`);
-            console.log(`Frontend: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
-            console.log(`Frontend: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
+            console.log(`🔐 STEP 13: TOKEN/USER MISMATCH DETECTED!`);
+            console.log(`🔐 STEP 13a: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
+            console.log(`🔐 STEP 13b: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
+            console.log(`🔐 STEP 13c: This means the token belongs to a different user than what's stored!`);
 
             // Just clear cache and update user - no page reload
             queryClient.clear();
             localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
+          } else {
+            console.log(`🔐 STEP 12d: User matches - no mismatch detected`);
           }
         } catch (e) {
-          console.log('Frontend: Error parsing stored user during verification check');
+          console.log(`🔐 STEP 12e: Error parsing stored user during verification check:`, e);
           localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
         }
       }
 
       // Normal verification flow
       if (!currentUser || currentUser.id !== verificationData.user.id || currentUser.role !== verificationData.user.role) {
+        console.log(`🔐 STEP 14: Updating currentUser state to verified user`);
         queryClient.clear();
         console.log(`Frontend: Cleared caches for new/changed user: ${verificationData.user.username} (${verificationData.user.role})`);
       }
@@ -115,9 +130,10 @@ function Router() {
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
+      console.log(`🔐 STEP 15: Final user state set to: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
-      console.log('Token verification failed, clearing authentication and ALL caches');
+      console.log('🔐 STEP 16: Token verification failed, clearing authentication and ALL caches');
 
       // Clear everything to prevent any residual authentication state
       localStorage.clear();
@@ -133,7 +149,16 @@ function Router() {
   }, [verificationData, currentUser]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
-    console.log(`Frontend: New login request - clearing ALL existing data first`);
+    console.log(`🔐 STEP 6: handleLogin callback triggered in App.tsx`);
+    console.log(`🔐 STEP 6a: userData received:`, userData);
+    
+    // Check what's currently in localStorage before clearing
+    const oldToken = localStorage.getItem('authToken');
+    const oldUser = localStorage.getItem('currentUser');
+    console.log(`🔐 STEP 6b: BEFORE clearing - Old token (first 50 chars):`, oldToken?.substring(0, 50) || 'none');
+    console.log(`🔐 STEP 6c: BEFORE clearing - Old user:`, oldUser || 'none');
+    
+    console.log(`🔐 STEP 7: Clearing ALL existing authentication data to prevent conflicts`);
     
     // CRITICAL: Clear ALL existing authentication data FIRST to prevent conflicts
     localStorage.removeItem('authToken');
@@ -149,14 +174,28 @@ function Router() {
     // Reset authentication state
     setIsAuthenticated(false);
     setCurrentUser(null);
+    
+    console.log(`🔐 STEP 8: All data cleared, now setting new authentication`);
 
     // Now set the new authentication data
     setIsAuthenticated(true);
     if (userData) {
+      console.log(`🔐 STEP 9: Setting JWT-based authentication`);
+      console.log(`🔐 STEP 9a: User to set: ${userData.user.username} (ID: ${userData.user.id}, Role: ${userData.user.role})`);
+      console.log(`🔐 STEP 9b: Token to set (first 50 chars):`, userData.token.substring(0, 50));
+      
       // JWT-based login
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      
+      // Verify what was actually stored
+      const newToken = localStorage.getItem('authToken');
+      const newUser = localStorage.getItem('currentUser');
+      console.log(`🔐 STEP 9c: AFTER setting - New token in localStorage (first 50 chars):`, newToken?.substring(0, 50));
+      console.log(`🔐 STEP 9d: AFTER setting - New user in localStorage:`, newUser);
+      console.log(`🔐 STEP 9e: React state set to: ${userData.user.username} (ID: ${userData.user.id})`);
+      
       console.log(`Frontend: Set new user authentication: ${userData.user.username} (${userData.user.role})`);
     } else {
       // Legacy login fallback
