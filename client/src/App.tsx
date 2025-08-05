@@ -26,7 +26,7 @@ function Router() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // SINGLE SOURCE OF TRUTH: JWT verification is the only way to set user state
+  // JWT verification for token-based authentication
   const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
     queryFn: async () => {
@@ -41,21 +41,24 @@ function Router() {
       console.log(`Frontend: JWT verification result:`, data);
       return data;
     },
-    enabled: !!localStorage.getItem('authToken'), // Simplified condition
+    enabled: !!localStorage.getItem('authToken'), // Only run if we have a token
     retry: false,
     staleTime: 0,
     gcTime: 0,
   });
 
-  // SINGLE useEffect: Only JWT verification result sets authentication state
+  // Combined useEffect: Handle both JWT and legacy authentication
   useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const legacyAuth = localStorage.getItem('authenticated');
+
     if (isVerifying) {
-      // Still loading verification
+      // Still loading JWT verification
       return;
     }
 
-    if (verificationData?.user) {
-      // JWT verification succeeded - this is our source of truth
+    if (token && verificationData?.user) {
+      // JWT verification succeeded - this is our source of truth for JWT users
       console.log(`Frontend: JWT verification returned user: ${verificationData.user.username} (${verificationData.user.role})`);
 
       // Clear cache if user changed to ensure fresh data for new user
@@ -69,7 +72,7 @@ function Router() {
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
     } else {
-      // No verification data or verification failed
+      // No valid JWT token or verification failed - clear everything
       console.log('JWT verification failed or no token - clearing authentication');
       queryClient.clear();
       queryClient.invalidateQueries();
@@ -77,38 +80,31 @@ function Router() {
       setCurrentUser(null);
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUser');
-      localStorage.removeItem('authenticated');
+      localStorage.removeItem('authenticated'); // Clean up legacy auth
     }
 
     setIsLoading(false);
   }, [verificationData, isVerifying]); // REMOVED currentUser?.id to prevent loops
 
-  const handleLogin = (userData?: { token: string; user: User }) => {
-    console.log(`Frontend: Login initiated for ${userData?.user.username || 'legacy'}`);
+  const handleLogin = (userData: { token: string; user: User }) => {
+    console.log(`Frontend: Login initiated for ${userData.user.username}`);
 
     // CRITICAL: Clear ALL state and caches before setting new authentication
     queryClient.cancelQueries();
     queryClient.clear();
     queryClient.invalidateQueries();
 
-    if (userData) {
-      // JWT-based login - Store token and trigger verification
-      console.log(`Frontend: Setting new token for: ${userData.user.username} (${userData.user.role})`);
+    // Modern JWT-based login only
+    console.log(`Frontend: Setting new token for: ${userData.user.username} (${userData.user.role})`);
 
-      // Store token in localStorage
-      localStorage.setItem('authToken', userData.token);
+    // Clear any legacy auth
+    localStorage.removeItem('authenticated');
 
-      // DON'T set state directly - let JWT verification do it
-      // This ensures the verification flow is the single source of truth
+    // Store token in localStorage
+    localStorage.setItem('authToken', userData.token);
 
-      // Trigger immediate verification to set user state
-      refetchVerification();
-    } else {
-      // Legacy login fallback
-      localStorage.setItem('authenticated', 'true');
-      setIsAuthenticated(true);
-      console.log(`Frontend: Legacy authentication complete`);
-    }
+    // Trigger immediate verification to set user state
+    refetchVerification();
   };
 
   const handleLogout = () => {
@@ -131,17 +127,23 @@ function Router() {
     console.log(`Frontend: Logout complete`);
   };
 
-  if (isLoading || isVerifying) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">
-            {isVerifying ? 'Verifying authentication...' : 'Loading...'}
-          </p>
+  if (isLoading) {
+    // Only show loading if we're actually waiting for JWT verification
+    const hasToken = !!localStorage.getItem('authToken');
+
+    // Show loading if we have a token and are verifying, or if we have no token
+    if ((hasToken && isVerifying) || !hasToken) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">
+              {isVerifying ? 'Verifying authentication...' : 'Loading...'}
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   if (!isAuthenticated) {

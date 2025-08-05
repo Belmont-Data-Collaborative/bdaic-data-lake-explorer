@@ -37,13 +37,14 @@ The application employs a modern full-stack architecture, separating frontend an
 - **Frontend**: React Router (Wouter), TanStack Query for state management, React Hook Form with Zod for form handling, Vite for build.
 - **Backend**: Express.js for RESTful APIs, AWS SDK v3 for S3 operations, OpenAI API integration.
 - **Database**: PostgreSQL for dataset metadata, AWS configurations, authentication, and download tracking. Schema includes `datasets`, `aws_config`, `auth_config`, and `refresh_log`.
+- **Authentication**: Modern JWT-based authentication system with single consolidated login form, eliminating legacy password-only authentication.
 - **Data Flow**: User authentication, AWS configuration, S3 bucket scanning for dataset discovery, persistence to PostgreSQL, AI analysis, and user interaction through filtering, search, and conversational AI.
 - **Deployment**: Designed for Node.js platforms, with static frontend builds served alongside the Express API.
 
 ### Feature Specifications:
 - **Smart Dataset Discovery**: Scans S3 buckets, extracts metadata (including comprehensive YAML metadata), and persists information.
 - **AI-Powered Analytics**: Generates insights (summary, patterns, use cases) and provides conversational analysis via OpenAI.
-- **Enterprise Authentication**: JWT-based with bcrypt hashing, role-based access control, user management (admin only), and secure token handling.
+- **Modern Authentication System**: Consolidated JWT-based authentication with unified login form, eliminating legacy systems. Features bcrypt hashing, role-based access control, user management (admin only), and secure token handling.
 - **Advanced Filtering & Search**: Comprehensive filtering by folder, format, size, and search queries.
 - **Hierarchical Tag Filtering**: Filters folders and datasets based on tags, with persistence across navigation.
 - **Download Tracking**: Monitors dataset usage with separate counts for sample, full, and metadata downloads.

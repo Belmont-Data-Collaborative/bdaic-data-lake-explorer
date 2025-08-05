@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility } from "lucide-react";
+import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility, User } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -187,45 +187,43 @@ For detailed API specifications, please contact the system administrator.`;
 
   const stats: Stats | undefined = allDatasets.length > 0 ? calculateStats(allDatasets) : globalStats;
 
-  // Enhanced login mutation supporting both JWT and legacy auth
+  // Modern JWT-based login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
-      }
-
-      return response.json();
+      console.log(`Frontend: Attempting login with username: "${credentials.username}"`);
+      const response = await apiRequest('POST', '/api/auth/login', credentials);
+      const data = await response.json();
+      console.log(`Frontend: Login response for "${credentials.username}":`, data);
+      return data;
     },
     onSuccess: (data) => {
+      console.log(`Frontend: Login success data:`, data);
       if (data.token && data.user) {
-        // JWT-based authentication
+        console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
+        
+        // Clear any existing authentication state first
+        console.log(`Frontend: Clearing existing auth state before setting new user`);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authenticated'); // Clear legacy auth
+        
+        // Set new authentication data
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
+        
         toast({
           title: "Login successful",
           description: `Welcome back, ${data.user.username}!`,
         });
-        onLogin({ token: data.token, user: data.user });
+        onLogin(data);
       } else {
-        // Legacy password-based authentication
-        toast({
-          title: "Login successful",
-          description: "Welcome to the Data Lake Explorer!",
-        });
-        onLogin();
+        throw new Error('Invalid response format - missing token or user data');
       }
     },
     onError: (error: any) => {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error.message || "Invalid username or password",
         variant: "destructive",
       });
     },
@@ -234,21 +232,25 @@ For detailed API specifications, please contact the system administrator.`;
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!loginData.username.trim() && !loginData.password.trim()) {
+    if (!loginData.username.trim()) {
       toast({
-        title: "Login required",
-        description: "Please enter your credentials",
+        title: "Username required",
+        description: "Please enter your username",
         variant: "destructive",
       });
       return;
     }
 
-    // Support legacy password-only login if no username provided
-    const credentials = loginData.username.trim() 
-      ? loginData 
-      : { username: "", password: loginData.password };
+    if (!loginData.password.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter your password",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    loginMutation.mutate(credentials);
+    loginMutation.mutate(loginData);
   };
 
   const handleRegistrationSuccess = (user: any, token: string) => {
@@ -738,7 +740,10 @@ For detailed API specifications, please contact the system administrator.`;
                   <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
-                        <Label htmlFor="username">Username (optional for legacy login)</Label>
+                        <Label htmlFor="username">
+                          <User className="inline w-4 h-4 mr-1" />
+                          Username
+                        </Label>
                         <Input
                           id="username"
                           type="text"
@@ -747,6 +752,7 @@ For detailed API specifications, please contact the system administrator.`;
                           placeholder="Enter your username"
                           disabled={loginMutation.isPending}
                           className="mt-1"
+                          required
                         />
                       </div>
                       <div>
