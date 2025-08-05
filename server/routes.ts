@@ -206,16 +206,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const token = storage.generateJWT(user);
           console.log(`Login: JWT generated successfully`)
           
-          // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
-          invalidateCache(`datasets-user-${user.id}`);
-          invalidateCache(`stats-user-${user.id}`);
-          invalidateCache(`folders-user-${user.id}`);
-          invalidateCache(`user-data-${user.id}`);
+          // CRITICAL: Clear ALL caches aggressively to prevent any data bleeding between sessions
+          invalidateCache(); // Clear ALL caches completely
           
-          // Also clear any general caches that might persist cross-user data
-          invalidateCache('datasets-all');
-          invalidateCache('folders-all');
-          invalidateCache('stats-all');
+          console.log(`Login: Cleared ALL caches completely for user ${user.id} (${user.username}) to prevent any data bleeding`);
           
           console.log(`Login: Aggressively cleared ALL caches for user ${user.id} (${user.username}) to prevent data bleeding`);
           
