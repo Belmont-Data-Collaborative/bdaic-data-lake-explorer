@@ -87,23 +87,29 @@ function Router() {
   }, [verificationData, isVerifying]); // REMOVED currentUser?.id to prevent loops
 
   const handleLogin = (userData: { token: string; user: User }) => {
-    console.log(`Frontend: Login initiated for ${userData.user.username}`);
+    console.log(`Frontend: App.tsx handleLogin for ${userData.user.username} (${userData.user.role})`);
 
     // CRITICAL: Clear ALL state and caches before setting new authentication
     queryClient.cancelQueries();
     queryClient.clear();
     queryClient.invalidateQueries();
 
-    // Modern JWT-based login only
-    console.log(`Frontend: Setting new token for: ${userData.user.username} (${userData.user.role})`);
-
-    // Clear any legacy auth
+    // Clear any existing authentication state first
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
     localStorage.removeItem('authenticated');
 
-    // Store token in localStorage
+    // Store new authentication data
     localStorage.setItem('authToken', userData.token);
+    localStorage.setItem('currentUser', JSON.stringify(userData.user));
 
-    // Trigger immediate verification to set user state
+    console.log(`Frontend: Stored token and user for: ${userData.user.username} (${userData.user.role})`);
+    
+    // Set state immediately to avoid delays
+    setCurrentUser(userData.user);
+    setIsAuthenticated(true);
+
+    // Also trigger verification to ensure consistency
     refetchVerification();
   };
 

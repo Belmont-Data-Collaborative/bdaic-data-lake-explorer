@@ -197,24 +197,13 @@ For detailed API specifications, please contact the system administrator.`;
       return data;
     },
     onSuccess: (data) => {
-      console.log(`Frontend: Login success data:`, data);
+      console.log(`Frontend: Landing page login success for: ${data.user?.username}`);
       if (data.token && data.user) {
-        console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
-        
-        // Clear any existing authentication state first
-        console.log(`Frontend: Clearing existing auth state before setting new user`);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('authenticated'); // Clear legacy auth
-        
-        // Set new authentication data
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('currentUser', JSON.stringify(data.user));
-        
         toast({
           title: "Login successful",
           description: `Welcome back, ${data.user.username}!`,
         });
+        // Let App.tsx handleLogin manage all storage and state
         onLogin(data);
       } else {
         throw new Error('Invalid response format - missing token or user data');
