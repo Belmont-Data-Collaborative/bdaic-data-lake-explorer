@@ -112,7 +112,10 @@ export function RoleManagement() {
       return response.json();
     },
     onSuccess: () => {
+      // Immediately invalidate and refetch roles to update the UI
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin/roles"] });
+      
       setIsCreateDialogOpen(false);
       setNewRole({ name: "", description: "" });
       toast({
@@ -260,13 +263,6 @@ export function RoleManagement() {
         variant: "destructive",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error assigning folder",
-        description: error.message || "Failed to assign folder",
-        variant: "destructive",
-      });
-    },
   });
 
   // Remove folder from role mutation
@@ -304,13 +300,6 @@ export function RoleManagement() {
       toast({
         title: "Error removing folder",
         description: err.message || "Failed to remove folder",
-        variant: "destructive",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error removing folder",
-        description: error.message || "Failed to remove folder",
         variant: "destructive",
       });
     },
