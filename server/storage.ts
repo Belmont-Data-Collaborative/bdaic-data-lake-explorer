@@ -402,22 +402,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   generateJWT(user: User): string {
-    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-    return jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username, 
-        role: user.role 
-      },
-      secret,
-      { expiresIn: '24h' }
-    );
+    // Use a consistent secret - critical for preventing token mismatch
+    const secret = process.env.JWT_SECRET || 'data-lake-explorer-jwt-secret-2025-unique-key-abc123';
+    const payload = { 
+      id: user.id, 
+      username: user.username, 
+      role: user.role 
+    };
+    console.log(`JWT generation: Creating token for user:`, payload);
+    console.log(`JWT generation: Using secret length: ${secret.length}`);
+    const token = jwt.sign(payload, secret, { expiresIn: '24h', algorithm: 'HS256' });
+    console.log(`JWT generation: Token created successfully for user ${user.id} (${user.username})`);
+    
+    // Immediate verification test to ensure consistency
+    const testVerify = this.verifyJWT(token);
+    if (!testVerify || testVerify.id !== user.id) {
+      console.log(`JWT generation: CRITICAL - Token verification failed immediately after creation!`);
+      console.log(`JWT generation: Expected user ${user.id}, got ${testVerify?.id || 'null'}`);
+    } else {
+      console.log(`JWT generation: Token verification test passed`);
+    }
+    
+    return token;
   }
 
   verifyJWT(token: string): { id: number; username: string; role: string } | null {
     try {
-      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
-      const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
+      // Use the same consistent secret
+      const secret = process.env.JWT_SECRET || 'data-lake-explorer-jwt-secret-2025-unique-key-abc123';
+      console.log(`JWT verification: Using secret length: ${secret.length}`);
+      const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] }) as { id: number; username: string; role: string };
       console.log(`JWT verification: Token decoded to user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
       return decoded;
     } catch (error) {

@@ -201,8 +201,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
-          // Generate JWT token
+          // Generate JWT token with immediate verification
+          console.log(`Login: About to generate JWT for user ${user.id} (${user.username})`);
           const token = storage.generateJWT(user);
+          console.log(`Login: JWT generated for user ${user.id}, verifying immediately...`);
+          
+          // Immediate verification test to ensure token consistency
+          const verificationTest = storage.verifyJWT(token);
+          if (!verificationTest) {
+            console.log(`Login: CRITICAL ERROR - Generated token failed verification!`);
+            return res.status(500).json({ message: "Token generation failed" });
+          }
+          
+          if (verificationTest.id !== user.id) {
+            console.log(`Login: CRITICAL ERROR - Token verification mismatch!`);
+            console.log(`Login: Expected user ${user.id} (${user.username}), token verified to user ${verificationTest.id} (${verificationTest.username})`);
+            return res.status(500).json({ message: "Token generation mismatch - authentication failed" });
+          }
+          
+          console.log(`Login: Token verification test PASSED for user ${user.id} (${user.username})`)
           
           // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
           invalidateCache(`datasets-user-${user.id}`);
