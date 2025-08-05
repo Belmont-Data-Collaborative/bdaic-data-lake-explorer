@@ -142,6 +142,10 @@ function Router() {
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
       console.log(`Frontend: Cleared all caches for new user login: ${userData.user.username} (${userData.user.role})`);
+      
+      // CRITICAL: Force refresh the JWT verification query with the new token
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/verify'] });
+      queryClient.refetchQueries({ queryKey: ['/api/auth/verify'] });
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
@@ -156,6 +160,9 @@ function Router() {
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries();
+    
+    // Specifically clear the JWT verification query
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
 
     setIsAuthenticated(false);
     setCurrentUser(null);
