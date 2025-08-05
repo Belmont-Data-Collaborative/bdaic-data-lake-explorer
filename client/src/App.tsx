@@ -49,7 +49,7 @@ function Router() {
       
       return data;
     },
-    enabled: !!localStorage.getItem('authToken') && !isLoading,
+    enabled: !!localStorage.getItem('authToken') && !isLoading && isAuthenticated,
     retry: false,
     staleTime: 0, // Always check for fresh data
     gcTime: 0, // Don't cache verification results
@@ -224,12 +224,20 @@ function Router() {
     console.log(`🔐 LOGOUT: Deleting JWT token (first 50 chars):`, tokenToDelete?.substring(0, 50) || 'none');
     console.log(`🔐 LOGOUT: Deleting user data:`, userToDelete || 'none');
 
-    // CRITICAL: Immediately delete ALL authentication tokens and data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authenticated');
+    // CRITICAL: Reset React state FIRST to prevent any race conditions
+    setIsAuthenticated(false);
+    setCurrentUser(null);
     
-    // Clear all browser storage completely
+    // CRITICAL: Clear all queries and caches BEFORE removing localStorage
+    queryClient.clear();
+    queryClient.invalidateQueries();
+    queryClient.removeQueries();
+    
+    // Specifically remove the JWT verification query to prevent stale authentication
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
+
+    // CRITICAL: Immediately delete ALL authentication tokens and data
+    localStorage.clear(); // Clear everything to be absolutely sure
     sessionStorage.clear();
     
     // Verify tokens are completely removed
@@ -237,20 +245,10 @@ function Router() {
     const remainingUser = localStorage.getItem('currentUser');
     console.log(`🔐 LOGOUT: Verification - Remaining token:`, remainingToken || 'NONE (success)');
     console.log(`🔐 LOGOUT: Verification - Remaining user:`, remainingUser || 'NONE (success)');
-
-    // CRITICAL: Clear all queries and caches to prevent data bleeding
-    queryClient.clear();
-    queryClient.invalidateQueries();
-    queryClient.removeQueries();
     
-    // Specifically remove the JWT verification query to prevent stale authentication
-    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
-    
-    // Reset React authentication state
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    
-    console.log(`🔐 LOGOUT: Complete - All authentication data deleted and state reset`);
+    // Force a complete page reload to ensure clean state
+    console.log(`🔐 LOGOUT: Forcing page reload for clean slate`);
+    window.location.reload();
   };
 
   if (isLoading || isVerifying) {
