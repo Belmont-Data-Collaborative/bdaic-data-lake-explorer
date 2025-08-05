@@ -201,10 +201,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
+          // Create a clean user object for JWT generation to avoid any reference issues
+          const userForJWT = {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          };
+          
           // Generate JWT token
-          console.log(`Login: Generating JWT for user ${user.id} (${user.username})`);
-          const token = storage.generateJWT(user);
-          console.log(`Login: JWT generated successfully`)
+          console.log(`Login: Generating JWT for user ${userForJWT.id} (${userForJWT.username}) with role ${userForJWT.role}`);
+          const token = storage.generateJWT(userForJWT);
+          console.log(`Login: JWT generated successfully for user ${userForJWT.id}`);
           
           // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
           invalidateCache(`datasets-user-${user.id}`);

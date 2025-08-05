@@ -425,12 +425,18 @@ export class DatabaseStorage implements IStorage {
     console.log(`JWT generation: Creating token for user: ${JSON.stringify(user)}`);
     console.log(`JWT generation: Using secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
 
-    // Ensure user object is clean and consistent
+    // Create a completely fresh user object to avoid any reference issues
     const cleanUser = {
-      id: Number(user.id), // Ensure it's a number
-      username: String(user.username).trim(), // Ensure it's a clean string
-      role: String(user.role).trim(), // Ensure it's a clean string
+      id: parseInt(String(user.id), 10), // Ensure it's a proper number
+      username: String(user.username || '').trim(), // Ensure it's a clean string
+      role: String(user.role || '').trim(), // Ensure it's a clean string
     };
+
+    // Validate the clean user data
+    if (!cleanUser.id || !cleanUser.username || !cleanUser.role) {
+      console.error(`JWT generation: Invalid user data - id: ${cleanUser.id}, username: ${cleanUser.username}, role: ${cleanUser.role}`);
+      throw new Error("Invalid user data for JWT generation");
+    }
 
     const payload = {
       id: cleanUser.id,
@@ -450,9 +456,9 @@ export class DatabaseStorage implements IStorage {
     try {
       const verificationTest = jwt.verify(token, this.jwtSecret) as any;
 
-      if (!verificationTest || verificationTest.id !== cleanUser.id || verificationTest.username !== cleanUser.username) {
+      if (!verificationTest || verificationTest.id !== cleanUser.id || verificationTest.username !== cleanUser.username || verificationTest.role !== cleanUser.role) {
         console.error(`JWT generation: CRITICAL ERROR - Token verification mismatch!`);
-        console.error(`JWT generation: Expected user ${cleanUser.id} (${cleanUser.username}), token verified to user ${verificationTest?.id} (${verificationTest?.username})`);
+        console.error(`JWT generation: Expected user ${cleanUser.id} (${cleanUser.username}, ${cleanUser.role}), token verified to user ${verificationTest?.id} (${verificationTest?.username}, ${verificationTest?.role})`);
         throw new Error("Token generation consistency check failed");
       }
 
@@ -470,15 +476,31 @@ export class DatabaseStorage implements IStorage {
       console.log(`JWT verification: Verifying token, secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
       console.log(`JWT verification: Token preview: ${token.substring(0, 50)}...`);
 
+      if (!token || typeof token !== 'string') {
+        console.log(`JWT verification: Invalid token format`);
+        return null;
+      }
+
       // Use the exact same secret for verification
       const decoded = jwt.verify(token, this.jwtSecret) as any;
 
-      // Ensure decoded data is clean and consistent
+      if (!decoded || typeof decoded !== 'object') {
+        console.log(`JWT verification: Decoded token is not an object`);
+        return null;
+      }
+
+      // Ensure decoded data is clean and consistent with strict validation
       const verifiedUser = {
-        id: Number(decoded.id),
-        username: String(decoded.username).trim(),
-        role: String(decoded.role).trim(),
+        id: parseInt(String(decoded.id || ''), 10),
+        username: String(decoded.username || '').trim(),
+        role: String(decoded.role || '').trim(),
       };
+
+      // Validate the decoded data
+      if (!verifiedUser.id || !verifiedUser.username || !verifiedUser.role) {
+        console.log(`JWT verification: Invalid decoded data - id: ${verifiedUser.id}, username: ${verifiedUser.username}, role: ${verifiedUser.role}`);
+        return null;
+      }
 
       console.log(`JWT verification: Token successfully decoded to user ID=${verifiedUser.id}, username="${verifiedUser.username}", role="${verifiedUser.role}"`);
 
