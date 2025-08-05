@@ -44,6 +44,8 @@ function Router() {
     },
     enabled: !!localStorage.getItem('authToken') && !isLoggingIn, // Disable during login
     retry: false,
+    staleTime: 0, // Always fetch fresh data to prevent stale user cache
+    gcTime: 0, // Don't cache verification data between sessions
   });
 
   useEffect(() => {
@@ -119,7 +121,7 @@ function Router() {
   }, [verificationData, isLoggingIn]); // Removed currentUser from dependencies to prevent loops
 
   const handleLogin = (userData?: { token: string; user: User }) => {
-    console.log(`Frontend: Login initiated - setting isLoggingIn flag to prevent JWT verification race`);
+    console.log(`Frontend: Login initiated for ${userData?.user.username || 'legacy'}`);
     setIsLoggingIn(true); // Prevent JWT verification during login
     
     // CRITICAL: Clear ALL state and caches before setting new authentication
@@ -129,23 +131,25 @@ function Router() {
     queryClient.removeQueries({ queryKey: ['/api/auth/verify'] }); // Remove old verification
     
     if (userData) {
-      // JWT-based login - Set everything atomically
+      // JWT-based login - Set everything atomically and immediately
       console.log(`Frontend: Setting new user atomically: ${userData.user.username} (${userData.user.role})`);
       
       // Update localStorage first
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       
-      // Then update React state atomically
+      // Update React state atomically
       setCurrentUser(userData.user);
       setIsAuthenticated(true);
       
-      // Re-enable JWT verification after a short delay and trigger fresh verification
+      // Set the verification data immediately to prevent the query from running with stale token
+      queryClient.setQueryData(['/api/auth/verify'], { user: userData.user });
+      
+      // Re-enable JWT verification after ensuring state is settled
       setTimeout(() => {
         setIsLoggingIn(false);
-        console.log(`Frontend: Login complete, re-enabling JWT verification`);
-        refetchVerification(); // Trigger fresh verification to get proper role-based data
-      }, 250);
+        console.log(`Frontend: Login complete for ${userData.user.username} - JWT verification re-enabled`);
+      }, 100);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
