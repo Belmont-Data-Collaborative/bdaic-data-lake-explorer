@@ -50,6 +50,8 @@ function Router() {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
 
+    console.log(`Frontend: Auth state check - Token exists: ${!!token}, Stored user: ${storedUser}, Verifying: ${isVerifying}`);
+    
     // Don't process authentication if we're still verifying the token
     if (isVerifying) {
       return;
@@ -58,6 +60,7 @@ function Router() {
     if (token && storedUser) {
       try {
         const user = JSON.parse(storedUser);
+        console.log(`Frontend: Setting user from localStorage: ${user.username} (ID: ${user.id}, Role: ${user.role})`);
         setCurrentUser(user);
         setIsAuthenticated(true);
       } catch (error) {
@@ -81,11 +84,32 @@ function Router() {
   // Handle JWT verification result
   useEffect(() => {
     if (verificationData?.user) {
-      // Only clear caches if this is a different user to prevent infinite loops
+      // Check for token/user mismatch
       const storedUser = localStorage.getItem('currentUser');
-      const previousUser = storedUser ? JSON.parse(storedUser) : null;
+      if (storedUser) {
+        try {
+          const previousUser = JSON.parse(storedUser);
+          if (previousUser.id !== verificationData.user.id) {
+            console.log(`Frontend: CRITICAL - Token/User mismatch detected!`);
+            console.log(`Frontend: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
+            console.log(`Frontend: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
+            
+            // Force complete logout and re-authentication
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('authenticated');
+            queryClient.clear();
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+            return;
+          }
+        } catch (e) {
+          console.log('Frontend: Error parsing stored user during verification check');
+        }
+      }
       
-      if (!previousUser || previousUser.id !== verificationData.user.id || previousUser.role !== verificationData.user.role) {
+      // Normal verification flow
+      if (!currentUser || currentUser.id !== verificationData.user.id || currentUser.role !== verificationData.user.role) {
         queryClient.clear();
         console.log(`Frontend: Cleared caches for new/changed user: ${verificationData.user.username} (${verificationData.user.role})`);
       }
@@ -104,7 +128,7 @@ function Router() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authenticated');
     }
-  }, [verificationData]);
+  }, [verificationData, currentUser]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
     // CRITICAL: Clear ALL caches before setting new authentication to prevent data bleeding

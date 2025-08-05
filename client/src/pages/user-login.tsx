@@ -34,9 +34,8 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
         
         // Critical: Clear any existing authentication state first
         console.log(`Frontend: Clearing existing auth state before setting new user`);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('authenticated');
+        localStorage.clear(); // Clear ALL localStorage to prevent any conflicts
+        sessionStorage.clear(); // Also clear session storage
         
         // Set new authentication data
         localStorage.setItem('authToken', data.token);
