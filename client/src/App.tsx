@@ -34,12 +34,19 @@ function Router() {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No token found');
 
-      console.log(`Frontend: Verifying JWT token: ${token.substring(0, 50)}...`);
+      console.log(`🔐 STEP 10: JWT verification starting`);
+      console.log(`🔐 STEP 10a: Token being verified (first 50 chars):`, token.substring(0, 50));
+      
       const res = await apiRequest('GET', '/api/auth/verify', null, {
         'Authorization': `Bearer ${token}`
       });
       const data = await res.json();
-      console.log(`Frontend: JWT verification result:`, data);
+      console.log(`🔐 STEP 10b: JWT verification server response:`, data);
+      
+      if (data.user) {
+        console.log(`🔐 STEP 10c: JWT verification returned user: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
+      }
+      
       return data;
     },
     enabled: !!localStorage.getItem('authToken') && !isLoading,
@@ -196,6 +203,10 @@ function Router() {
       console.log(`🔐 STEP 9d: AFTER setting - New user in localStorage:`, newUser);
       console.log(`🔐 STEP 9e: React state set to: ${userData.user.username} (ID: ${userData.user.id})`);
       
+      // Force refresh of all queries with the new user context
+      console.log(`🔐 STEP 9f: Forcing refresh of all queries for new user`);
+      queryClient.invalidateQueries();
+      
       console.log(`Frontend: Set new user authentication: ${userData.user.username} (${userData.user.role})`);
     } else {
       // Legacy login fallback
@@ -205,8 +216,6 @@ function Router() {
   };
 
   const handleLogout = () => {
-    // Add a visible alert to confirm the function is called
-    alert('🔐 LOGOUT BUTTON CLICKED - Check console for detailed logs');
     console.log(`🔐 LOGOUT: Starting complete authentication cleanup`);
 
     // Log what tokens we're about to delete
