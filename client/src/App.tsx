@@ -51,7 +51,7 @@ function Router() {
     const storedUser = localStorage.getItem('currentUser');
 
     console.log(`Frontend: Auth state check - Token exists: ${!!token}, Stored user: ${storedUser}, Verifying: ${isVerifying}`);
-    
+
     // Don't process authentication if we're still verifying the token
     if (isVerifying) {
       return;
@@ -93,7 +93,7 @@ function Router() {
             console.log(`Frontend: CRITICAL - Token/User mismatch detected!`);
             console.log(`Frontend: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
             console.log(`Frontend: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
-            
+
             // Force complete logout and re-authentication
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
@@ -107,26 +107,30 @@ function Router() {
           console.log('Frontend: Error parsing stored user during verification check');
         }
       }
-      
+
       // Normal verification flow
       if (!currentUser || currentUser.id !== verificationData.user.id || currentUser.role !== verificationData.user.role) {
         queryClient.clear();
         console.log(`Frontend: Cleared caches for new/changed user: ${verificationData.user.username} (${verificationData.user.role})`);
       }
-      
+
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
     } else if (verificationData === null || (verificationData && !verificationData.user)) {
       // Token is invalid or expired
       console.log('Token verification failed, clearing authentication and ALL caches');
+
+      // Clear everything to prevent any residual authentication state
+      localStorage.clear();
+      sessionStorage.clear();
       queryClient.clear();
       queryClient.invalidateQueries();
+
       setIsAuthenticated(false);
       setCurrentUser(null);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('authenticated');
+
+      console.log('Authentication cleared due to token verification failure');
     }
   }, [verificationData, currentUser]);
 
@@ -134,7 +138,7 @@ function Router() {
     // CRITICAL: Clear ALL caches before setting new authentication to prevent data bleeding
     queryClient.clear();
     queryClient.invalidateQueries();
-    
+
     setIsAuthenticated(true);
     if (userData) {
       // JWT-based login
@@ -151,18 +155,18 @@ function Router() {
 
   const handleLogout = () => {
     console.log(`Frontend: Logout - clearing ALL data and caches to prevent session bleeding`);
-    
+
     // CRITICAL: Clear everything before logout to prevent data bleeding
     queryClient.clear();
     queryClient.invalidateQueries();
     queryClient.removeQueries();
-    
+
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    
+
     // Clear any other potential browser storage
     sessionStorage.clear();
   };
