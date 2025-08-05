@@ -84,33 +84,23 @@ function Router() {
   // Handle JWT verification result
   useEffect(() => {
     if (verificationData?.user) {
-      // Check for token/user mismatch
+      // Check for token/user mismatch - but only clear data, don't force reload
       const storedUser = localStorage.getItem('currentUser');
       if (storedUser) {
         try {
           const previousUser = JSON.parse(storedUser);
           if (previousUser.id !== verificationData.user.id) {
-            console.log(`Frontend: CRITICAL - Token/User mismatch detected!`);
+            console.log(`Frontend: Token/User mismatch detected - updating to correct user`);
             console.log(`Frontend: Stored user: ${previousUser.username} (ID: ${previousUser.id})`);
             console.log(`Frontend: JWT verified user: ${verificationData.user.username} (ID: ${verificationData.user.id})`);
 
-            // Force complete logout and reload page to ensure clean state
-            console.log(`Frontend: Forcing complete authentication reset and page reload`);
-            localStorage.clear();
-            sessionStorage.clear();
+            // Just clear cache and update user - no page reload
             queryClient.clear();
-            window.location.href = '/';
-            return;
+            localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
           }
         } catch (e) {
           console.log('Frontend: Error parsing stored user during verification check');
-          // If we can't parse stored user data, clear everything
-          localStorage.clear();
-          sessionStorage.clear();
-          queryClient.clear();
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-          return;
+          localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
         }
       }
 

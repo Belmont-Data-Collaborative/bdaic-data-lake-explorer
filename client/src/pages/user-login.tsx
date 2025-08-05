@@ -32,32 +32,17 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
       if (data.token && data.user) {
         console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
         
-        // Critical: Clear any existing authentication state first to prevent token/user mismatch
-        console.log(`Frontend: Clearing ALL browser storage to prevent conflicts`);
-        localStorage.clear();
-        sessionStorage.clear();
+        // Set new authentication data
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
         
-        // Clear React Query cache to prevent stale data
-        if (window.location.pathname !== '/') {
-          console.log(`Frontend: Redirecting to home to ensure clean state`);
-          window.location.href = '/';
-          return;
-        }
+        console.log(`Frontend: Authentication data set for ${data.user.username}`);
         
-        // Wait a moment for storage to clear completely
-        setTimeout(() => {
-          // Set new authentication data
-          localStorage.setItem('authToken', data.token);
-          localStorage.setItem('currentUser', JSON.stringify(data.user));
-          
-          console.log(`Frontend: Authentication data set for ${data.user.username}`);
-          
-          toast({
-            title: "Login successful",
-            description: `Welcome back, ${data.user.username}!`,
-          });
-          onLogin(data);
-        }, 100);
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${data.user.username}!`,
+        });
+        onLogin(data);
       }
     },
     onError: (error: any) => {
