@@ -19,10 +19,10 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
 
-  // Add JWT token from localStorage if available
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // Add session ID from localStorage if available
+  const sessionId = localStorage.getItem('sessionId');
+  if (sessionId) {
+    headers["X-Session-Id"] = sessionId;
   }
 
   if (customHeaders) {

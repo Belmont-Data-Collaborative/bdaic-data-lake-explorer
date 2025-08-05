@@ -188,7 +188,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req, res) => {
     try {
-      // Try new user-based authentication first
       const userValidation = loginUserSchema.safeParse(req.body);
       if (userValidation.success) {
         const { username, password } = userValidation.data;
@@ -198,37 +197,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (user) {
           console.log(`Authentication SUCCESS for user: ${user.id} (${user.username}) with role: ${user.role}`);
+          
           // Update last login time
           await storage.updateUserLastLogin(user.id);
           
-          // Create a clean user object for JWT generation to avoid any reference issues
-          const userForJWT = {
-            id: user.id,
-            username: user.username,
-            role: user.role,
-          };
+          // Store user session server-side (simple session approach)
+          const sessionId = `session_${user.id}_${Date.now()}`;
           
-          // Generate JWT token
-          console.log(`Login: Generating JWT for user ${userForJWT.id} (${userForJWT.username}) with role ${userForJWT.role}`);
-          const token = storage.generateJWT(userForJWT);
-          console.log(`Login: JWT generated successfully for user ${userForJWT.id}`);
-          
-          // CRITICAL: Clear ALL user-specific caches to prevent data bleeding between sessions
+          // Clear user-specific caches
           invalidateCache(`datasets-user-${user.id}`);
-          invalidateCache(`stats-user-${user.id}`);
-          invalidateCache(`folders-user-${user.id}`);
-          invalidateCache(`user-data-${user.id}`);
-          
-          // Also clear any general caches that might persist cross-user data
-          invalidateCache('datasets-all');
-          invalidateCache('folders-all');
-          invalidateCache('stats-all');
-          
-          console.log(`Login: Aggressively cleared ALL caches for user ${user.id} (${user.role}) to prevent data bleeding`);
           
           return res.json({ 
             success: true,
-            token,
+            sessionId,
             user: {
               id: user.id,
               username: user.username,
@@ -238,9 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } else {
           console.log(`Authentication FAILED for username: "${username}"`);
+          return res.status(401).json({ message: "Invalid credentials" });
         }
-      } else {
-        console.log('Login validation failed:', userValidation.error);
       }
 
       // Fall back to legacy password authentication
@@ -253,13 +233,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.verifyPassword(password);
       
       if (isValid) {
-        // Clear all caches for legacy authentication to prevent data bleeding
         invalidateCache('datasets-all');
-        invalidateCache('folders-all');
-        invalidateCache('stats-all');
-        console.log(`Legacy login: Cleared all general caches to prevent data bleeding`);
+        console.log(`Legacy login: Cleared caches`);
         
-        res.json({ success: true });
+        res.json({ success: true, legacy: true });
       } else {
         res.status(401).json({ message: "Invalid password" });
       }
