@@ -97,13 +97,13 @@ function Router() {
       // JWT is the source of truth - always update to match JWT user
       console.log(`Frontend: JWT verification returned user: ${verificationData.user.username} (${verificationData.user.role})`);
       
-      // Only clear cache if user actually changed
-      const needsCacheClear = currentUser?.id !== verificationData.user.id;
-      if (needsCacheClear) {
-        console.log(`Frontend: User changed from ${currentUser?.username || 'none'} to ${verificationData.user.username} - clearing cache`);
+      // Clear cache if user changed to ensure fresh data for new user
+      if (currentUser?.id !== verificationData.user.id) {
+        console.log(`Frontend: User changed from ${currentUser?.username || 'none'} to ${verificationData.user.username} - clearing cache for fresh data`);
         queryClient.clear();
       }
       
+      // Update state and localStorage to match JWT verification
       setCurrentUser(verificationData.user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(verificationData.user));
@@ -118,7 +118,7 @@ function Router() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('authenticated');
     }
-  }, [verificationData, isLoggingIn]); // Removed currentUser from dependencies to prevent loops
+  }, [verificationData, isLoggingIn, currentUser?.id]); // Only depend on user ID to prevent loops but detect changes
 
   const handleLogin = (userData?: { token: string; user: User }) => {
     console.log(`Frontend: Login initiated for ${userData?.user.username || 'legacy'}`);
@@ -131,25 +131,22 @@ function Router() {
     queryClient.removeQueries({ queryKey: ['/api/auth/verify'] }); // Remove old verification
     
     if (userData) {
-      // JWT-based login - Set everything atomically and immediately
+      // JWT-based login - Set everything atomically
       console.log(`Frontend: Setting new user atomically: ${userData.user.username} (${userData.user.role})`);
       
-      // Update localStorage first
+      // Update localStorage and React state atomically
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
-      
-      // Update React state atomically
       setCurrentUser(userData.user);
       setIsAuthenticated(true);
       
-      // Set the verification data immediately to prevent the query from running with stale token
-      queryClient.setQueryData(['/api/auth/verify'], { user: userData.user });
-      
-      // Re-enable JWT verification after ensuring state is settled
+      // Re-enable JWT verification with a delay to ensure new token is used
       setTimeout(() => {
+        console.log(`Frontend: Login complete for ${userData.user.username} - re-enabling JWT verification`);
         setIsLoggingIn(false);
-        console.log(`Frontend: Login complete for ${userData.user.username} - JWT verification re-enabled`);
-      }, 100);
+        // Force immediate refetch with new token to ensure role-based data is loaded
+        refetchVerification();
+      }, 150);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
