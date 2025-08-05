@@ -1,7 +1,7 @@
-import {
+import { 
   datasets, awsConfig, authConfig, refreshLog, downloads, users, roles, roleDatasets, userRoles, roleFolders,
-  type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig,
-  type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog,
+  type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, 
+  type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, 
   type Download, type InsertDownload, type User, type InsertUser, type UpdateUser,
   type Role, type InsertRole, type RoleDataset, type InsertRoleDataset,
   type UserRole, type InsertUserRole, type RoleFolder, type InsertRoleFolder
@@ -20,7 +20,7 @@ export interface IStorage {
   updateDataset(id: number, dataset: Partial<InsertDataset>): Promise<Dataset | undefined>;
   deleteDataset(id: number): Promise<boolean>;
   upsertDataset(dataset: InsertDataset): Promise<Dataset>;
-
+  
   // AWS config operations
   getAwsConfig(): Promise<AwsConfig | undefined>;
   getAllAwsConfigs(): Promise<AwsConfig[]>;
@@ -29,24 +29,24 @@ export interface IStorage {
   deleteAwsConfig(id: number): Promise<boolean>;
   setActiveAwsConfig(id: number): Promise<AwsConfig | undefined>;
   upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig>;
-
+  
   // Auth operations
   getAuthConfig(): Promise<AuthConfig | undefined>;
   setPassword(password: string): Promise<AuthConfig>;
   verifyPassword(password: string): Promise<boolean>;
-
+  
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
-
+  
   // Download tracking operations
   recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
   incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void>;
   getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }>;
-
+  
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
-
+  
   // User management operations
   createUser(userData: InsertUser): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -57,7 +57,7 @@ export interface IStorage {
   deleteUser(id: number): Promise<boolean>;
   verifyUserPassword(username: string, password: string): Promise<User | null>;
   updateLastLogin(userId: number): Promise<void>;
-
+  
   // Role management operations
   createRole(roleData: InsertRole): Promise<Role>;
   getRole(id: number): Promise<Role | undefined>;
@@ -65,43 +65,31 @@ export interface IStorage {
   getAllRoles(): Promise<Role[]>;
   updateRole(id: number, updates: Partial<InsertRole>): Promise<Role | undefined>;
   deleteRole(id: number): Promise<boolean>;
-
+  
   // Role-Dataset assignment operations
   assignDatasetToRole(roleId: number, datasetId: number): Promise<RoleDataset>;
   removeDatasetFromRole(roleId: number, datasetId: number): Promise<boolean>;
   getDatasetsForRole(roleId: number): Promise<Dataset[]>;
   getRolesForDataset(datasetId: number): Promise<Role[]>;
-
+  
   // User-Role assignment operations
   assignUserToRole(userId: number, roleId: number, assignedBy: number): Promise<UserRole>;
   removeUserFromRole(userId: number, roleId: number): Promise<boolean>;
   getRolesForUser(userId: number): Promise<Role[]>;
   getUsersForRole(roleId: number): Promise<User[]>;
-
+  
   // Role-Folder assignment operations
   assignFolderToRole(roleId: number, folderName: string): Promise<RoleFolder>;
   removeFolderFromRole(roleId: number, folderName: string): Promise<boolean>;
   getFoldersForRole(roleId: number): Promise<string[]>;
   getRolesForFolder(folderName: string): Promise<Role[]>;
-
+  
   // Access control operations
   userHasAccessToDataset(userId: number, datasetId: number): Promise<boolean>;
   getDatasetsForUser(userId: number): Promise<Dataset[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  private jwtSecret: string;
-
-  constructor() {
-    this.jwtSecret = process.env.JWT_SECRET || 'data-lake-explorer-jwt-secret-2025-unique-key-abc123';
-    if (!this.jwtSecret) {
-      console.error("FATAL ERROR: JWT_SECRET is not defined in environment variables or fallback.");
-      // In a real application, you might want to throw an error or exit.
-      // For now, we'll use the fallback, but this is a critical security risk.
-    }
-    console.log(`DatabaseStorage initialized. JWT Secret length: ${this.jwtSecret.length}, preview: ${this.jwtSecret.substring(0, 10)}...`);
-  }
-
   async getDatasets(): Promise<Dataset[]> {
     return await db.select().from(datasets).orderBy(asc(datasets.source), asc(datasets.name));
   }
@@ -135,10 +123,10 @@ export class DatabaseStorage implements IStorage {
   async updateDataset(id: number, updates: Partial<InsertDataset>): Promise<Dataset | undefined> {
     // Only update lastModified if explicitly provided in updates
     // This preserves the original S3 file timestamps when updating other fields like insights
-    const updateData = updates.lastModified
-      ? updates
+    const updateData = updates.lastModified 
+      ? updates 
       : { ...updates };
-
+    
     const [updated] = await db
       .update(datasets)
       .set(updateData)
@@ -155,7 +143,7 @@ export class DatabaseStorage implements IStorage {
   async upsertDataset(datasetData: InsertDataset): Promise<Dataset> {
     // Try to find existing dataset by name and source
     const existing = await this.getDatasetByNameAndSource(datasetData.name, datasetData.source);
-
+    
     if (existing) {
       // Update existing dataset, preserving insights if they exist
       const updates: Partial<InsertDataset> = {
@@ -215,7 +203,7 @@ export class DatabaseStorage implements IStorage {
   async setActiveAwsConfig(id: number): Promise<AwsConfig | undefined> {
     // First, set all configs as inactive
     await db.update(awsConfig).set({ isActive: false });
-
+    
     // Then activate the selected one
     const [updated] = await db
       .update(awsConfig)
@@ -227,7 +215,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig> {
     const existing = await this.getAwsConfig();
-
+    
     if (existing) {
       // Update the existing active configuration
       const [updated] = await db
@@ -265,9 +253,9 @@ export class DatabaseStorage implements IStorage {
   async setPassword(password: string): Promise<AuthConfig> {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-
+    
     const existing = await this.getAuthConfig();
-
+    
     if (existing) {
       const [updated] = await db
         .update(authConfig)
@@ -292,7 +280,7 @@ export class DatabaseStorage implements IStorage {
     if (!config) {
       return false;
     }
-
+    
     return await bcrypt.compare(password, config.passwordHash);
   }
 
@@ -302,7 +290,7 @@ export class DatabaseStorage implements IStorage {
       .from(refreshLog)
       .orderBy(desc(refreshLog.lastRefreshTime))
       .limit(1);
-
+    
     return lastRefresh?.lastRefreshTime || null;
   }
 
@@ -346,19 +334,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    console.log(`DatabaseStorage.getUserById: Looking up user with ID ${id}`);
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
-
-    if (user) {
-      console.log(`DatabaseStorage.getUserById: Found user ID=${user.id}, username="${user.username}", role="${user.role}"`);
-    } else {
-      console.log(`DatabaseStorage.getUserById: No user found with ID ${id}`);
-    }
-
     return user || undefined;
   }
 
@@ -391,20 +371,20 @@ export class DatabaseStorage implements IStorage {
   async verifyUserPassword(username: string, password: string): Promise<User | null> {
     console.log(`Verifying password for username: "${username}"`);
     const user = await this.getUserByUsername(username);
-
+    
     if (!user) {
       console.log(`User not found for username: "${username}"`);
       return null;
     }
-
+    
     if (!user.isActive) {
       console.log(`User inactive for username: "${username}" (ID: ${user.id})`);
       return null;
     }
-
+    
     console.log(`Found user: ID=${user.id}, username="${user.username}", role="${user.role}"`);
     const isValid = await bcrypt.compare(password, user.passwordHash);
-
+    
     if (isValid) {
       console.log(`Password verification SUCCESS for user: ${user.id} (${user.username})`);
       return user;
@@ -421,92 +401,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id));
   }
 
-  generateJWT(user: { id: number; username: string; role: string }): string {
-    console.log(`JWT generation: Creating token for user: ${JSON.stringify(user)}`);
-    console.log(`JWT generation: Using secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
-
-    // Create a completely fresh user object to avoid any reference issues
-    const cleanUser = {
-      id: parseInt(String(user.id), 10), // Ensure it's a proper number
-      username: String(user.username || '').trim(), // Ensure it's a clean string
-      role: String(user.role || '').trim(), // Ensure it's a clean string
-    };
-
-    // Validate the clean user data
-    if (!cleanUser.id || !cleanUser.username || !cleanUser.role) {
-      console.error(`JWT generation: Invalid user data - id: ${cleanUser.id}, username: ${cleanUser.username}, role: ${cleanUser.role}`);
-      throw new Error("Invalid user data for JWT generation");
-    }
-
-    const payload = {
-      id: cleanUser.id,
-      username: cleanUser.username,
-      role: cleanUser.role,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
-    };
-
-    console.log(`JWT generation: Creating token with payload: ${JSON.stringify(payload, null, 2)}`);
-
-    // Generate token with clean secret
-    const token = jwt.sign(payload, this.jwtSecret);
-    console.log(`JWT generation: Token created, length: ${token.length}, preview: ${token.substring(0, 50)}...`);
-
-    // CRITICAL: Immediate verification test with same secret to ensure consistency
-    try {
-      const verificationTest = jwt.verify(token, this.jwtSecret) as any;
-
-      if (!verificationTest || verificationTest.id !== cleanUser.id || verificationTest.username !== cleanUser.username || verificationTest.role !== cleanUser.role) {
-        console.error(`JWT generation: CRITICAL ERROR - Token verification mismatch!`);
-        console.error(`JWT generation: Expected user ${cleanUser.id} (${cleanUser.username}, ${cleanUser.role}), token verified to user ${verificationTest?.id} (${verificationTest?.username}, ${verificationTest?.role})`);
-        throw new Error("Token generation consistency check failed");
-      }
-
-      console.log(`JWT generation: Token verification test PASSED - consistent user data`);
-    } catch (error) {
-      console.error(`JWT generation: Token verification failed:`, error);
-      throw new Error("Token generation failed verification");
-    }
-
-    return token;
+  generateJWT(user: User): string {
+    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+    return jwt.sign(
+      { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role 
+      },
+      secret,
+      { expiresIn: '24h' }
+    );
   }
 
   verifyJWT(token: string): { id: number; username: string; role: string } | null {
     try {
-      console.log(`JWT verification: Verifying token, secret length: ${this.jwtSecret.length}, secret preview: ${this.jwtSecret.substring(0, 10)}...`);
-      console.log(`JWT verification: Token preview: ${token.substring(0, 50)}...`);
-
-      if (!token || typeof token !== 'string') {
-        console.log(`JWT verification: Invalid token format`);
-        return null;
-      }
-
-      // Use the exact same secret for verification
-      const decoded = jwt.verify(token, this.jwtSecret) as any;
-
-      if (!decoded || typeof decoded !== 'object') {
-        console.log(`JWT verification: Decoded token is not an object`);
-        return null;
-      }
-
-      // Ensure decoded data is clean and consistent with strict validation
-      const verifiedUser = {
-        id: parseInt(String(decoded.id || ''), 10),
-        username: String(decoded.username || '').trim(),
-        role: String(decoded.role || '').trim(),
-      };
-
-      // Validate the decoded data
-      if (!verifiedUser.id || !verifiedUser.username || !verifiedUser.role) {
-        console.log(`JWT verification: Invalid decoded data - id: ${verifiedUser.id}, username: ${verifiedUser.username}, role: ${verifiedUser.role}`);
-        return null;
-      }
-
-      console.log(`JWT verification: Token successfully decoded to user ID=${verifiedUser.id}, username="${verifiedUser.username}", role="${verifiedUser.role}"`);
-
-      return verifiedUser;
+      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+      const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
+      console.log(`JWT verification: Token decoded to user ID=${decoded.id}, username="${decoded.username}", role="${decoded.role}"`);
+      return decoded;
     } catch (error) {
-      console.log(`JWT verification: Token verification failed:`, error);
+      console.log(`JWT verification failed:`, error);
       return null;
     }
   }
@@ -521,10 +436,10 @@ export class DatabaseStorage implements IStorage {
         userAgent,
       })
       .returning();
-
+    
     // Also increment the counter in the datasets table
     await this.incrementDownloadCount(datasetId, downloadType);
-
+    
     return download;
   }
 
@@ -556,11 +471,11 @@ export class DatabaseStorage implements IStorage {
       })
       .from(datasets)
       .where(eq(datasets.id, datasetId));
-
+    
     if (!dataset) {
       return { sample: 0, full: 0, metadata: 0, total: 0 };
     }
-
+    
     return {
       sample: dataset.sample,
       full: dataset.full,
@@ -676,7 +591,7 @@ export class DatabaseStorage implements IStorage {
   async assignUserToRole(userId: number, roleId: number, assignedBy: number): Promise<UserRole> {
     // For single role per user, first remove any existing roles
     await db.delete(userRoles).where(eq(userRoles.userId, userId));
-
+    
     // Then insert the new role assignment
     const [assignment] = await db
       .insert(userRoles)
@@ -768,7 +683,7 @@ export class DatabaseStorage implements IStorage {
         eq(userRoles.userId, userId),
         eq(roleDatasets.datasetId, datasetId)
       ));
-
+    
     return (result[0]?.count || 0) > 0;
   }
 
@@ -776,14 +691,14 @@ export class DatabaseStorage implements IStorage {
     // Check if user is admin - admins see all datasets
     const user = await this.getUserById(userId);
     console.log(`getDatasetsForUser: user ${userId} has role: ${user?.role}`);
-
+    
     if (user?.role === 'admin') {
       console.log(`Admin user detected - returning all datasets`);
       const allDatasets = await this.getDatasets();
       console.log(`Returning ${allDatasets.length} datasets for admin user`);
       return allDatasets;
     }
-
+    
     console.log(`Regular user detected - applying role-based filtering`);
 
     // Get datasets through user's roles (both direct dataset assignments and folder-based access)
@@ -803,7 +718,7 @@ export class DatabaseStorage implements IStorage {
 
     // Combine and deduplicate datasets
     const allDatasets = [...directDatasets, ...folderDatasets];
-    const uniqueDatasets = allDatasets.filter((dataset, index, self) =>
+    const uniqueDatasets = allDatasets.filter((dataset, index, self) => 
       index === self.findIndex(d => d.dataset.id === dataset.dataset.id)
     ).map(r => r.dataset);
 
@@ -814,7 +729,7 @@ export class DatabaseStorage implements IStorage {
       }
       return a.source.localeCompare(b.source);
     });
-
+    
     return uniqueDatasets;
   }
 }

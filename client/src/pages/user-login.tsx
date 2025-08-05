@@ -21,40 +21,26 @@ export default function UserLogin({ onLogin }: UserLoginProps) {
 
   const loginMutation = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      console.log(`🔐 STEP 1: Frontend login attempt with username: "${username}"`);
+      console.log(`Frontend: Attempting login with username: "${username}"`);
       const res = await apiRequest('POST', '/api/auth/login', { username, password });
       const data = await res.json();
-      console.log(`🔐 STEP 2: Server response for "${username}":`, data);
-      console.log(`🔐 STEP 2a: Token received (first 50 chars):`, data.token?.substring(0, 50));
-      console.log(`🔐 STEP 2b: User data received:`, data.user);
+      console.log(`Frontend: Login response for "${username}":`, data);
       return data;
     },
     onSuccess: (data) => {
-      console.log(`🔐 STEP 3: Login mutation success callback triggered`);
-      console.log(`🔐 STEP 3a: Success data:`, data);
-      
+      console.log(`Frontend: Login success data:`, data);
       if (data.token && data.user) {
-        console.log(`🔐 STEP 4: Storing authentication data`);
-        console.log(`🔐 STEP 4a: About to store for user: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
-        console.log(`🔐 STEP 4b: Token being stored (first 50 chars):`, data.token.substring(0, 50));
+        console.log(`Frontend: Storing token and user data for: ${data.user.username} (ID: ${data.user.id}, Role: ${data.user.role})`);
         
-        // Check what's currently in localStorage before we overwrite
-        const oldToken = localStorage.getItem('authToken');
-        const oldUser = localStorage.getItem('currentUser');
-        console.log(`🔐 STEP 4c: BEFORE - Old token in localStorage (first 50 chars):`, oldToken?.substring(0, 50) || 'none');
-        console.log(`🔐 STEP 4d: BEFORE - Old user in localStorage:`, oldUser || 'none');
+        // Critical: Clear any existing authentication state first
+        console.log(`Frontend: Clearing existing auth state before setting new user`);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authenticated');
         
         // Set new authentication data
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
-        
-        // Verify what was actually stored
-        const storedToken = localStorage.getItem('authToken');
-        const storedUser = localStorage.getItem('currentUser');
-        console.log(`🔐 STEP 4e: AFTER - Stored token (first 50 chars):`, storedToken?.substring(0, 50));
-        console.log(`🔐 STEP 4f: AFTER - Stored user:`, storedUser);
-        
-        console.log(`🔐 STEP 5: Calling onLogin callback for ${data.user.username}`);
         
         toast({
           title: "Login successful",

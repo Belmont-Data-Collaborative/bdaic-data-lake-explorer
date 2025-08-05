@@ -79,18 +79,18 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       try {
         setIsLoadingDocs(true);
         setDocsError(null);
-
+        
         const response = await fetch("/api/docs/markdown");
         if (!response.ok) {
           throw new Error(`Failed to fetch documentation: ${response.status}`);
         }
-
+        
         const content = await response.text();
         setMarkdownContent(content);
       } catch (err) {
         console.error("Error fetching API documentation:", err);
         setDocsError(err instanceof Error ? err.message : "Failed to load documentation");
-
+        
         // Fallback content for API documentation
         const fallbackContent = `# 📘 API Documentation
 
@@ -125,7 +125,7 @@ This is the API documentation for the Data Lake Explorer application.
 - \`GET /api/folders/community-data-points\` - Get community data points by folder
 
 For detailed API specifications, please contact the system administrator.`;
-
+        
         setMarkdownContent(fallbackContent);
       } finally {
         setIsLoadingDocs(false);
@@ -165,7 +165,7 @@ For detailed API specifications, please contact the system administrator.`;
     const totalDatasets = datasetsToCalculate.length;
     const totalSizeBytes = datasetsToCalculate.reduce((total, dataset) => total + (dataset.sizeBytes || 0), 0);
     const uniqueDataSources = extractDataSources(datasetsToCalculate);
-
+    
     const totalCommunityDataPoints = datasetsToCalculate
       .filter((d) => d.metadata && (d.metadata as any).recordCount && (d.metadata as any).columnCount && (d.metadata as any).completenessScore)
       .reduce((total, d) => {
@@ -189,36 +189,37 @@ For detailed API specifications, please contact the system administrator.`;
 
   // Enhanced login mutation supporting both JWT and legacy auth
   const loginMutation = useMutation({
-    mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      // CRITICAL: Immediately delete any existing JWT tokens before new login attempt
-      const existingToken = localStorage.getItem('authToken');
-      if (existingToken) {
-        console.log(`Frontend: Deleting existing JWT token: ${existingToken.substring(0, 50)}...`);
-      }
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('authenticated');
-      sessionStorage.clear();
-      
-      console.log(`Frontend: All existing authentication data deleted before login attempt for user: ${username}`);
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
 
-      const res = await apiRequest('POST', '/api/auth/login', { username, password });
-      return res.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
+      }
+
+      return response.json();
     },
     onSuccess: (data) => {
-      if (data.success && data.token && data.user) {
-        console.log(`Frontend: Successful login for user: ${data.user.username} (${data.user.role})`);
+      if (data.token && data.user) {
+        // JWT-based authentication
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
         toast({
           title: "Login successful",
-          description: `Welcome, ${data.user.username}!`,
+          description: `Welcome back, ${data.user.username}!`,
         });
         onLogin({ token: data.token, user: data.user });
       } else {
+        // Legacy password-based authentication
         toast({
-          title: "Login failed",
-          description: "Invalid credentials",
-          variant: "destructive",
+          title: "Login successful",
+          description: "Welcome to the Data Lake Explorer!",
         });
+        onLogin();
       }
     },
     onError: (error: any) => {
@@ -232,7 +233,7 @@ For detailed API specifications, please contact the system administrator.`;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!loginData.username.trim() && !loginData.password.trim()) {
       toast({
         title: "Login required",
@@ -784,7 +785,7 @@ For detailed API specifications, please contact the system administrator.`;
                         {loginMutation.isPending ? "Signing in..." : "Access Explorer"}
                       </Button>
                     </form>
-
+                    
                     <div className="mt-4 text-center">
                       <Button
                         variant="link"
