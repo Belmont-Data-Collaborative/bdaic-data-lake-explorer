@@ -1608,15 +1608,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return metadata && 
                  metadata.recordCount && 
                  metadata.columnCount && 
-                 metadata.completenessScore;
+                 metadata.completenessScore &&
+                 !isNaN(parseInt(metadata.recordCount)) &&
+                 !isNaN(metadata.columnCount) &&
+                 !isNaN(metadata.completenessScore);
         })
         .reduce((total, d) => {
           const metadata = d.metadata as any;
           const recordCount = parseInt(metadata.recordCount);
-          const columnCount = metadata.columnCount;
-          const completenessScore = metadata.completenessScore / 100.0;
-          return total + (recordCount * columnCount * completenessScore);
+          const columnCount = parseInt(metadata.columnCount);
+          const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+          const dataPoints = recordCount * columnCount * completenessScore;
+          
+          console.log(`Dataset ${d.name}: ${recordCount} records × ${columnCount} columns × ${completenessScore} = ${Math.round(dataPoints)} data points`);
+          return total + dataPoints;
         }, 0);
+
+      console.log(`User ${user.username} total community data points: ${Math.round(totalCommunityDataPoints)} from ${accessibleDatasets.length} accessible datasets`);
       
       // Use the last refresh time instead of dataset modification times
       const lastRefreshTime = await storage.getLastRefreshTime();
