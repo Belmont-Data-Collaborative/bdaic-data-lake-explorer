@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock, Brain, Bot, ToggleLeft, ToggleRight } from "lucide-react";
+import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock, Brain, Bot } from "lucide-react";
 
 interface User {
   id: number;
@@ -31,6 +32,7 @@ export default function FolderAccessManagement() {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [folderAiSettings, setFolderAiSettings] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -94,6 +96,18 @@ export default function FolderAccessManagement() {
     },
     staleTime: 0, // Always consider stale
     gcTime: 0, // Don't keep in cache
+  });
+
+  // Fetch folder AI settings
+  const { data: allFolderAiSettings = [] } = useQuery({
+    queryKey: ['/api/admin/folder-ai-settings'],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('GET', '/api/admin/folder-ai-settings', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
   });
 
   // Update folder access mutation
@@ -187,6 +201,14 @@ export default function FolderAccessManagement() {
   const handleEditFolderAccess = (user: UserWithFolderAccess) => {
     setEditingUserId(user.userId);
     setSelectedFolders(user.folders || []);
+    
+    // Initialize AI settings for all folders
+    const aiSettings: Record<string, boolean> = {};
+    allFolderAiSettings.forEach((setting: any) => {
+      aiSettings[setting.folderName] = setting.isAiEnabled;
+    });
+    setFolderAiSettings(aiSettings);
+    
     setDialogOpen(true);
   };
 
@@ -205,6 +227,36 @@ export default function FolderAccessManagement() {
         ? prev.filter(f => f !== folderName)
         : [...prev, folderName]
     );
+  };
+
+  const handleAiToggle = async (folderName: string, isEnabled: boolean) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      await apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
+        { isAiEnabled: isEnabled }, 
+        { 'Authorization': `Bearer ${token}` }
+      );
+      
+      setFolderAiSettings(prev => ({
+        ...prev,
+        [folderName]: isEnabled
+      }));
+
+      toast({
+        title: "AI Setting Updated",
+        description: `Ask AI has been ${isEnabled ? 'enabled' : 'disabled'} for folder "${folderName}".`,
+      });
+
+      // Refresh AI settings data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
+      
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: `Failed to update AI setting for folder "${folderName}".`,
+        variant: "destructive",
+      });
+    }
   };
 
   const isLoading = usersLoading || foldersLoading || accessLoading;
@@ -409,30 +461,75 @@ export default function FolderAccessManagement() {
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
-                            <DialogTitle>Edit Folder Access for {user.username}</DialogTitle>
+                            <DialogTitle>Manage Permissions for {user.username}</DialogTitle>
                             <DialogDescription>
-                              Select which folders this user can access
+                              Select folder access and enable Ask AI functionality for this user
                             </DialogDescription>
                           </DialogHeader>
                           
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                              {allFolders.map((folder: string) => (
-                                <div key={folder} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`folder-${folder}`}
-                                    checked={selectedFolders.includes(folder)}
-                                    onCheckedChange={() => handleFolderToggle(folder)}
-                                  />
-                                  <label 
-                                    htmlFor={`folder-${folder}`} 
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                  >
-                                    {folder.replace(/_/g, ' ').toUpperCase()}
-                                  </label>
-                                </div>
-                              ))}
+                          <div className="space-y-6">
+                            {/* Folder Access Section */}
+                            <div className="space-y-3">
+                              <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Folder className="h-5 w-5" />
+                                Folder Access
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Select which folders this user can access and download data from
+                              </p>
+                              <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto border rounded-lg p-4 bg-muted/20">
+                                {allFolders.map((folder: string) => (
+                                  <div key={folder} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`folder-${folder}`}
+                                      checked={selectedFolders.includes(folder)}
+                                      onCheckedChange={() => handleFolderToggle(folder)}
+                                    />
+                                    <label 
+                                      htmlFor={`folder-${folder}`} 
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    >
+                                      {folder.replace(/_/g, ' ').toUpperCase()}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
+
+                            {/* AI Access Section - Only for folders the user has access to */}
+                            {selectedFolders.length > 0 && (
+                              <div className="space-y-3">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                  <Bot className="h-5 w-5" />
+                                  Ask AI Access
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  Enable Ask AI functionality for specific folders this user can access
+                                </p>
+                                <div className="space-y-3 border rounded-lg p-4 bg-muted/20">
+                                  {selectedFolders.map((folder: string) => (
+                                    <div key={`ai-${folder}`} className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <Brain className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">
+                                          {folder.replace(/_/g, ' ').toUpperCase()}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">
+                                          {folderAiSettings[folder] ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                        <Switch
+                                          checked={folderAiSettings[folder] || false}
+                                          onCheckedChange={(checked) => handleAiToggle(folder, checked)}
+                                          size="sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             
                             <div className="flex justify-end space-x-2">
                               <Button

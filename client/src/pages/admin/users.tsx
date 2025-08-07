@@ -10,11 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, Bot } from "lucide-react";
+import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import FolderAccessManagement from "@/components/folder-access-management";
-import FolderAiSettings from "@/components/folder-ai-settings";
 
 interface User {
   id: number;
@@ -360,18 +359,14 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
 
       {/* Admin Management Tabs */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             User Management
           </TabsTrigger>
           <TabsTrigger value="folder-access" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Folder Access
-          </TabsTrigger>
-          <TabsTrigger value="ai-settings" className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            AI Settings
+            Folder Access & AI Settings
           </TabsTrigger>
         </TabsList>
 
@@ -609,10 +604,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
 
         <TabsContent value="folder-access" className="mt-6">
           <FolderAccessManagement />
-        </TabsContent>
-
-        <TabsContent value="ai-settings" className="mt-6">
-          <FolderAiSettings />
         </TabsContent>
 
       </Tabs>
