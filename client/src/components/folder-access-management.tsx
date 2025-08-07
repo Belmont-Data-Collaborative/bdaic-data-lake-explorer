@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock } from "lucide-react";
+import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock, Brain, Bot, ToggleLeft, ToggleRight } from "lucide-react";
 
 interface User {
   id: number;

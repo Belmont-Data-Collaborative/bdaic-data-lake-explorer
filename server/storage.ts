@@ -6,6 +6,7 @@ import {
   downloads, 
   users, 
   userFolderAccess,
+  folderAiSettings,
   type Dataset,
   type InsertDataset,
   type AwsConfig,
@@ -79,6 +80,12 @@ export interface IStorage {
   getUserAccessibleFolders(userId: number): Promise<string[]>;
   getAllFolderAccess(): Promise<any[]>;
   getUsersWithFolderAccess(): Promise<any[]>;
+
+  // Folder AI settings management
+  getAllFolderAiSettings(): Promise<any[]>;
+  getFolderAiSetting(folderName: string): Promise<any | undefined>;
+  upsertFolderAiSetting(folderName: string, isAiEnabled: boolean, updatedBy: number): Promise<any>;
+  getFolderAiSettingsForFolders(folderNames: string[]): Promise<any[]>;
 
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
@@ -577,6 +584,67 @@ export class DatabaseStorage implements IStorage {
     });
 
     return Object.values(grouped);
+  }
+
+  // Folder AI settings methods
+  async getAllFolderAiSettings(): Promise<any[]> {
+    return await db.select().from(folderAiSettings).orderBy(asc(folderAiSettings.folderName));
+  }
+
+  async getFolderAiSetting(folderName: string): Promise<any | undefined> {
+    const [setting] = await db.select().from(folderAiSettings)
+      .where(eq(folderAiSettings.folderName, folderName));
+    return setting || undefined;
+  }
+
+  async upsertFolderAiSetting(folderName: string, isAiEnabled: boolean, updatedBy: number): Promise<any> {
+    const now = new Date();
+    
+    // Try to update existing record first
+    const [updated] = await db.update(folderAiSettings)
+      .set({ 
+        isAiEnabled, 
+        updatedAt: now, 
+        updatedBy 
+      })
+      .where(eq(folderAiSettings.folderName, folderName))
+      .returning();
+
+    if (updated) {
+      return updated;
+    }
+
+    // If no record exists, insert new one
+    const [inserted] = await db.insert(folderAiSettings)
+      .values({
+        folderName,
+        isAiEnabled,
+        updatedBy,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+
+    return inserted;
+  }
+
+  async getFolderAiSettingsForFolders(folderNames: string[]): Promise<any[]> {
+    if (folderNames.length === 0) {
+      return [];
+    }
+
+    const settings = await db.select().from(folderAiSettings)
+      .where(inArray(folderAiSettings.folderName, folderNames));
+
+    // Create a map for quick lookup
+    const settingsMap = new Map(settings.map(s => [s.folderName, s]));
+
+    // Return settings for all requested folders, with default false for missing ones
+    return folderNames.map(folderName => ({
+      folderName,
+      isAiEnabled: settingsMap.get(folderName)?.isAiEnabled || false,
+      updatedAt: settingsMap.get(folderName)?.updatedAt || null
+    }));
   }
 
   async query(sql: string): Promise<any[]> {

@@ -126,6 +126,21 @@ export const userFolderAccess = pgTable("user_folder_access", {
   uniqueUserFolder: index("unique_user_folder").on(table.userId, table.folderName),
 }));
 
+// Table for managing Ask AI feature per folder
+export const folderAiSettings = pgTable("folder_ai_settings", {
+  id: serial("id").primaryKey(),
+  folderName: text("folder_name").notNull().unique(),
+  isAiEnabled: boolean("is_ai_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").notNull().references(() => users.id),
+}, (table) => ({
+  // Index on folderName for fast folder lookups
+  folderNameIdx: index("idx_folder_ai_settings_folder_name").on(table.folderName),
+  // Index on isAiEnabled for filtering enabled folders
+  isAiEnabledIdx: index("idx_folder_ai_settings_is_ai_enabled").on(table.isAiEnabled),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -166,6 +181,17 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,
+});
+
+export const insertFolderAiSettingsSchema = createInsertSchema(folderAiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Schema for updating folder AI settings
+export const updateFolderAiSettingsSchema = z.object({
+  isAiEnabled: z.boolean(),
 });
 
 // Registration schema with password confirmation

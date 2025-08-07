@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
+import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema, updateFolderAiSettingsSchema } from "@shared/schema";
 import { z } from "zod";
 import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
@@ -536,6 +536,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching accessible folders:", error);
       res.status(500).json({ message: "Failed to fetch accessible folders" });
+    }
+  });
+
+  // Folder AI Settings endpoints
+  app.get("/api/admin/folder-ai-settings", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderAiSettings = await storage.getAllFolderAiSettings();
+      res.json(folderAiSettings);
+    } catch (error) {
+      console.error("Error fetching folder AI settings:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI settings" });
+    }
+  });
+
+  app.get("/api/admin/folder-ai-settings/:folderName", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderName = req.params.folderName;
+      const setting = await storage.getFolderAiSetting(folderName);
+      res.json(setting || { folderName, isAiEnabled: false });
+    } catch (error) {
+      console.error("Error fetching folder AI setting:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI setting" });
+    }
+  });
+
+  app.put("/api/admin/folder-ai-settings/:folderName", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderName = req.params.folderName;
+      const validation = updateFolderAiSettingsSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedSetting = await storage.upsertFolderAiSetting(
+        folderName,
+        validation.data.isAiEnabled,
+        req.user!.id
+      );
+
+      console.log(`Updated AI setting for folder ${folderName}: ${validation.data.isAiEnabled ? 'enabled' : 'disabled'}`);
+      
+      res.json({
+        message: "Folder AI setting updated successfully",
+        setting: updatedSetting,
+      });
+    } catch (error) {
+      console.error("Error updating folder AI setting:", error);
+      res.status(500).json({ message: "Failed to update folder AI setting" });
+    }
+  });
+
+  // Get AI settings for user's accessible folders
+  app.get("/api/user/folder-ai-settings", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const accessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      const aiSettings = await storage.getFolderAiSettingsForFolders(accessibleFolders);
+      res.json(aiSettings);
+    } catch (error) {
+      console.error("Error fetching user folder AI settings:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI settings" });
     }
   });
 
