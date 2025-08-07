@@ -169,17 +169,15 @@ export default function Home() {
   });
 
   // Filter folders based on user access
-  // Check if we have successfully fetched accessible folders (even if empty array)
+  // Data is ready when successfully fetched (regardless of array content)
   const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !accessibleFoldersError;
   const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
   
   const folders = (accessibleFoldersReady && allFoldersReady) ? 
     allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder)) : [];
   
-  // Only show loading if data is actively loading or not yet fetched
-  const foldersLoading = accessibleFoldersLoading || allFoldersLoading || 
-    (!accessibleFoldersReady && !accessibleFoldersError) ||
-    (accessibleFoldersError && !accessibleFoldersError.message?.includes('Authentication expired'));
+  // Only show loading if either API is still loading or failed to fetch
+  const foldersLoading = accessibleFoldersLoading || allFoldersLoading || !accessibleFoldersReady;
 
   // Debug logging
   console.log("Accessible folders from API:", accessibleFolders);
@@ -188,6 +186,7 @@ export default function Home() {
   console.log("Accessible folders loading:", accessibleFoldersLoading);
   console.log("All folders loading:", allFoldersLoading);
   console.log("Accessible folders fetched:", accessibleFoldersFetched);
+  console.log("Accessible folders error:", accessibleFoldersError);
   console.log("Accessible folders ready:", accessibleFoldersReady);
   console.log("All folders ready:", allFoldersReady);
   console.log("Folders loading state:", foldersLoading);
