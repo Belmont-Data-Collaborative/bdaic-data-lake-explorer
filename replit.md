@@ -2,7 +2,7 @@
 
 ## Overview
 
-Data Lake Explorer is a full-stack web application for exploring AWS S3 data lakes. It provides AI-powered insights and conversational dataset analysis, offering an intuitive interface for browsing, metadata viewing, and leveraging AI to understand data patterns and use cases. The project aims to provide comprehensive data lake management with a focus on user experience and AI-driven data exploration, enabling users to efficiently extract value from large datasets.
+Data Lake Explorer is a comprehensive full-stack web application for exploring AWS S3 data lakes with AI-powered insights, role-based access control, and intelligent data management capabilities. The application provides secure, scalable, and user-friendly access to large datasets with advanced filtering, AI-driven analytics, and performance optimization. Built with modern web technologies, it enables organizations to efficiently explore, analyze, and extract value from their data lakes while maintaining strict security and access controls.
 
 ## User Preferences
 
@@ -36,21 +36,24 @@ The application employs a modern full-stack architecture, separating frontend an
 ### Technical Implementations:
 - **Frontend**: React Router (Wouter), TanStack Query for state management, React Hook Form with Zod for form handling, Vite for build.
 - **Backend**: Express.js for RESTful APIs, AWS SDK v3 for S3 operations, OpenAI API integration.
-- **Database**: PostgreSQL for dataset metadata, AWS configurations, authentication, and download tracking. Schema includes `datasets`, `aws_config`, `auth_config`, and `refresh_log`.
-- **Data Flow**: User authentication, AWS configuration, S3 bucket scanning for dataset discovery, persistence to PostgreSQL, AI analysis, and user interaction through filtering, search, and conversational AI.
+- **Database**: PostgreSQL for comprehensive data management including dataset metadata, AWS configurations, user authentication, role-based access control, folder permissions, download tracking, and performance monitoring. Enhanced schema includes `datasets`, `users`, `user_folder_access`, `aws_config`, `auth_config`, and `refresh_log` with strategic indexing for optimal performance.
+- **Data Flow**: User authentication with role-based permissions, AWS configuration management, automated S3 bucket scanning, intelligent metadata extraction and persistence to PostgreSQL, AI-powered analysis and insights generation, user interaction through advanced filtering, search, and conversational AI interfaces.
 - **Deployment**: Designed for Node.js platforms, with static frontend builds served alongside the Express API.
 
 ### Feature Specifications:
-- **Smart Dataset Discovery**: Scans S3 buckets, extracts metadata (including comprehensive YAML metadata), and persists information.
-- **AI-Powered Analytics**: Generates insights (summary, patterns, use cases) and provides conversational analysis via OpenAI.
-- **Enterprise Authentication**: JWT-based with bcrypt hashing, role-based access control, user management (admin only), and secure token handling.
-- **Advanced Filtering & Search**: Comprehensive filtering by folder, format, size, and search queries.
-- **Hierarchical Tag Filtering**: Filters folders and datasets based on tags, with persistence across navigation.
-- **Download Tracking**: Monitors dataset usage with separate counts for sample, full, and metadata downloads.
-- **Data Sampling**: Intelligent sampling strategies for AI analysis of large datasets.
-- **AWS Configuration Management**: Allows testing, creation, and activation of multiple S3 configurations with automatic dataset refresh.
-- **Accessibility Compliance**: WCAG AA compliant with ARIA labels, keyboard navigation, and semantic HTML.
-- **Performance Monitoring**: Internal system for tracking and optimizing application performance.
+- **Smart Dataset Discovery**: Automated S3 bucket scanning with comprehensive metadata extraction and intelligent organization.
+- **AI-Powered Analytics**: Advanced insights generation using OpenAI GPT-4o for data analysis, pattern recognition, and conversational exploration.
+- **Enterprise Authentication**: Comprehensive JWT-based authentication with role-based access control (Admin, Editor, User), secure password handling, and session management.
+- **Advanced Filtering & Search**: Multi-dimensional filtering by folder, format, size, tags, and intelligent search capabilities.
+- **Hierarchical Tag Filtering**: Sophisticated tag-based filtering system with persistence across user sessions and navigation.
+- **Download Tracking**: Comprehensive usage monitoring with granular tracking for sample, full, and metadata downloads.
+- **Data Sampling**: Intelligent sampling strategies optimized for large dataset analysis and AI processing.
+- **AWS Configuration Management**: Multi-environment S3 configuration support with testing, validation, and seamless switching capabilities.
+- **Accessibility Compliance**: Full WCAG AA compliance with comprehensive ARIA labels, keyboard navigation, and semantic HTML structure.
+- **Performance Monitoring**: Advanced performance tracking with query optimization, cache management, and real-time metrics.
+- **Folder Access Control**: Granular permissions system allowing precise control over user access to specific data lake sections.
+- **Statistics Calculation**: Dual stats system providing public overview statistics and user-specific filtered data based on folder permissions.
+- **Server-Side Caching**: Intelligent multi-layered caching system with optimized TTL strategies for maximum performance.
 
 ## External Dependencies
 
