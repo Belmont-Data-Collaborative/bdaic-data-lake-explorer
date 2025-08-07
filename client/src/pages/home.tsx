@@ -10,7 +10,7 @@ import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
-import { apiRequest } from "@/lib/api"; // Assuming apiRequest is defined elsewhere
+import { apiRequest } from "@/lib/queryClient";
 
 interface Stats {
   totalDatasets: number;
