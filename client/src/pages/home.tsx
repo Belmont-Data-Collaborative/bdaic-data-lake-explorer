@@ -137,8 +137,12 @@ export default function Home() {
         const errorData = await res.json().catch(() => ({}));
         if (res.status === 403 || res.status === 401) {
           // Token expired, clear it and redirect to login
+          console.log('Authentication expired, clearing token and redirecting...');
           localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          // Use a small delay to ensure storage is cleared
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
           throw new Error('Authentication expired');
         }
         throw new Error(errorData.message || 'Failed to load accessible folders');
@@ -170,7 +174,9 @@ export default function Home() {
 
   // Filter folders based on user access
   // Data is ready when successfully fetched (regardless of array content)
-  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !accessibleFoldersError;
+  // Check if error actually has content (empty object {} is not a real error)
+  const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
+  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
   const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
   
   const folders = (accessibleFoldersReady && allFoldersReady) ? 
@@ -187,6 +193,7 @@ export default function Home() {
   console.log("All folders loading:", allFoldersLoading);
   console.log("Accessible folders fetched:", accessibleFoldersFetched);
   console.log("Accessible folders error:", accessibleFoldersError);
+  console.log("Has real error:", hasRealError);
   console.log("Accessible folders ready:", accessibleFoldersReady);
   console.log("All folders ready:", allFoldersReady);
   console.log("Folders loading state:", foldersLoading);
