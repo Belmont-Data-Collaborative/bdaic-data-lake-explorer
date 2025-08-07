@@ -119,7 +119,7 @@ export default function FolderAccessManagement() {
       aiSettings[setting.folderName] = setting.isAiEnabled;
     });
     setFolderAiSettings(aiSettings);
-  }, [allFolderAiSettings]);
+  }, [JSON.stringify(allFolderAiSettings)]);
 
   // Update folder access mutation
   const updateFolderAccessMutation = useMutation({
@@ -244,18 +244,22 @@ export default function FolderAccessManagement() {
       }));
 
       const token = localStorage.getItem('authToken');
-      await apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
+      const response = await apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
         { isAiEnabled: isEnabled }, 
         { 'Authorization': `Bearer ${token}` }
       );
+
+      if (!response.ok) {
+        throw new Error(`Failed to update AI setting: ${response.statusText}`);
+      }
 
       toast({
         title: "AI Setting Updated",
         description: `Ask AI has been ${isEnabled ? 'enabled' : 'disabled'} for folder "${folderName}".`,
       });
 
-      // Refresh AI settings data to ensure consistency
-      await refetchAiSettings();
+      // Invalidate and refetch to ensure consistency but don't wait
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
       
     } catch (error) {
       // Revert UI state on error
