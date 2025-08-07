@@ -1,4 +1,27 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, users, userFolderAccess } from "@shared/schema";
+import { 
+  datasets, 
+  awsConfig, 
+  authConfig, 
+  refreshLog, 
+  downloads, 
+  users, 
+  userFolderAccess,
+  type Dataset,
+  type InsertDataset,
+  type AwsConfig,
+  type InsertAwsConfig,
+  type AuthConfig,
+  type InsertAuthConfig,
+  type RefreshLog,
+  type InsertRefreshLog,
+  type Download,
+  type InsertDownload,
+  type User,
+  type InsertUser,
+  type UpdateUser,
+  type UserFolderAccess,
+  type InsertUserFolderAccess
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -89,6 +112,7 @@ export class DatabaseStorage implements IStorage {
         insights: insertDataset.insights || null,
       })
       .returning();
+    if (!dataset) throw new Error('Failed to create dataset');
     return dataset;
   }
 
@@ -152,6 +176,7 @@ export class DatabaseStorage implements IStorage {
         lastConnected: new Date(),
       })
       .returning();
+    if (!newConfig) throw new Error('Failed to create AWS config');
     return newConfig;
   }
 
@@ -199,6 +224,7 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(awsConfig.id, existing.id))
         .returning();
+      if (!updated) throw new Error('Failed to update AWS config');
       return updated;
     } else {
       // Create the first configuration as active
@@ -213,6 +239,7 @@ export class DatabaseStorage implements IStorage {
           lastConnected: new Date(),
         })
         .returning();
+      if (!newConfig) throw new Error('Failed to create AWS config');
       return newConfig;
     }
   }
@@ -237,12 +264,14 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(authConfig.id, existing.id))
         .returning();
+      if (!updated) throw new Error('Failed to update auth config');
       return updated;
     } else {
       const [created] = await db
         .insert(authConfig)
         .values({ passwordHash })
         .returning();
+      if (!created) throw new Error('Failed to create auth config');
       return created;
     }
   }
@@ -284,6 +313,7 @@ export class DatabaseStorage implements IStorage {
         ...userData,
       })
       .returning();
+    if (!user) throw new Error('Failed to create user');
     return user;
   }
 
@@ -337,7 +367,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(users)
       .where(eq(users.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async verifyUserPassword(username: string, password: string): Promise<User | null> {
@@ -394,6 +424,7 @@ export class DatabaseStorage implements IStorage {
     // Also increment the counter in the datasets table
     await this.incrementDownloadCount(datasetId, downloadType);
 
+    if (!download) throw new Error('Failed to record download');
     return download;
   }
 
@@ -482,7 +513,7 @@ export class DatabaseStorage implements IStorage {
       const allFolders = Array.from(new Set(
         allDatasets
           .map(d => d.topLevelFolder)
-          .filter(Boolean)
+          .filter((folder): folder is string => Boolean(folder))
       )).sort();
       return allFolders;
     }
@@ -514,7 +545,7 @@ export class DatabaseStorage implements IStorage {
       .from(userFolderAccess)
       .leftJoin(users, eq(userFolderAccess.userId, users.id))
       .orderBy(users.username, userFolderAccess.folderName);
-  },
+  }
 
   async getUsersWithFolderAccess() {
     const usersWithAccess = await db
@@ -546,7 +577,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     return Object.values(grouped);
-  },
+  }
 
   async query(sql: string): Promise<any[]> {
     // Execute raw SQL query for performance monitoring

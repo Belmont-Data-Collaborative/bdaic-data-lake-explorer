@@ -194,15 +194,6 @@ export const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export type Dataset = typeof datasets.$inferSelect;
-export type InsertDataset = z.infer<typeof insertDatasetSchema>;
-export type AwsConfig = typeof awsConfig.$inferSelect;
-export type InsertAwsConfig = z.infer<typeof insertAwsConfigSchema>;
-export type AuthConfig = typeof authConfig.$inferSelect;
-export type InsertAuthConfig = z.infer<typeof insertAuthConfigSchema>;
-export type RefreshLog = typeof refreshLog.$inferSelect;
-export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
-
 export const datasetInsights = z.object({
   summary: z.string(),
   patterns: z.array(z.string()),
