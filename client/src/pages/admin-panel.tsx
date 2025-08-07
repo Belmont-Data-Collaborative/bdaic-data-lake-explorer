@@ -470,7 +470,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           </Tooltip>
                         </DialogTrigger>
                         <DialogContent>
-
+                          <DialogHeader>
+                            <DialogTitle>Delete User</DialogTitle>
+                            <DialogDescription>
+                              Are you sure you want to delete "{deletingUser?.username}"? This action cannot be undone and will remove the user permanently.
+                            </DialogDescription>
+                          </DialogHeader>
                           <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
