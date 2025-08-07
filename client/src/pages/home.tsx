@@ -115,42 +115,14 @@ export default function Home() {
     }
   };
 
-  // Use a completely fresh query to bypass all caching
+  // Simple stats query - use whatever the server sends
   const { data: globalStats } = useQuery<Stats>({
-    queryKey: ["/api/stats", "fresh-user-specific", Date.now()],
-    queryFn: async () => {
-      console.log('Making fresh authenticated API call to /api/stats...');
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No auth token found');
-      
-      const response = await fetch('/api/stats', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Fresh stats API response:', JSON.stringify(data, null, 2));
-      return data;
-    },
-    staleTime: 0,
-    gcTime: 0,
+    queryKey: ["/api/stats"],
     enabled: !!localStorage.getItem('authToken'),
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    retry: 1,
   });
   
-  // Debug logging for calculated stats
-  console.log('Calculated user stats:', globalStats);
-  console.log('API call being made to:', '/api/stats');
+  // Debug logging for stats
+  console.log('Stats from server:', globalStats);
 
 
 
@@ -298,42 +270,8 @@ export default function Home() {
     };
   };
 
-  // Use server stats directly without any client-side overrides
-  const stats = selectedFolder
-    ? (() => {
-        // For folder view, calculate basic stats from client data but keep server community data points
-        const folderDatasets = datasetsByFolder[selectedFolder] || [];
-        if (folderDatasets.length === 0 && datasetsLoading) {
-          return {
-            totalDatasets: 0,
-            totalSize: "Loading...",
-            dataSources: 0,
-            lastUpdated: globalStats?.lastUpdated || "Never",
-            lastRefreshTime: globalStats?.lastRefreshTime || null,
-            totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
-          };
-        }
-
-        if (folderDatasets.length > 0) {
-          const folderStats = calculateFolderStats(folderDatasets);
-          return {
-            ...folderStats,
-            lastUpdated: globalStats?.lastUpdated || "Never",
-            lastRefreshTime: globalStats?.lastRefreshTime || null,
-            totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
-          };
-        }
-
-        return {
-          totalDatasets: datasetsResponse?.totalCount || 0,
-          totalSize: "Calculating...",
-          dataSources: 0,
-          lastUpdated: globalStats?.lastUpdated || "Never",
-          lastRefreshTime: globalStats?.lastRefreshTime || null,
-          totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
-        };
-      })()
-    : globalStats; // Use server-calculated stats directly without any modifications
+  // Use server stats directly with no modifications whatsoever
+  const stats = globalStats;
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;

@@ -54,6 +54,9 @@ async function warmCache(): Promise<void> {
     const uniqueDataSources = new Set();
     const folderStats = new Map<string, { count: number; size: number }>();
     
+    // Calculate community data points for precomputed admin stats
+    let totalCommunityDataPoints = 0;
+    
     // Single pass through datasets for all computations
     datasets.forEach(d => {
       // Data sources computation
@@ -62,6 +65,23 @@ async function warmCache(): Promise<void> {
           .split(',')
           .map((s: string) => s.trim())
           .forEach((s: string) => uniqueDataSources.add(s));
+      }
+      
+      // Community data points calculation
+      const metadata = d.metadata as any;
+      if (metadata && 
+          metadata.recordCount && 
+          metadata.columnCount && 
+          metadata.completenessScore &&
+          !isNaN(parseInt(metadata.recordCount)) &&
+          !isNaN(metadata.columnCount) &&
+          !isNaN(metadata.completenessScore)) {
+        
+        const recordCount = parseInt(metadata.recordCount);
+        const columnCount = parseInt(metadata.columnCount);
+        const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+        const dataPoints = recordCount * columnCount * completenessScore;
+        totalCommunityDataPoints += dataPoints;
       }
       
       // Folder statistics
@@ -91,6 +111,7 @@ async function warmCache(): Promise<void> {
         dataSources: uniqueDataSources.size,
         lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
         lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+        totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
       }, 1800000], // 30 minutes
     ] as const;
     
