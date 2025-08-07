@@ -156,12 +156,8 @@ export default function Home() {
     gcTime: 300000, // 5 minutes
   });
 
-  // Filter folders based on user access - if accessibleFolders is empty but not loading, use all folders (for admin users)
-  const folders = accessibleFoldersLoading ? [] : (
-    accessibleFolders.length > 0 
-      ? allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder))
-      : allFoldersFromAPI // Use all folders if accessibleFolders is empty (admin case)
-  );
+  // Filter folders based on user access
+  const folders = accessibleFoldersLoading ? [] : allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
   const foldersLoading = allFoldersLoading || accessibleFoldersLoading;
 
   // Debug logging
