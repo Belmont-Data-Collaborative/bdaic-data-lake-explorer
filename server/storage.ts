@@ -68,6 +68,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  updateUserAiEnabled(id: number, isAiEnabled: boolean): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   verifyUserPassword(username: string, password: string): Promise<User | null>;
   updateUserLastLogin(id: number): Promise<void>;
@@ -392,6 +393,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async updateUserAiEnabled(id: number, isAiEnabled: boolean): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({
+        isAiEnabled,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   generateJWT(user: User): string {

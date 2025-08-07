@@ -57,9 +57,10 @@ interface MultiDatasetChatProps {
   datasets: Dataset[];
   isOpen: boolean;
   onClose: () => void;
+  currentFolder?: string | null;
 }
 
-export function MultiDatasetChat({ datasets, isOpen, onClose }: MultiDatasetChatProps) {
+export function MultiDatasetChat({ datasets, isOpen, onClose, currentFolder = null }: MultiDatasetChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);

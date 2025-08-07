@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,8 @@ export default function FolderAccessManagement() {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [folderAiSettings, setFolderAiSettings] = useState<Record<string, boolean>>({});
-  const [originalAiSettings, setOriginalAiSettings] = useState<Record<string, boolean>>({});
-  const [tempAiSettings, setTempAiSettings] = useState<Record<string, boolean>>({});
+  const [userAiEnabled, setUserAiEnabled] = useState<boolean>(false);
+  const [originalAiEnabled, setOriginalAiEnabled] = useState<boolean>(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -102,26 +101,9 @@ export default function FolderAccessManagement() {
     gcTime: 0, // Don't keep in cache
   });
 
-  // Fetch folder AI settings
-  const { data: allFolderAiSettings = [], refetch: refetchAiSettings } = useQuery({
-    queryKey: ['/api/admin/folder-ai-settings'],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      const res = await apiRequest('GET', '/api/admin/folder-ai-settings', null, {
-        'Authorization': `Bearer ${token}`
-      });
-      return res.json();
-    },
-  });
+  // We no longer need to fetch folder AI settings since it's per-user now
 
-  // Effect to update folderAiSettings when allFolderAiSettings changes
-  useEffect(() => {
-    const aiSettings: Record<string, boolean> = {};
-    allFolderAiSettings.forEach((setting: any) => {
-      aiSettings[setting.folderName] = setting.isAiEnabled;
-    });
-    setFolderAiSettings(aiSettings);
-  }, [JSON.stringify(allFolderAiSettings)]);
+  // Remove the folder AI settings useEffect since we're now using user-based AI settings
 
   // Update folder access mutation
   const updateFolderAccessMutation = useMutation({
@@ -215,15 +197,15 @@ export default function FolderAccessManagement() {
     setEditingUserId(user.userId);
     setSelectedFolders(user.folders || []);
     
-    // Store original AI settings and initialize temp settings
-    console.log('Setting original AI settings:', folderAiSettings);
-    setOriginalAiSettings({ ...folderAiSettings });
-    setTempAiSettings({ ...folderAiSettings });
+    // Find the user data to get their AI enabled status
+    const fullUser = users.find((u: any) => u.id === user.userId);
+    const isAiEnabled = fullUser?.isAiEnabled || false;
+    
+    console.log(`Setting original AI setting for user ${user.userId}:`, isAiEnabled);
+    setOriginalAiEnabled(isAiEnabled);
+    setUserAiEnabled(isAiEnabled);
     
     setDialogOpen(true);
-    
-    // Refresh AI settings to ensure we have the latest data
-    refetchAiSettings();
   };
 
   const handleSaveFolderAccess = async () => {
@@ -235,52 +217,34 @@ export default function FolderAccessManagement() {
           folderNames: selectedFolders,
         });
 
-        // Update AI settings for any changes
-        const token = localStorage.getItem('authToken');
-        const aiUpdatePromises = [];
-
-        console.log('Original AI settings:', originalAiSettings);
-        console.log('Temp AI settings:', tempAiSettings);
-
-        // Only update AI settings for selected folders that have changed
-        for (const folderName of selectedFolders) {
-          const originalValue = originalAiSettings[folderName] || false;
-          const newValue = tempAiSettings[folderName] || false;
+        // Update user AI setting if it changed
+        if (originalAiEnabled !== userAiEnabled) {
+          console.log(`Updating AI setting for user ${editingUserId} to ${userAiEnabled}`);
           
-          console.log(`Folder ${folderName}: original=${originalValue}, new=${newValue}`);
-          
-          if (originalValue !== newValue) {
-            console.log(`Updating AI setting for ${folderName} to ${newValue}`);
-            const promise = apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
-              { isAiEnabled: newValue }, 
-              { 'Authorization': `Bearer ${token}` }
-            );
-            aiUpdatePromises.push(promise);
+          const token = localStorage.getItem('authToken');
+          const response = await apiRequest('PUT', `/api/admin/users/${editingUserId}/ai-enabled`, 
+            { isAiEnabled: userAiEnabled }, 
+            { 'Authorization': `Bearer ${token}` }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Failed to update user AI setting: ${response.statusText}`);
           }
-        }
 
-        if (aiUpdatePromises.length > 0) {
-          await Promise.all(aiUpdatePromises);
-          
           toast({
             title: "Settings Updated",
             description: "Folder access and AI settings have been updated successfully.",
           });
 
-          // Update the main AI settings state
-          setFolderAiSettings({ ...tempAiSettings });
-          
-          // Refresh AI settings data
-          queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
-        } else {
-          console.log('No AI settings changes detected');
+          // Refresh users data to get updated AI settings
+          queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
         }
 
       } catch (error) {
         console.error('Save error:', error);
         toast({
           title: "Update Failed",
-          description: "Failed to update AI settings.",
+          description: "Failed to update settings.",
           variant: "destructive",
         });
       }
@@ -295,14 +259,9 @@ export default function FolderAccessManagement() {
     );
   };
 
-  const handleAiToggle = (folderName: string, isEnabled: boolean) => {
-    console.log(`AI toggle for ${folderName}: ${isEnabled}`);
-    // Update temporary AI settings immediately for UI feedback
-    setTempAiSettings(prev => {
-      const newSettings = { ...prev, [folderName]: isEnabled };
-      console.log('Updated temp AI settings:', newSettings);
-      return newSettings;
-    });
+  const handleAiToggle = (isEnabled: boolean) => {
+    console.log(`AI toggle for user ${editingUserId}: ${isEnabled}`);
+    setUserAiEnabled(isEnabled);
   };
 
   const isLoading = usersLoading || foldersLoading || accessLoading;
@@ -542,47 +501,47 @@ export default function FolderAccessManagement() {
                               </div>
                             </div>
 
-                            {/* AI Access Section - Only for folders the user has access to */}
-                            {selectedFolders.length > 0 && (
-                              <div className="space-y-3">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                  <Bot className="h-5 w-5" />
-                                  Ask AI Access
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Enable Ask AI functionality for specific folders this user can access
-                                </p>
-                                <div className="space-y-3 border rounded-lg p-4 bg-muted/20">
-                                  {selectedFolders.map((folder: string) => (
-                                    <div key={`ai-${folder}`} className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <Brain className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-sm font-medium">
-                                          {folder.replace(/_/g, ' ').toUpperCase()}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                          {tempAiSettings[folder] ? 'Enabled' : 'Disabled'}
-                                        </span>
-                                        <Switch
-                                          checked={tempAiSettings[folder] || false}
-                                          onCheckedChange={(checked) => handleAiToggle(folder, checked)}
-                                          size="sm"
-                                        />
-                                      </div>
+                            {/* AI Access Section - User-based AI settings */}
+                            <div className="space-y-3">
+                              <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Bot className="h-5 w-5" />
+                                Ask AI Access
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Enable Ask AI functionality for this user across all their accessible folders
+                              </p>
+                              <div className="border rounded-lg p-4 bg-muted/20">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <Brain className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">
+                                        Enable Ask AI for User
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        When enabled, this user can use Ask AI across all their accessible folders
+                                      </span>
                                     </div>
-                                  ))}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">
+                                      {userAiEnabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                    <Switch
+                                      checked={userAiEnabled}
+                                      onCheckedChange={handleAiToggle}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            )}
+                            </div>
                             
                             <div className="flex justify-end space-x-2">
                               <Button
                                 variant="outline"
                                 onClick={() => {
-                                  // Revert temporary AI changes
-                                  setTempAiSettings({ ...originalAiSettings });
+                                  // Revert AI changes
+                                  setUserAiEnabled(originalAiEnabled);
                                   setEditingUserId(null);
                                   setSelectedFolders([]);
                                   setDialogOpen(false);

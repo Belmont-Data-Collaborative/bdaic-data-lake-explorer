@@ -540,10 +540,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Folder AI Settings endpoints
+  // User AI settings route - now just returns empty array since we don't use folder-based settings anymore
   app.get("/api/admin/folder-ai-settings", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const folderAiSettings = await storage.getAllFolderAiSettings();
-      res.json(folderAiSettings);
+      // Return empty array since AI settings are now per-user, not per-folder
+      res.json([]);
     } catch (error) {
       console.error("Error fetching folder AI settings:", error);
       res.status(500).json({ message: "Failed to fetch folder AI settings" });
@@ -561,33 +562,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/admin/folder-ai-settings/:folderName", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+  // User AI settings route
+  app.put("/api/admin/users/:userId/ai-enabled", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const folderName = req.params.folderName;
-      const validation = updateFolderAiSettingsSchema.safeParse(req.body);
+      const userId = parseInt(req.params.userId);
+      const { isAiEnabled } = req.body;
+
+      console.log(`Updated AI setting for user ${userId}: ${isAiEnabled ? 'enabled' : 'disabled'}`);
+      const updatedUser = await storage.updateUserAiEnabled(userId, isAiEnabled);
       
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
-        });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
       }
-
-      const updatedSetting = await storage.upsertFolderAiSetting(
-        folderName,
-        validation.data.isAiEnabled,
-        req.user!.id
-      );
-
-      console.log(`Updated AI setting for folder ${folderName}: ${validation.data.isAiEnabled ? 'enabled' : 'disabled'}`);
       
-      res.json({
-        message: "Folder AI setting updated successfully",
-        setting: updatedSetting,
-      });
+      res.json({ message: `User AI setting updated successfully for user ${userId}` });
     } catch (error) {
-      console.error("Error updating folder AI setting:", error);
-      res.status(500).json({ message: "Failed to update folder AI setting" });
+      console.error("Error updating user AI setting:", error);
+      res.status(500).json({ message: "Failed to update user AI setting" });
     }
   });
 

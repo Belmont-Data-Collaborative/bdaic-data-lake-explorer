@@ -135,7 +135,30 @@ export default function Home() {
   // Debug logging for stats
   console.log('Stats from server:', globalStats);
 
-
+  // Get user profile (includes AI enabled status)
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/user/profile"],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+      
+      const response = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      
+      return response.json();
+    },
+    enabled: !!localStorage.getItem('authToken'),
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
+  });
 
   // Get user's accessible folders
   const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError, isFetched: accessibleFoldersFetched } = useQuery<string[]>({
@@ -418,6 +441,8 @@ export default function Home() {
                   isLoading={datasetsLoading || isRefreshing}
                   selectedDatasetId={selectedDatasetId}
                   showPagination={false}
+                  currentFolder={selectedFolder}
+                  userAiEnabled={userProfile?.isAiEnabled || false}
                 />
               </ErrorBoundary>
             </div>

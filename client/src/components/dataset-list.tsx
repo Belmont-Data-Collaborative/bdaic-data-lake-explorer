@@ -21,6 +21,8 @@ interface DatasetListProps {
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  currentFolder?: string | null;
+  userAiEnabled?: boolean;
 }
 
 export function DatasetList({ 
@@ -30,7 +32,9 @@ export function DatasetList({
   showPagination = false,
   currentPage = 1,
   totalPages = 1,
-  onPageChange
+  onPageChange,
+  currentFolder = null,
+  userAiEnabled = false
 }: DatasetListProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const multiSelect = useMultiSelect<number>();
@@ -144,7 +148,7 @@ export function DatasetList({
             )}
           </div>
 
-          {multiSelect.selectedCount > 0 && (
+          {multiSelect.selectedCount > 0 && userAiEnabled && (
             <Button
               onClick={handleAskAI}
               className="flex items-center space-x-2"
@@ -180,16 +184,21 @@ export function DatasetList({
               isSelectionMode={multiSelect.isSelectionMode}
               isSelected={multiSelect.isSelected(dataset.id)}
               onSelectionClick={(e) => handleDatasetClick(dataset, e)}
+              userAiEnabled={userAiEnabled}
+              currentFolder={currentFolder}
             />
           </div>
         ))}
       </section>
 
-      <MultiDatasetChat
-        datasets={selectedDatasets}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
+      {userAiEnabled && (
+        <MultiDatasetChat
+          datasets={selectedDatasets}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          currentFolder={currentFolder}
+        />
+      )}
     </>
   );
 }

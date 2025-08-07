@@ -35,8 +35,9 @@ The application employs a modern full-stack architecture, separating frontend an
 
 ### Technical Implementations:
 - **Frontend**: React Router (Wouter), TanStack Query for state management, React Hook Form with Zod for form handling, Vite for build.
-- **Backend**: Express.js for RESTful APIs, AWS SDK v3 for S3 operations, OpenAI API integration.
-- **Database**: PostgreSQL for comprehensive data management including dataset metadata, AWS configurations, user authentication, role-based access control, folder permissions, download tracking, and performance monitoring. Enhanced schema includes `datasets`, `users`, `user_folder_access`, `aws_config`, `auth_config`, and `refresh_log` with strategic indexing for optimal performance.
+- **Backend**: Express.js for RESTful APIs, AWS SDK v3 for S3 operations, OpenAI API integration with user-based AI permissions.
+- **Database**: PostgreSQL for comprehensive data management including dataset metadata, AWS configurations, user authentication, role-based access control, folder permissions, download tracking, and performance monitoring. Enhanced schema includes `datasets`, `users` (with `is_ai_enabled` column), `user_folder_access`, `aws_config`, `auth_config`, and `refresh_log` with strategic indexing for optimal performance.
+- **AI Architecture Migration (August 2025)**: Completed migration from folder-based AI permissions to user-based AI control. AI functionality (Ask AI, Generate Insights, Multi-dataset Chat) is now controlled at the user level - when enabled, it works across all folders the user has access to.
 - **Data Flow**: User authentication with role-based permissions, AWS configuration management, automated S3 bucket scanning, intelligent metadata extraction and persistence to PostgreSQL, AI-powered analysis and insights generation, user interaction through advanced filtering, search, and conversational AI interfaces.
 - **Deployment**: Designed for Node.js platforms, with static frontend builds served alongside the Express API.
 
