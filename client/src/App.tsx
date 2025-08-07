@@ -9,6 +9,9 @@ import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import UserPanel from "@/pages/user-panel";
 import AdminPanel from "@/pages/admin-panel";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminUsers from "@/pages/admin/users";
+import AdminFolders from "@/pages/admin/folders";
 import AwsConfiguration from "@/pages/aws-configuration";
 import { MainLayout } from "@/components/main-layout";
 import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper";
@@ -162,7 +165,49 @@ function Router() {
           return <AwsConfiguration />;
         }} />
         <Route path="/admin" component={() => {
-          // Role-based access control for admin panel
+          // Role-based access control for admin dashboard
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminDashboard currentUser={currentUser} />;
+        }} />
+        <Route path="/admin/users" component={() => {
+          // Role-based access control for user management
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminUsers currentUser={currentUser} />;
+        }} />
+        <Route path="/admin/folders" component={() => {
+          // Role-based access control for folder management
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminFolders currentUser={currentUser} />;
+        }} />
+        <Route path="/admin-legacy" component={() => {
+          // Keep legacy admin panel for backwards compatibility
           if (currentUser?.role !== 'admin') {
             return (
               <div className="container mx-auto py-8">
