@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Database, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
@@ -11,7 +10,6 @@ import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
-import { formatFileSize } from "@/lib/format-number";
 
 interface Stats {
   totalDatasets: number;
@@ -115,9 +113,22 @@ export default function Home() {
     }
   };
 
-  // Simple stats query - use whatever the server sends
+  // Stats query that takes into account the selected folder
   const { data: globalStats } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
+    queryKey: ["/api/stats", selectedFolder || "all"],
+    queryFn: async () => {
+      const url = selectedFolder 
+        ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
+        : '/api/stats';
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.json();
+    },
     enabled: !!localStorage.getItem('authToken'),
   });
   
@@ -213,16 +224,7 @@ export default function Home() {
 
   // Remove folderDataPoints query - we'll use server-calculated stats only
 
-  // Group datasets by folder for folder cards and stats
-  const datasetsByFolder = allDatasets.reduce(
-    (acc, dataset) => {
-      const folder = dataset.topLevelFolder || "uncategorized";
-      if (!acc[folder]) acc[folder] = [];
-      acc[folder].push(dataset);
-      return acc;
-    },
-    {} as Record<string, Dataset[]>,
-  );
+  // Note: datasetsByFolder removed as it wasn't being used
 
   // Helper function to extract unique data sources from datasets
   const extractDataSources = (datasets: Dataset[]): Set<string> => {
@@ -245,30 +247,7 @@ export default function Home() {
 
   // Remove custom community data points calculation - use server values only
 
-  // Simplified stats calculation using server data only
-  const calculateFolderStats = (datasetsToCalculate: Dataset[]): Partial<Stats> => {
-    const totalDatasets = datasetsToCalculate.length;
-    const totalSizeBytes = datasetsToCalculate.reduce(
-      (total, dataset) => total + (dataset.sizeBytes || 0),
-      0,
-    );
-
-    const formatFileSize = (bytes: number): string => {
-      if (bytes === 0) return "0 B";
-      const k = 1024;
-      const sizes = ["B", "KB", "MB", "GB", "TB"];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-    };
-
-    const uniqueDataSources = extractDataSources(datasetsToCalculate);
-
-    return {
-      totalDatasets,
-      totalSize: formatFileSize(totalSizeBytes),
-      dataSources: uniqueDataSources.size,
-    };
-  };
+  // Note: calculateFolderStats removed as folder stats now come from server
 
   // Use server stats directly with no modifications whatsoever
   const stats = globalStats;
@@ -527,6 +506,14 @@ export default function Home() {
                             folderName={folderName}
                             datasets={folderDatasets}
                             onClick={() => handleFolderSelect(folderName)}
+                            totalCommunityDataPoints={
+                              folderDatasets.reduce((total, dataset) => {
+                                const records = dataset.recordCount || 0;
+                                const columns = dataset.columnCount || 0;
+                                const completeness = dataset.completeness || 1;
+                                return total + (records * columns * completeness);
+                              }, 0)
+                            }
                           />
                         </div>
                       );

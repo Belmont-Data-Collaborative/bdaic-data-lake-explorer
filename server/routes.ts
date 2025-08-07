@@ -1660,9 +1660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {
       const user = req.user!;
+      const { folder } = req.query;
       
-      // For admins, use precomputed stats from cache for maximum performance
-      if (user.role === 'admin') {
+      // If folder filter is specified, bypass cache for accurate folder-specific stats
+      const isFilteredRequest = folder && folder !== 'all';
+      
+      // For admins, use precomputed stats from cache for maximum performance (only for unfiltered requests)
+      if (user.role === 'admin' && !isFilteredRequest) {
         let stats = getCached<any>('precomputed-stats');
         
         if (stats) {
@@ -1678,7 +1682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`Calculating fresh stats for user ${user.username} (${user.role})`);
+      console.log(`Calculating fresh stats for user ${user.username} (${user.role})${isFilteredRequest ? ` for folder: ${folder}` : ''}`);
       
       // Clear any potentially stale cached values for non-admin users
       if (user.role !== 'admin') {
@@ -1701,6 +1705,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         
         console.log(`User ${user.username} has access to ${accessibleFolders.length} folders, ${accessibleDatasets.length} datasets`);
+      }
+      
+      // Apply folder filter if specified
+      if (isFilteredRequest) {
+        accessibleDatasets = accessibleDatasets.filter(dataset => 
+          dataset.topLevelFolder === folder
+        );
+        console.log(`After folder filter '${folder}': ${accessibleDatasets.length} datasets`);
       }
       
       const totalSize = accessibleDatasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
@@ -1745,16 +1757,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`About to send stats response for user ${user.username}:`, JSON.stringify(stats, null, 2));
 
-      // Only cache stats for admins (full dataset stats)
-      if (user.role === 'admin') {
+      // Cache the stats for admin users to improve performance (only for full stats, not filtered)
+      if (user.role === 'admin' && !isFilteredRequest) {
         statsCache = {
           data: stats,
           timestamp: Date.now()
         };
-        setCache('precomputed-stats', stats, 1800000); // 30 minutes
+        setCache('precomputed-stats', stats, 1800000); // 30 minute cache
         res.set('Cache-Control', 'public, max-age=1800');
       } else {
-        // For non-admin users, don't cache as it's user-specific
+        // For non-admin users or filtered requests, don't cache as it's user-specific or filtered
         res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       }
 
