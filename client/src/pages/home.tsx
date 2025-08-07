@@ -123,7 +123,7 @@ export default function Home() {
 
 
   // Get user's accessible folders
-  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError } = useQuery<string[]>({
+  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError, isFetched: accessibleFoldersFetched } = useQuery<string[]>({
     queryKey: ["/api/user/accessible-folders"],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -169,15 +169,16 @@ export default function Home() {
   });
 
   // Filter folders based on user access
-  // Show loading until we successfully get accessible folders data
-  const hasAccessibleFolders = !accessibleFoldersLoading && !accessibleFoldersError && accessibleFolders.length > 0;
-  const hasAllFolders = !allFoldersLoading && allFoldersFromAPI.length > 0;
-  const folders = (hasAccessibleFolders && hasAllFolders) ? 
+  // Check if we have successfully fetched accessible folders (even if empty array)
+  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !accessibleFoldersError;
+  const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
+  
+  const folders = (accessibleFoldersReady && allFoldersReady) ? 
     allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder)) : [];
   
-  // Show loading state if either data is loading OR if accessible folders failed/empty
+  // Only show loading if data is actively loading or not yet fetched
   const foldersLoading = accessibleFoldersLoading || allFoldersLoading || 
-    (!hasAccessibleFolders && !accessibleFoldersError) ||
+    (!accessibleFoldersReady && !accessibleFoldersError) ||
     (accessibleFoldersError && !accessibleFoldersError.message?.includes('Authentication expired'));
 
   // Debug logging
@@ -186,8 +187,9 @@ export default function Home() {
   console.log("Folders from API:", folders);
   console.log("Accessible folders loading:", accessibleFoldersLoading);
   console.log("All folders loading:", allFoldersLoading);
-  console.log("Has accessible folders:", hasAccessibleFolders);
-  console.log("Has all folders:", hasAllFolders);
+  console.log("Accessible folders fetched:", accessibleFoldersFetched);
+  console.log("Accessible folders ready:", accessibleFoldersReady);
+  console.log("All folders ready:", allFoldersReady);
   console.log("Folders loading state:", foldersLoading);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
