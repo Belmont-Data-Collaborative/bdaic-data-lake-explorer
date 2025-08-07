@@ -1,6 +1,6 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, users, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser } from "@shared/schema";
+import { datasets, awsConfig, authConfig, refreshLog, downloads, users, userFolderAccess } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -13,7 +13,7 @@ export interface IStorage {
   updateDataset(id: number, dataset: Partial<InsertDataset>): Promise<Dataset | undefined>;
   deleteDataset(id: number): Promise<boolean>;
   upsertDataset(dataset: InsertDataset): Promise<Dataset>;
-  
+
   // AWS config operations
   getAwsConfig(): Promise<AwsConfig | undefined>;
   getAllAwsConfigs(): Promise<AwsConfig[]>;
@@ -22,21 +22,41 @@ export interface IStorage {
   deleteAwsConfig(id: number): Promise<boolean>;
   setActiveAwsConfig(id: number): Promise<AwsConfig | undefined>;
   upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig>;
-  
+
   // Auth operations
   getAuthConfig(): Promise<AuthConfig | undefined>;
   setPassword(password: string): Promise<AuthConfig>;
   verifyPassword(password: string): Promise<boolean>;
-  
+
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
-  
+
   // Download tracking operations
   recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
   incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void>;
   getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }>;
-  
+
+  // User management operations
+  createUser(userData: InsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  verifyUserPassword(username: string, password: string): Promise<User | null>;
+  updateUserLastLogin(id: number): Promise<void>;
+  generateJWT(user: User): string;
+  verifyJWT(token: string): { id: number; username: string; role: string } | null;
+
+  // Folder access management
+  getUserFolderAccess(userId: number): Promise<UserFolderAccess[]>;
+  setUserFolderAccess(userId: number, folderNames: string[], createdBy: number): Promise<UserFolderAccess[]>;
+  getUserAccessibleFolders(userId: number): Promise<string[]>;
+  getAllFolderAccess(): Promise<any[]>;
+  getUsersWithFolderAccess(): Promise<any[]>;
+
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
 }
@@ -78,7 +98,7 @@ export class DatabaseStorage implements IStorage {
     const updateData = updates.lastModified 
       ? updates 
       : { ...updates };
-    
+
     const [updated] = await db
       .update(datasets)
       .set(updateData)
@@ -95,7 +115,7 @@ export class DatabaseStorage implements IStorage {
   async upsertDataset(datasetData: InsertDataset): Promise<Dataset> {
     // Try to find existing dataset by name and source
     const existing = await this.getDatasetByNameAndSource(datasetData.name, datasetData.source);
-    
+
     if (existing) {
       // Update existing dataset, preserving insights if they exist
       const updates: Partial<InsertDataset> = {
@@ -155,7 +175,7 @@ export class DatabaseStorage implements IStorage {
   async setActiveAwsConfig(id: number): Promise<AwsConfig | undefined> {
     // First, set all configs as inactive
     await db.update(awsConfig).set({ isActive: false });
-    
+
     // Then activate the selected one
     const [updated] = await db
       .update(awsConfig)
@@ -167,7 +187,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig> {
     const existing = await this.getAwsConfig();
-    
+
     if (existing) {
       // Update the existing active configuration
       const [updated] = await db
@@ -205,9 +225,9 @@ export class DatabaseStorage implements IStorage {
   async setPassword(password: string): Promise<AuthConfig> {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    
+
     const existing = await this.getAuthConfig();
-    
+
     if (existing) {
       const [updated] = await db
         .update(authConfig)
@@ -232,7 +252,7 @@ export class DatabaseStorage implements IStorage {
     if (!config) {
       return false;
     }
-    
+
     return await bcrypt.compare(password, config.passwordHash);
   }
 
@@ -242,7 +262,7 @@ export class DatabaseStorage implements IStorage {
       .from(refreshLog)
       .orderBy(desc(refreshLog.lastRefreshTime))
       .limit(1);
-    
+
     return lastRefresh?.lastRefreshTime || null;
   }
 
@@ -325,7 +345,7 @@ export class DatabaseStorage implements IStorage {
     if (!user || !user.isActive) {
       return null;
     }
-    
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
     return isValid ? user : null;
   }
@@ -370,10 +390,10 @@ export class DatabaseStorage implements IStorage {
         userAgent,
       })
       .returning();
-    
+
     // Also increment the counter in the datasets table
     await this.incrementDownloadCount(datasetId, downloadType);
-    
+
     return download;
   }
 
@@ -405,11 +425,11 @@ export class DatabaseStorage implements IStorage {
       })
       .from(datasets)
       .where(eq(datasets.id, datasetId));
-    
+
     if (!dataset) {
       return { sample: 0, full: 0, metadata: 0, total: 0 };
     }
-    
+
     return {
       sample: dataset.sample,
       full: dataset.full,
@@ -417,6 +437,116 @@ export class DatabaseStorage implements IStorage {
       total: dataset.sample + dataset.full + dataset.metadata,
     };
   }
+
+  // Folder access management
+  async getUserFolderAccess(userId: number): Promise<UserFolderAccess[]> {
+    return await db
+      .select()
+      .from(userFolderAccess)
+      .where(eq(userFolderAccess.userId, userId));
+  }
+
+  async setUserFolderAccess(userId: number, folderNames: string[], createdBy: number): Promise<UserFolderAccess[]> {
+    // First, remove all existing access for this user
+    await db
+      .delete(userFolderAccess)
+      .where(eq(userFolderAccess.userId, userId));
+
+    // Then, add the new folder access records
+    if (folderNames.length > 0) {
+      const accessRecords = folderNames.map(folderName => ({
+        userId,
+        folderName,
+        canAccess: true,
+        createdBy,
+      }));
+
+      return await db
+        .insert(userFolderAccess)
+        .values(accessRecords)
+        .returning();
+    }
+
+    return [];
+  }
+
+  async getUserAccessibleFolders(userId: number): Promise<string[]> {
+    // Get user to check if admin
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // Admins have access to all folders
+    if (user.role === 'admin') {
+      // Get all available folders from datasets
+      const allDatasets = await this.getDatasets();
+      const allFolders = Array.from(new Set(
+        allDatasets
+          .map(d => d.topLevelFolder)
+          .filter(Boolean)
+      )).sort();
+      return allFolders;
+    }
+
+    // For non-admin users, get their specific folder access
+    const accessRecords = await db
+      .select({ folderName: userFolderAccess.folderName })
+      .from(userFolderAccess)
+      .where(and(
+        eq(userFolderAccess.userId, userId),
+        eq(userFolderAccess.canAccess, true)
+      ));
+
+    return accessRecords.map(record => record.folderName).sort();
+  }
+
+  async getAllFolderAccess() {
+    return await db
+      .select({
+        id: userFolderAccess.id,
+        userId: userFolderAccess.userId,
+        folderName: userFolderAccess.folderName,
+        canAccess: userFolderAccess.canAccess,
+        createdAt: userFolderAccess.createdAt,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+      })
+      .from(userFolderAccess)
+      .leftJoin(users, eq(userFolderAccess.userId, users.id))
+      .orderBy(users.username, userFolderAccess.folderName);
+  },
+
+  async getUsersWithFolderAccess() {
+    const usersWithAccess = await db
+      .select({
+        userId: userFolderAccess.userId,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+        folderName: userFolderAccess.folderName,
+      })
+      .from(userFolderAccess)
+      .leftJoin(users, eq(userFolderAccess.userId, users.id))
+      .where(eq(userFolderAccess.canAccess, true))
+      .orderBy(users.username);
+
+    // Group by user
+    const grouped: Record<number, any> = {};
+    usersWithAccess.forEach(record => {
+      if (!grouped[record.userId]) {
+        grouped[record.userId] = {
+          userId: record.userId,
+          username: record.username,
+          email: record.email,
+          role: record.role,
+          folders: [],
+        };
+      }
+      grouped[record.userId].folders.push(record.folderName);
+    });
+
+    return Object.values(grouped);
+  },
 
   async query(sql: string): Promise<any[]> {
     // Execute raw SQL query for performance monitoring

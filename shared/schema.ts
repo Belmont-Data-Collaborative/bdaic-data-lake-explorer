@@ -108,6 +108,24 @@ export const downloads = pgTable("downloads", {
   datasetTypeIdx: index("idx_downloads_dataset_type").on(table.datasetId, table.downloadType),
 }));
 
+export const userFolderAccess = pgTable("user_folder_access", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  folderName: text("folder_name").notNull(),
+  canAccess: boolean("can_access").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+}, (table) => ({
+  // Index on userId for fast user lookups
+  userIdIdx: index("idx_user_folder_access_user_id").on(table.userId),
+  // Index on folderName for folder-based queries
+  folderNameIdx: index("idx_user_folder_access_folder_name").on(table.folderName),
+  // Composite index for user + folder queries
+  userFolderIdx: index("idx_user_folder_access_user_folder").on(table.userId, table.folderName),
+  // Unique constraint to prevent duplicate access records
+  uniqueUserFolder: index("unique_user_folder").on(table.userId, table.folderName),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -115,6 +133,16 @@ export const insertDatasetSchema = createInsertSchema(datasets).omit({
 export const insertDownloadSchema = createInsertSchema(downloads).omit({
   id: true,
   downloadedAt: true,
+});
+
+export const insertUserFolderAccessSchema = createInsertSchema(userFolderAccess).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Schema for updating folder access
+export const updateUserFolderAccessSchema = z.object({
+  folderNames: z.array(z.string()),
 });
 
 export const insertAwsConfigSchema = createInsertSchema(awsConfig).omit({
@@ -236,3 +264,6 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type UserFolderAccess = typeof userFolderAccess.$inferSelect;
+export type InsertUserFolderAccess = z.infer<typeof insertUserFolderAccessSchema>;
+export type UpdateUserFolderAccess = z.infer<typeof updateUserFolderAccessSchema>;

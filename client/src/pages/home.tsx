@@ -122,7 +122,24 @@ export default function Home() {
 
 
 
-  const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
+  // Get user's accessible folders
+  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading } = useQuery<string[]>({
+    queryKey: ["/api/user/accessible-folders"],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return [];
+      
+      const res = await apiRequest('GET', '/api/user/accessible-folders', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return res.json();
+    },
+    enabled: !!localStorage.getItem('authToken'),
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
+  });
+
+  const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -131,12 +148,16 @@ export default function Home() {
       }
       const response = await fetch(`/api/folders?${params}`);
       const data = await response.json();
-      console.log("Folders from API:", data);
+      console.log("All folders from API:", data);
       return data;
     },
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
   });
+
+  // Filter folders based on user access
+  const folders = allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
+  const foldersLoading = allFoldersLoading || accessibleFoldersLoading;
 
   // Debug logging
   console.log("Folders from API:", folders);

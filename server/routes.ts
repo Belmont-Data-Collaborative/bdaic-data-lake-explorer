@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema } from "@shared/schema";
+import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
 import { z } from "zod";
 import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
@@ -423,6 +423,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Folder Access Management Routes
+  app.get("/api/admin/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderAccess = await storage.getAllFolderAccess();
+      res.json(folderAccess);
+    } catch (error) {
+      console.error("Error fetching folder access:", error);
+      res.status(500).json({ message: "Failed to fetch folder access" });
+    }
+  });
+
+  app.get("/api/admin/users-folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const usersWithAccess = await storage.getUsersWithFolderAccess();
+      res.json(usersWithAccess);
+    } catch (error) {
+      console.error("Error fetching users with folder access:", error);
+      res.status(500).json({ message: "Failed to fetch users with folder access" });
+    }
+  });
+
+  app.get("/api/admin/users/:userId/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const folderAccess = await storage.getUserFolderAccess(userId);
+      res.json(folderAccess);
+    } catch (error) {
+      console.error("Error fetching user folder access:", error);
+      res.status(500).json({ message: "Failed to fetch user folder access" });
+    }
+  });
+
+  app.put("/api/admin/users/:userId/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const validation = updateUserFolderAccessSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      // Check if user exists
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Don't allow modifying admin folder access
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: "Cannot modify folder access for admin users" });
+      }
+
+      const accessRecords = await storage.setUserFolderAccess(
+        userId, 
+        validation.data.folderNames, 
+        req.user!.id
+      );
+
+      res.json({
+        message: "Folder access updated successfully",
+        accessRecords,
+      });
+    } catch (error) {
+      console.error("Error updating user folder access:", error);
+      res.status(500).json({ message: "Failed to update user folder access" });
+    }
+  });
+
+  app.get("/api/user/accessible-folders", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const accessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      res.json(accessibleFolders);
+    } catch (error) {
+      console.error("Error fetching accessible folders:", error);
+      res.status(500).json({ message: "Failed to fetch accessible folders" });
     }
   });
 
