@@ -239,13 +239,7 @@ export default function Home() {
     })),
   );
 
-  const { data: folderDataPoints = [] } = useQuery<
-    Array<{ folder_label: string; total_community_data_points: number }>
-  >({
-    queryKey: ["/api/folders/community-data-points"],
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
-  });
+  // Remove folderDataPoints query - we'll use server-calculated stats only
 
   // Group datasets by folder for folder cards and stats
   const datasetsByFolder = allDatasets.reduce(
@@ -277,61 +271,10 @@ export default function Home() {
     return sources;
   };
 
-  // Calculate total community data points from API data
-  const getTotalCommunityDataPoints = (forFolder?: string): number => {
-    if (!folderDataPoints || folderDataPoints.length === 0) {
-      return 0;
-    }
-    
-    if (forFolder) {
-      // Get community data points for specific folder
-      // Handle both display names (e.g., "CDC PLACES(496,496,210)") and raw folder names (e.g., "cdc_places")
-      const folderData = folderDataPoints.find((fp) => {
-        const displayLabel = fp.folder_label.toLowerCase();
-        const rawFolder = forFolder.toLowerCase();
-        
-        // Direct match
-        if (displayLabel === rawFolder) return true;
-        
-        // Match by extracting folder name from display label
-        // Convert "CDC PLACES(496,496,210)" -> "cdc_places"
-        const extractedName = displayLabel
-          .split('(')[0] // Remove parentheses part
-          .trim()
-          .replace(/\s+/g, '_') // Replace spaces with underscores
-          .toLowerCase();
-        
-        // Convert "cdc_places" -> "cdc places" for reverse matching
-        const normalizedRaw = rawFolder.replace(/_/g, ' ');
-        
-        const isMatch = extractedName === rawFolder || displayLabel.includes(normalizedRaw);
-        
-        // Debug logging for folder matching
-        if (rawFolder === 'cdc_svi' || rawFolder === 'irs_990_efile') {
-          console.log(`Folder matching debug for ${rawFolder}:`, {
-            displayLabel,
-            extractedName,
-            normalizedRaw,
-            isMatch,
-            totalPoints: fp.total_community_data_points
-          });
-        }
-        
-        return isMatch;
-      });
-      
-      return folderData?.total_community_data_points || 0;
-    }
-    
-    // Get total community data points across all folders
-    return folderDataPoints.reduce(
-      (total, fp) => total + (fp.total_community_data_points || 0),
-      0
-    );
-  };
+  // Remove custom community data points calculation - use server values only
 
-  // Calculate stats based on current selection (folder or global)
-  const calculateStats = (datasetsToCalculate: Dataset[], forFolder?: string): Stats => {
+  // Simplified stats calculation using server data only
+  const calculateFolderStats = (datasetsToCalculate: Dataset[]): Partial<Stats> => {
     const totalDatasets = datasetsToCalculate.length;
     const totalSizeBytes = datasetsToCalculate.reduce(
       (total, dataset) => total + (dataset.sizeBytes || 0),
@@ -352,45 +295,45 @@ export default function Home() {
       totalDatasets,
       totalSize: formatFileSize(totalSizeBytes),
       dataSources: uniqueDataSources.size,
-      lastUpdated: globalStats?.lastUpdated || "Never",
-      lastRefreshTime: globalStats?.lastRefreshTime || null,
-      totalCommunityDataPoints: getTotalCommunityDataPoints(forFolder),
     };
   };
 
-  // Get proper stats for folder view
+  // Use server stats directly without any client-side overrides
   const stats = selectedFolder
     ? (() => {
-        // For folder view, calculate stats based on the selected folder's datasets only
+        // For folder view, calculate basic stats from client data but keep server community data points
         const folderDatasets = datasetsByFolder[selectedFolder] || [];
         if (folderDatasets.length === 0 && datasetsLoading) {
-          // If data is still loading, show loading state but use API data points if available
           return {
             totalDatasets: 0,
             totalSize: "Loading...",
             dataSources: 0,
             lastUpdated: globalStats?.lastUpdated || "Never",
             lastRefreshTime: globalStats?.lastRefreshTime || null,
-            totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
+            totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
           };
         }
 
-        // If we have folder datasets from allDatasets, use those for accurate stats
         if (folderDatasets.length > 0) {
-          return calculateStats(folderDatasets, selectedFolder);
+          const folderStats = calculateFolderStats(folderDatasets);
+          return {
+            ...folderStats,
+            lastUpdated: globalStats?.lastUpdated || "Never",
+            lastRefreshTime: globalStats?.lastRefreshTime || null,
+            totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
+          };
         }
 
-        // Fallback: use server response count but calculate other stats from available data
         return {
           totalDatasets: datasetsResponse?.totalCount || 0,
           totalSize: "Calculating...",
           dataSources: 0,
           lastUpdated: globalStats?.lastUpdated || "Never",
           lastRefreshTime: globalStats?.lastRefreshTime || null,
-          totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
+          totalCommunityDataPoints: globalStats?.totalCommunityDataPoints || 0,
         };
       })()
-    : globalStats; // Use server-calculated stats directly - they already include user-specific filtering
+    : globalStats; // Use server-calculated stats directly without any modifications
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;
@@ -640,22 +583,12 @@ export default function Home() {
                       const folderDatasets = allDatasets.filter(
                         (dataset) => dataset.topLevelFolder === folderName,
                       );
-                      // Find community data points for this folder
-                      const folderDataPointsEntry = folderDataPoints.find((entry) =>
-                        entry.folder_label
-                          .toLowerCase()
-                          .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
-                      );
-
                       return (
                         <div key={folderName} className={`opacity-0 animate-slide-up stagger-${Math.min(index, 11)}`}>
                           <FolderCard
                             folderName={folderName}
                             datasets={folderDatasets}
                             onClick={() => handleFolderSelect(folderName)}
-                            {...(folderDataPointsEntry?.total_community_data_points !== undefined && {
-                              totalCommunityDataPoints: folderDataPointsEntry.total_community_data_points
-                            })}
                           />
                         </div>
                       );
