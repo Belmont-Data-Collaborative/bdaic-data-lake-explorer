@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { User, TrendingUp, Download, Calendar, ExternalLink, Eye } from "lucide-react";
+import { User, TrendingUp, Download, Calendar, ExternalLink, Eye, Folder, FolderOpen } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 
 interface User {
   id: number;
@@ -39,6 +40,25 @@ interface DatasetVisit {
 }
 
 export default function UserPanel({ currentUser }: UserPanelProps) {
+  // Fetch user's accessible folders
+  const { data: accessibleFolders = [], isLoading: foldersLoading } = useQuery({
+    queryKey: ['/api/user/accessible-folders'],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token || !currentUser) return [];
+      
+      const response = await fetch('/api/user/accessible-folders', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        return response.json();
+      }
+      return [];
+    },
+    enabled: !!currentUser && !!localStorage.getItem('authToken'),
+  });
   // Mock data for frequently visited data sources
   // In a real implementation, this would come from user activity tracking
   const frequentlyVisited: DatasetVisit[] = [
@@ -139,29 +159,67 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
         </div>
 
         {currentUser && (
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                    <User className="text-muted-foreground" size={24} />
+          <div className="grid gap-6 md:grid-cols-2 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                      <User className="text-muted-foreground" size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">{currentUser.username}</h2>
+                      <p className="text-sm text-muted-foreground">{currentUser.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-foreground">{currentUser.username}</h2>
-                    <p className="text-sm text-muted-foreground">{currentUser.email}</p>
-                  </div>
+                  <Badge variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'}>
+                    {currentUser.role}
+                  </Badge>
                 </div>
-                <Badge variant={currentUser.role === 'admin' ? 'destructive' : 'secondary'}>
-                  {currentUser.role}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center space-x-2">
+                  <Folder className="text-primary" size={20} />
+                  <span>Accessible Folders</span>
+                </CardTitle>
+                <CardDescription>
+                  Data folders you have permission to access
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {foldersLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                ) : accessibleFolders.length === 0 ? (
+                  <div className="text-center py-4">
+                    <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No folder access granted</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {accessibleFolders.map((folder: string) => (
+                      <Badge key={folder} className={getFolderColor(folder)} variant="secondary">
+                        {folder.replace(/_/g, " ").toUpperCase()}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
 
-      <Tabs defaultValue="visited" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
+      <Tabs defaultValue="folders" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsTrigger value="folders" className="flex items-center space-x-2">
+            <Folder size={16} />
+            <span>My Folders</span>
+          </TabsTrigger>
           <TabsTrigger value="visited" className="flex items-center space-x-2">
             <TrendingUp size={16} />
             <span>Frequently Visited</span>
@@ -171,6 +229,57 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
             <span>Download History</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="folders" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Folder className="text-primary" size={20} />
+                <span>Your Accessible Folders</span>
+              </CardTitle>
+              <CardDescription>
+                Data folders you have permission to access in the Data Lake
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {foldersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-muted-foreground">Loading accessible folders...</span>
+                </div>
+              ) : accessibleFolders.length === 0 ? (
+                <div className="text-center py-12">
+                  <FolderOpen className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No Folder Access</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+                    You currently don't have access to any folders in the Data Lake. Contact your administrator to request access to specific data folders.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You have access to {accessibleFolders.length} folder{accessibleFolders.length !== 1 ? 's' : ''} in the Data Lake:
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {accessibleFolders.map((folder: string) => (
+                      <div key={folder} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Folder className="text-muted-foreground" size={16} />
+                          <span className="font-medium text-foreground">
+                            {folder.replace(/_/g, " ").toUpperCase()}
+                          </span>
+                        </div>
+                        <Badge className={getFolderColor(folder)} variant="secondary" size="sm">
+                          {folder}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="visited" className="space-y-6">
           <Card>

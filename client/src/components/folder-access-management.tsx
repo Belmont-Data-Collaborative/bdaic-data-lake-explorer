@@ -82,6 +82,8 @@ export default function FolderAccessManagement() {
         description: "User folder permissions have been updated successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/datasets'] });
       setEditingUserId(null);
       setSelectedFolders([]);
     },

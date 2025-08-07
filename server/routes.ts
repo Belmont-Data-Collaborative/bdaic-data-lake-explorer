@@ -698,6 +698,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allDatasets = await storage.getDatasets();
         setCache('datasets-all', allDatasets, 300000); // 5 minutes cache
       }
+
+      // Apply user folder access filtering FIRST if user is authenticated
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = storage.verifyJWT(token);
+          if (decoded) {
+            const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+            console.log(`User ${decoded.id} has access to folders:`, userAccessibleFolders);
+            
+            // Filter datasets to only show those in accessible folders
+            allDatasets = allDatasets.filter(d => 
+              userAccessibleFolders.includes(d.topLevelFolder)
+            );
+            console.log(`After folder access filtering: ${allDatasets.length} datasets remaining`);
+          }
+        } catch (error) {
+          // If token is invalid, continue without filtering
+          console.log('Invalid token provided, returning all datasets');
+        }
+      }
       
       // Apply filters
       if (folder && folder !== "all") {
@@ -1398,11 +1420,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique top-level folders (optionally filtered by tag)
+  // Get unique top-level folders (optionally filtered by tag) - respects user folder access
   app.get("/api/folders", async (req, res) => {
     try {
       const { tag } = req.query;
       let datasets = await storage.getDatasets();
+      
+      // Filter datasets by user's folder access first if user is authenticated
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = storage.verifyJWT(token);
+          if (decoded) {
+            const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+            datasets = datasets.filter(d => 
+              userAccessibleFolders.includes(d.topLevelFolder)
+            );
+          }
+        } catch (error) {
+          // If token is invalid, continue without filtering
+          console.log('Invalid token for folders endpoint, returning all folders');
+        }
+      }
       
       // If tag filter is provided, only include folders that contain datasets with that tag
       if (tag && tag !== 'all') {
@@ -1424,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Filtering folders by tag "${tag}": found ${folders.length} folders with that tag`);
         res.json(folders);
       } else {
-        // Return all folders
+        // Return accessible folders only
         const folders = Array.from(new Set(datasets
           .map(d => d.topLevelFolder)
           .filter(Boolean)))
