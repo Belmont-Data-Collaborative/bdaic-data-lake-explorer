@@ -335,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        isAiEnabled: user.isAiEnabled,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       }));
@@ -368,6 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: updatedUser.email,
         role: updatedUser.role,
         isActive: updatedUser.isActive,
+        isAiEnabled: updatedUser.isAiEnabled,
       });
     } catch (error) {
       console.error("Error updating user:", error);

@@ -18,7 +18,9 @@ interface User {
   email: string;
   role: string;
   isActive: boolean;
-  isAiEnabled?: boolean;
+  isAiEnabled: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
 }
 
 interface UserWithFolderAccess {
@@ -43,17 +45,20 @@ export default function FolderAccessManagement() {
   const handleRefreshData = async () => {
     toast({
       title: "Refreshing data...",
-      description: "Fetching latest folder access from database.",
+      description: "Fetching latest data from database.",
     });
     
     try {
       // Clear cache completely and force fresh fetch
       queryClient.clear();
+      
+      // Also invalidate and refetch users data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await refetchUsersAccess();
       
       toast({
         title: "Data refreshed",
-        description: "Latest folder access information loaded from database.",
+        description: "Latest data loaded from database.",
       });
     } catch (error) {
       toast({
@@ -64,16 +69,25 @@ export default function FolderAccessManagement() {
     }
   };
 
-  // Fetch all users
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  // Fetch all users - with proper cache busting
+  const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ['/api/admin/users'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       const res = await apiRequest('GET', '/api/admin/users', null, {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       });
-      return res.json();
+      const data = await res.json();
+      // Ensure all users have isAiEnabled field (default to false if missing)
+      return data.map((user: any) => ({
+        ...user,
+        isAiEnabled: user.isAiEnabled ?? false
+      }));
     },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Fetch all available folders
