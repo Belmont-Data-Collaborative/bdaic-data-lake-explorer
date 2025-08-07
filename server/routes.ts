@@ -1557,6 +1557,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return sources;
   };
 
+  // Private stats endpoint for authenticated users (no caching for accurate user-specific data)
+  app.get("/api/stats/private", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const user = req.user!;
+      console.log(`Calculating fresh private stats for user ${user.username} (${user.role})`);
+      
+      // Get all datasets fresh from storage
+      const allDatasets = await storage.getDatasets();
+      
+      // Filter datasets based on user's folder access
+      let accessibleDatasets = allDatasets;
+      
+      if (user.role !== 'admin') {
+        // Get user's accessible folders
+        const accessibleFolders = await storage.getUserAccessibleFolders(user.id);
+        
+        // Filter datasets to only include those from accessible folders
+        accessibleDatasets = allDatasets.filter(dataset => 
+          accessibleFolders.includes(dataset.topLevelFolder)
+        );
+        
+        console.log(`User ${user.username} has access to ${accessibleFolders.length} folders, ${accessibleDatasets.length} datasets`);
+      }
+      
+      const totalSize = accessibleDatasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+      const uniqueDataSources = extractDataSources(accessibleDatasets);
+      
+      // Calculate total community data points across accessible datasets
+      const totalCommunityDataPoints = accessibleDatasets
+        .filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && 
+                 metadata.recordCount && 
+                 metadata.columnCount && 
+                 metadata.completenessScore &&
+                 !isNaN(parseInt(metadata.recordCount)) &&
+                 !isNaN(metadata.columnCount) &&
+                 !isNaN(metadata.completenessScore);
+        })
+        .reduce((total, d) => {
+          const metadata = d.metadata as any;
+          const recordCount = parseInt(metadata.recordCount);
+          const columnCount = parseInt(metadata.columnCount);
+          const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+          const dataPoints = recordCount * columnCount * completenessScore;
+          
+          console.log(`Dataset ${d.name}: ${recordCount} records × ${columnCount} columns × ${completenessScore} = ${Math.round(dataPoints)} data points`);
+          return total + dataPoints;
+        }, 0);
+
+      console.log(`User ${user.username} PRIVATE ENDPOINT total community data points: ${Math.round(totalCommunityDataPoints)} from ${accessibleDatasets.length} accessible datasets`);
+      
+      // Use the last refresh time instead of dataset modification times
+      const lastRefreshTime = await storage.getLastRefreshTime();
+
+      const stats = {
+        totalDatasets: accessibleDatasets.length,
+        totalSize: formatFileSize(totalSize),
+        dataSources: uniqueDataSources.size,
+        lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+        lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+        totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
+      };
+
+      console.log(`PRIVATE ENDPOINT sending stats response for user ${user.username}:`, JSON.stringify(stats, null, 2));
+      
+      // Never cache private stats to ensure accuracy
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching private stats:", error);
+      res.status(500).json({ message: "Failed to fetch private statistics" });
+    }
+  });
+
   // Optimized stats endpoint with caching
   let statsCache: { data: any; timestamp: number } | null = null;
   const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes

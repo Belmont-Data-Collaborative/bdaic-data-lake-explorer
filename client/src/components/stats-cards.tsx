@@ -39,11 +39,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     delay: 500,
   });
 
-  // Debug the community data points issue
-  if (stats?.totalCommunityDataPoints) {
-    console.log('StatsCards - Raw totalCommunityDataPoints from API:', stats.totalCommunityDataPoints);
-    console.log('StatsCards - Formatted value:', formatNumber(animatedCommunityPoints.value));
-  }
+
 
   // Loading state placeholders (will be used when stats are not available)
   const placeholderDatasets = useCountAnimation({ target: 250, duration: 2000 });

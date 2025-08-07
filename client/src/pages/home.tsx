@@ -114,15 +114,15 @@ export default function Home() {
     }
   };
 
-  // Use direct API queries with enhanced caching for maximum performance
+  // Use private stats endpoint for accurate user-specific data (no caching)
   const { data: globalStats } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
+    queryKey: ["/api/stats/private"],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/stats');
+      const response = await apiRequest('GET', '/api/stats/private');
       return response.json();
     },
-    staleTime: 1800000, // 30 minutes cache
-    gcTime: 3600000, // 1 hour garbage collection
+    staleTime: 0, // No caching to ensure fresh user-specific data
+    gcTime: 0, // No garbage collection cache
     enabled: !!localStorage.getItem('authToken'), // Only run when authenticated
   });
 
