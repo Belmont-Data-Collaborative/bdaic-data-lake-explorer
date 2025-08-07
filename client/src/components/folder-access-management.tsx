@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Folder, Edit, Shield, Save, X, RefreshCw } from "lucide-react";
+import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock } from "lucide-react";
 
 interface User {
   id: number;
@@ -285,10 +285,10 @@ export default function FolderAccessManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Accessible Folders</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead>User Information</TableHead>
+                <TableHead>Email & Role</TableHead>
+                <TableHead>Folder Access Summary</TableHead>
+                <TableHead className="text-center">Manage Permissions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -296,15 +296,28 @@ export default function FolderAccessManagement() {
               {users.filter((user: User) => user.role === 'admin').map((user: User) => (
                 <TableRow key={user.id} className="bg-gradient-to-r from-purple-50 to-purple-25 border-purple-100">
                   <TableCell className="font-semibold py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <span className="text-gray-900">{user.username}</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <span className="text-gray-900">{user.username}</span>
+                      </div>
+                      <div className="text-xs text-gray-500">ID: {user.id}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="space-y-2">
+                      <div className="text-gray-900 font-medium">{user.email}</div>
                       <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-2 py-1">Admin</Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 text-gray-700">{user.email}</TableCell>
                   <TableCell className="py-4">
-                    <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1">All Folders (Admin)</Badge>
+                    <div className="space-y-2">
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1">
+                        <Unlock className="w-3 h-3 mr-1" />
+                        All Folders (Admin)
+                      </Badge>
+                      <div className="text-xs text-purple-600">Full system access to all {allFolders.length} folders</div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center py-4">
                     <span className="text-gray-500 text-sm font-medium italic">No action needed</span>
@@ -319,24 +332,59 @@ export default function FolderAccessManagement() {
 
                 return (
                   <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors duration-150">
-                    <TableCell className="font-semibold py-4 text-gray-900">{user.username}</TableCell>
-                    <TableCell className="py-4 text-gray-700">{user.email}</TableCell>
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-900">{user.username}</div>
+                        <div className="text-xs text-gray-500">ID: {user.id}</div>
+                        <div className={`text-xs flex items-center ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                          <div className={`w-2 h-2 rounded-full mr-2 ${user.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="space-y-2">
+                        <div className="text-gray-900 font-medium">{user.email}</div>
+                        <Badge className={
+                          user.role === 'editor'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200 font-medium px-2 py-1'
+                            : 'bg-gray-100 text-gray-700 border-gray-200 font-medium px-2 py-1'
+                        }>
+                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </Badge>
+                      </div>
+                    </TableCell>
                     <TableCell className="py-4">
                       {folderCount > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {userAccess!.folders.slice(0, 3).map((folder: string) => (
-                            <Badge key={folder} className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs font-medium px-2 py-1">
-                              {folder.replace(/_/g, ' ').toUpperCase()}
-                            </Badge>
-                          ))}
-                          {folderCount > 3 && (
-                            <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs font-medium px-2 py-1">
-                              +{folderCount - 3} more
-                            </Badge>
-                          )}
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <UserCheck className="w-4 h-4 text-emerald-600" />
+                            <span className="font-semibold text-emerald-700">{folderCount} folders accessible</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {userAccess!.folders.slice(0, 3).map((folder: string) => (
+                              <Badge key={folder} className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs font-medium px-2 py-1">
+                                {folder.replace(/_/g, ' ').toUpperCase()}
+                              </Badge>
+                            ))}
+                            {folderCount > 3 && (
+                              <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs font-medium px-2 py-1">
+                                +{folderCount - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Access to {Math.round((folderCount / allFolders.length) * 100)}% of available folders
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-gray-500 font-medium italic">No folder access</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Lock className="w-4 h-4 text-red-500" />
+                            <span className="font-medium text-red-600">No folder access</span>
+                          </div>
+                          <div className="text-xs text-gray-500">User cannot access any data folders</div>
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="py-4">

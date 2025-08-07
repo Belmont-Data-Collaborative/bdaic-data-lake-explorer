@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft } from "lucide-react";
+import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
@@ -180,7 +180,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-blue-900">Total Users</CardTitle>
@@ -188,6 +188,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-900">{users?.length || 0}</div>
+            <p className="text-xs text-blue-700 mt-1">Registered accounts</p>
           </CardContent>
         </Card>
 
@@ -200,6 +201,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
             <div className="text-2xl font-bold text-purple-900">
               {users?.filter((user: User) => user.role === 'admin').length || 0}
             </div>
+            <p className="text-xs text-purple-700 mt-1">Full access privileges</p>
           </CardContent>
         </Card>
 
@@ -211,6 +213,143 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
           <CardContent>
             <div className="text-2xl font-bold text-green-900">
               {users?.filter((user: User) => user.isActive).length || 0}
+            </div>
+            <p className="text-xs text-green-700 mt-1">Currently enabled accounts</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-orange-25 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-semibold text-orange-900">Recent Logins</CardTitle>
+            <Activity className="h-5 w-5 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-900">
+              {users?.filter((user: User) => user.lastLoginAt && 
+                new Date(user.lastLoginAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length || 0}
+            </div>
+            <p className="text-xs text-orange-700 mt-1">Logins this week</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* User Details Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* User Roles Breakdown */}
+        <Card className="shadow-sm border-gray-200 bg-white">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-25 border-b border-indigo-100">
+            <CardTitle className="text-indigo-900 font-semibold flex items-center">
+              <Settings className="h-5 w-5 mr-2" />
+              User Roles
+            </CardTitle>
+            <CardDescription className="text-indigo-600">
+              Breakdown of user access levels
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {['admin', 'editor', 'user'].map((role) => {
+                const roleUsers = users?.filter((user: User) => user.role === role) || [];
+                const roleCount = roleUsers.length;
+                const percentage = users?.length ? Math.round((roleCount / users.length) * 100) : 0;
+                
+                return (
+                  <div key={role} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        role === 'admin' ? 'bg-purple-500' :
+                        role === 'editor' ? 'bg-blue-500' : 'bg-gray-400'
+                      }`}></div>
+                      <span className="font-medium capitalize">{role}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">{roleCount}</div>
+                      <div className="text-xs text-gray-500">{percentage}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Activity Overview */}
+        <Card className="shadow-sm border-gray-200 bg-white">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-25 border-b border-emerald-100">
+            <CardTitle className="text-emerald-900 font-semibold flex items-center">
+              <Clock className="h-5 w-5 mr-2" />
+              Activity Overview
+            </CardTitle>
+            <CardDescription className="text-emerald-600">
+              User login activity summary
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Never logged in</span>
+                <span className="font-semibold">
+                  {users?.filter((user: User) => !user.lastLoginAt).length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Last 24 hours</span>
+                <span className="font-semibold">
+                  {users?.filter((user: User) => user.lastLoginAt && 
+                    new Date(user.lastLoginAt).getTime() > Date.now() - 24 * 60 * 60 * 1000).length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">This week</span>
+                <span className="font-semibold">
+                  {users?.filter((user: User) => user.lastLoginAt && 
+                    new Date(user.lastLoginAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">This month</span>
+                <span className="font-semibold">
+                  {users?.filter((user: User) => user.lastLoginAt && 
+                    new Date(user.lastLoginAt).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000).length || 0}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card className="shadow-sm border-gray-200 bg-white">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-25 border-b border-amber-100">
+            <CardTitle className="text-amber-900 font-semibold flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              Account Statistics
+            </CardTitle>
+            <CardDescription className="text-amber-600">
+              Registration and activity trends
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Newest user</span>
+                <span className="font-semibold text-right">
+                  {users?.length ? 
+                    users.reduce((newest: User, user: User) => 
+                      new Date(user.createdAt) > new Date(newest.createdAt) ? user : newest
+                    ).username : 'None'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Inactive accounts</span>
+                <span className="font-semibold">
+                  {users?.filter((user: User) => !user.isActive).length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Total accounts created</span>
+                <span className="font-semibold">{users?.length || 0}</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -234,11 +373,11 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Login</TableHead>
+                  <TableHead>User Information</TableHead>
+                  <TableHead>Role & Permissions</TableHead>
+                  <TableHead>Account Status</TableHead>
+                  <TableHead>Registration Date</TableHead>
+                  <TableHead>Last Login Activity</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -249,18 +388,32 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                       <div className="space-y-1">
                         <div className="font-semibold text-gray-900">{user.username}</div>
                         <div className="text-sm text-gray-600">{user.email}</div>
+                        <div className="text-xs text-gray-500">ID: {user.id}</div>
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
-                      <Badge 
-                        variant={user.role === 'admin' ? 'default' : 'secondary'}
-                        className={user.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1'
-                          : 'bg-gray-100 text-gray-700 border-gray-200 font-medium px-3 py-1'
-                        }
-                      >
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                      </Badge>
+                      <div className="space-y-2">
+                        <Badge 
+                          variant={user.role === 'admin' ? 'default' : 'secondary'}
+                          className={
+                            user.role === 'admin' 
+                              ? 'bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1'
+                              : user.role === 'editor'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200 font-medium px-3 py-1'
+                              : 'bg-gray-100 text-gray-700 border-gray-200 font-medium px-3 py-1'
+                          }
+                        >
+                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </Badge>
+                        <div className="text-xs text-gray-500">
+                          {user.role === 'admin' 
+                            ? 'Full system access' 
+                            : user.role === 'editor' 
+                            ? 'Edit & download access'
+                            : 'View & download access'
+                          }
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="flex items-center space-x-2">
@@ -280,8 +433,22 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                     <TableCell className="py-4 text-gray-600 font-medium">
                       {format(new Date(user.createdAt), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-600 font-medium">
-                      {user.lastLoginAt ? format(new Date(user.lastLoginAt), 'MMM d, yyyy') : 'Never'}
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <div className="text-gray-900 font-medium">
+                          {user.lastLoginAt ? format(new Date(user.lastLoginAt), 'MMM d, yyyy') : 'Never logged in'}
+                        </div>
+                        {user.lastLoginAt && (
+                          <div className="text-xs text-gray-500">
+                            {user.lastLoginAt && new Date(user.lastLoginAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
+                              ? 'Recently active'
+                              : user.lastLoginAt && new Date(user.lastLoginAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
+                              ? 'Active this week'
+                              : 'Not recently active'
+                            }
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right py-4">
                       <div className="flex items-center justify-end space-x-3">
