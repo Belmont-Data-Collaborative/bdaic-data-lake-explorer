@@ -33,6 +33,8 @@ export default function FolderAccessManagement() {
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [folderAiSettings, setFolderAiSettings] = useState<Record<string, boolean>>({});
+  const [originalAiSettings, setOriginalAiSettings] = useState<Record<string, boolean>>({});
+  const [tempAiSettings, setTempAiSettings] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -212,18 +214,62 @@ export default function FolderAccessManagement() {
   const handleEditFolderAccess = (user: UserWithFolderAccess) => {
     setEditingUserId(user.userId);
     setSelectedFolders(user.folders || []);
+    
+    // Store original AI settings and initialize temp settings
+    setOriginalAiSettings({ ...folderAiSettings });
+    setTempAiSettings({ ...folderAiSettings });
+    
     setDialogOpen(true);
     
     // Refresh AI settings to ensure we have the latest data
     refetchAiSettings();
   };
 
-  const handleSaveFolderAccess = () => {
+  const handleSaveFolderAccess = async () => {
     if (editingUserId) {
-      updateFolderAccessMutation.mutate({
-        userId: editingUserId,
-        folderNames: selectedFolders,
-      });
+      try {
+        // Update folder access
+        updateFolderAccessMutation.mutate({
+          userId: editingUserId,
+          folderNames: selectedFolders,
+        });
+
+        // Update AI settings for any changes
+        const token = localStorage.getItem('authToken');
+        const aiUpdatePromises = [];
+
+        for (const [folderName, isEnabled] of Object.entries(tempAiSettings)) {
+          if (originalAiSettings[folderName] !== isEnabled) {
+            const promise = apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
+              { isAiEnabled: isEnabled }, 
+              { 'Authorization': `Bearer ${token}` }
+            );
+            aiUpdatePromises.push(promise);
+          }
+        }
+
+        if (aiUpdatePromises.length > 0) {
+          await Promise.all(aiUpdatePromises);
+          
+          toast({
+            title: "Settings Updated",
+            description: "Folder access and AI settings have been updated successfully.",
+          });
+
+          // Update the main AI settings state
+          setFolderAiSettings({ ...tempAiSettings });
+          
+          // Refresh AI settings data
+          queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
+        }
+
+      } catch (error) {
+        toast({
+          title: "Update Failed",
+          description: "Failed to update AI settings.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -235,45 +281,12 @@ export default function FolderAccessManagement() {
     );
   };
 
-  const handleAiToggle = async (folderName: string, isEnabled: boolean) => {
-    try {
-      // Update UI immediately for better UX
-      setFolderAiSettings(prev => ({
-        ...prev,
-        [folderName]: isEnabled
-      }));
-
-      const token = localStorage.getItem('authToken');
-      const response = await apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
-        { isAiEnabled: isEnabled }, 
-        { 'Authorization': `Bearer ${token}` }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update AI setting: ${response.statusText}`);
-      }
-
-      toast({
-        title: "AI Setting Updated",
-        description: `Ask AI has been ${isEnabled ? 'enabled' : 'disabled'} for folder "${folderName}".`,
-      });
-
-      // Invalidate and refetch to ensure consistency but don't wait
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
-      
-    } catch (error) {
-      // Revert UI state on error
-      setFolderAiSettings(prev => ({
-        ...prev,
-        [folderName]: !isEnabled
-      }));
-      
-      toast({
-        title: "Update Failed",
-        description: `Failed to update AI setting for folder "${folderName}".`,
-        variant: "destructive",
-      });
-    }
+  const handleAiToggle = (folderName: string, isEnabled: boolean) => {
+    // Update temporary AI settings immediately for UI feedback
+    setTempAiSettings(prev => ({
+      ...prev,
+      [folderName]: isEnabled
+    }));
   };
 
   const isLoading = usersLoading || foldersLoading || accessLoading;
@@ -534,10 +547,10 @@ export default function FolderAccessManagement() {
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">
-                                          {folderAiSettings[folder] ? 'Enabled' : 'Disabled'}
+                                          {tempAiSettings[folder] ? 'Enabled' : 'Disabled'}
                                         </span>
                                         <Switch
-                                          checked={folderAiSettings[folder] || false}
+                                          checked={tempAiSettings[folder] || false}
                                           onCheckedChange={(checked) => handleAiToggle(folder, checked)}
                                           size="sm"
                                         />
@@ -552,6 +565,8 @@ export default function FolderAccessManagement() {
                               <Button
                                 variant="outline"
                                 onClick={() => {
+                                  // Revert temporary AI changes
+                                  setTempAiSettings({ ...originalAiSettings });
                                   setEditingUserId(null);
                                   setSelectedFolders([]);
                                   setDialogOpen(false);
