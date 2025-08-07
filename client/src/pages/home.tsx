@@ -123,7 +123,7 @@ export default function Home() {
 
 
   // Get user's accessible folders
-  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading } = useQuery<string[]>({
+  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError } = useQuery<string[]>({
     queryKey: ["/api/user/accessible-folders"],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -137,6 +137,7 @@ export default function Home() {
     enabled: !!localStorage.getItem('authToken'),
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
+    retry: 1, // Only retry once for authentication issues
   });
 
   const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
@@ -155,11 +156,17 @@ export default function Home() {
     gcTime: 300000, // 5 minutes
   });
 
-  // Filter folders based on user access
-  const folders = allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
+  // Filter folders based on user access - if accessibleFolders is empty but not loading, use all folders (for admin users)
+  const folders = accessibleFoldersLoading ? [] : (
+    accessibleFolders.length > 0 
+      ? allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder))
+      : allFoldersFromAPI // Use all folders if accessibleFolders is empty (admin case)
+  );
   const foldersLoading = allFoldersLoading || accessibleFoldersLoading;
 
   // Debug logging
+  console.log("Accessible folders from API:", accessibleFolders);
+  console.log("All folders from API:", allFoldersFromAPI);
   console.log("Folders from API:", folders);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
