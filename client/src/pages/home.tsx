@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Database, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
 
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
@@ -116,8 +117,13 @@ export default function Home() {
   // Use direct API queries with enhanced caching for maximum performance
   const { data: globalStats } = useQuery<Stats>({
     queryKey: ["/api/stats"],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/stats');
+      return response.json();
+    },
     staleTime: 1800000, // 30 minutes cache
     gcTime: 3600000, // 1 hour garbage collection
+    enabled: !!localStorage.getItem('authToken'), // Only run when authenticated
   });
 
 

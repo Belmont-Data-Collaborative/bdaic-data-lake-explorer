@@ -1561,28 +1561,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   let statsCache: { data: any; timestamp: number } | null = null;
   const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  app.get("/api/stats", async (req, res) => {
+  app.get("/api/stats", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {
-      // Use precomputed stats from cache for maximum performance
-      let stats = getCached<any>('precomputed-stats');
+      const user = req.user!;
       
-      if (stats) {
-        res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
-        return res.json(stats);
+      // For admins, use precomputed stats from cache for maximum performance
+      if (user.role === 'admin') {
+        let stats = getCached<any>('precomputed-stats');
+        
+        if (stats) {
+          res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+          return res.json(stats);
+        }
+
+        // Fallback to legacy cache check for admins
+        if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
+          return res.json(statsCache.data);
+        }
       }
 
-      // Fallback to legacy cache check
-      if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
-        return res.json(statsCache.data);
+      // Get all datasets
+      const allDatasets = await storage.getDatasets();
+      
+      // Filter datasets based on user's folder access
+      let accessibleDatasets = allDatasets;
+      
+      if (user.role !== 'admin') {
+        // Get user's accessible folders
+        const accessibleFolders = await storage.getUserAccessibleFolders(user.id);
+        
+        // Filter datasets to only include those from accessible folders
+        accessibleDatasets = allDatasets.filter(dataset => 
+          accessibleFolders.includes(dataset.topLevelFolder)
+        );
+        
+        console.log(`User ${user.username} has access to ${accessibleFolders.length} folders, ${accessibleDatasets.length} datasets`);
       }
-
-      const datasets = await storage.getDatasets();
       
-      const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
-      const uniqueDataSources = extractDataSources(datasets);
+      const totalSize = accessibleDatasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+      const uniqueDataSources = extractDataSources(accessibleDatasets);
       
-      // Calculate total community data points across all datasets
-      const totalCommunityDataPoints = datasets
+      // Calculate total community data points across accessible datasets
+      const totalCommunityDataPoints = accessibleDatasets
         .filter(d => {
           const metadata = d.metadata as any;
           return metadata && 
@@ -1601,8 +1621,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the last refresh time instead of dataset modification times
       const lastRefreshTime = await storage.getLastRefreshTime();
 
-      stats = {
-        totalDatasets: datasets.length,
+      const stats = {
+        totalDatasets: accessibleDatasets.length,
         totalSize: formatFileSize(totalSize),
         dataSources: uniqueDataSources.size,
         lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
@@ -1610,13 +1630,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
       };
 
-      // Cache the results
-      statsCache = {
-        data: stats,
-        timestamp: Date.now()
-      };
-      
-      setCache('precomputed-stats', stats, 1800000); // 30 minutes
+      // Only cache stats for admins (full dataset stats)
+      if (user.role === 'admin') {
+        statsCache = {
+          data: stats,
+          timestamp: Date.now()
+        };
+        setCache('precomputed-stats', stats, 1800000); // 30 minutes
+        res.set('Cache-Control', 'public, max-age=1800');
+      } else {
+        // For non-admin users, don't cache as it's user-specific
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
 
       res.json(stats);
     } catch (error) {
