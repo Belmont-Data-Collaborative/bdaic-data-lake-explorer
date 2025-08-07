@@ -62,7 +62,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
       const nextIndex = currentIndex < availableTabs.length - 1 ? currentIndex + 1 : 0;
       handleTabChange(availableTabs[nextIndex]!);
     },
-    isActive: true,
+    enabled: true,
   });
 
   return (

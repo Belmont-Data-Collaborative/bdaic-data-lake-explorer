@@ -29,6 +29,7 @@ interface AdminUsersProps {
 
 export default function AdminUsers({ currentUser }: AdminUsersProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -363,6 +364,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => setDeletingUser(user)}
                               >
                                 <Trash2 className="h-4 w-4 text-red-600" />
                               </Button>
@@ -371,12 +373,13 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                               <DialogHeader>
                                 <DialogTitle>Delete User</DialogTitle>
                                 <DialogDescription>
-                                  Are you sure you want to delete {user.username}? This action cannot be undone.
+                                  Are you sure you want to delete {deletingUser?.username || user.username}? This action cannot be undone.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="flex justify-end space-x-2">
                                 <Button
                                   variant="outline"
+                                  onClick={() => setDeletingUser(null)}
                                 >
                                   Cancel
                                 </Button>
