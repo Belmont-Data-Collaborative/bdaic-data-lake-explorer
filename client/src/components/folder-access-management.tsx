@@ -216,6 +216,7 @@ export default function FolderAccessManagement() {
     setSelectedFolders(user.folders || []);
     
     // Store original AI settings and initialize temp settings
+    console.log('Setting original AI settings:', folderAiSettings);
     setOriginalAiSettings({ ...folderAiSettings });
     setTempAiSettings({ ...folderAiSettings });
     
@@ -238,10 +239,20 @@ export default function FolderAccessManagement() {
         const token = localStorage.getItem('authToken');
         const aiUpdatePromises = [];
 
-        for (const [folderName, isEnabled] of Object.entries(tempAiSettings)) {
-          if (originalAiSettings[folderName] !== isEnabled) {
+        console.log('Original AI settings:', originalAiSettings);
+        console.log('Temp AI settings:', tempAiSettings);
+
+        // Only update AI settings for selected folders that have changed
+        for (const folderName of selectedFolders) {
+          const originalValue = originalAiSettings[folderName] || false;
+          const newValue = tempAiSettings[folderName] || false;
+          
+          console.log(`Folder ${folderName}: original=${originalValue}, new=${newValue}`);
+          
+          if (originalValue !== newValue) {
+            console.log(`Updating AI setting for ${folderName} to ${newValue}`);
             const promise = apiRequest('PUT', `/api/admin/folder-ai-settings/${encodeURIComponent(folderName)}`, 
-              { isAiEnabled: isEnabled }, 
+              { isAiEnabled: newValue }, 
               { 'Authorization': `Bearer ${token}` }
             );
             aiUpdatePromises.push(promise);
@@ -261,9 +272,12 @@ export default function FolderAccessManagement() {
           
           // Refresh AI settings data
           queryClient.invalidateQueries({ queryKey: ['/api/admin/folder-ai-settings'] });
+        } else {
+          console.log('No AI settings changes detected');
         }
 
       } catch (error) {
+        console.error('Save error:', error);
         toast({
           title: "Update Failed",
           description: "Failed to update AI settings.",
@@ -282,11 +296,13 @@ export default function FolderAccessManagement() {
   };
 
   const handleAiToggle = (folderName: string, isEnabled: boolean) => {
+    console.log(`AI toggle for ${folderName}: ${isEnabled}`);
     // Update temporary AI settings immediately for UI feedback
-    setTempAiSettings(prev => ({
-      ...prev,
-      [folderName]: isEnabled
-    }));
+    setTempAiSettings(prev => {
+      const newSettings = { ...prev, [folderName]: isEnabled };
+      console.log('Updated temp AI settings:', newSettings);
+      return newSettings;
+    });
   };
 
   const isLoading = usersLoading || foldersLoading || accessLoading;
