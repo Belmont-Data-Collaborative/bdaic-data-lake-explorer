@@ -18,6 +18,7 @@ interface User {
   email: string;
   role: string;
   isActive: boolean;
+  isAiEnabled?: boolean;
 }
 
 interface UserWithFolderAccess {
@@ -482,18 +483,18 @@ export default function FolderAccessManagement() {
                           size="sm"
                           onClick={() => quickAiToggleMutation.mutate({ 
                             userId: user.id, 
-                            isAiEnabled: !(user as any).isAiEnabled 
+                            isAiEnabled: !user.isAiEnabled 
                           })}
                           disabled={quickAiToggleMutation.isPending}
                           className={
-                            (user as any).isAiEnabled 
+                            user.isAiEnabled 
                               ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 font-medium shadow-sm"
                               : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-all duration-200 font-medium shadow-sm"
                           }
-                          title={`${(user as any).isAiEnabled ? 'Disable' : 'Enable'} AI for ${user.username}`}
+                          title={`${user.isAiEnabled ? 'Disable' : 'Enable'} AI for ${user.username}`}
                         >
                           <Brain className="h-4 w-4 mr-1" />
-                          {(user as any).isAiEnabled ? 'Disable AI' : 'Enable AI'}
+                          {user.isAiEnabled ? 'Disable AI' : 'Enable AI'}
                         </Button>
 
                         {/* Manage Access Button */}
