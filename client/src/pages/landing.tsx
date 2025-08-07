@@ -202,9 +202,6 @@ For detailed API specifications, please contact the system administrator.`;
       return response.json();
     },
     onSuccess: (data) => {
-      // Clear all cached data to ensure fresh user-specific data
-      queryClient.clear();
-      
       if (data.token && data.user) {
         // JWT-based authentication
         localStorage.setItem('authToken', data.token);
@@ -248,7 +245,9 @@ For detailed API specifications, please contact the system administrator.`;
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authenticated');
+    // Clear all React Query cache to prevent stale authentication data
     queryClient.clear();
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
     
     // Support legacy password-only login if no username provided
     const credentials = loginData.username.trim() 
@@ -752,10 +751,13 @@ For detailed API specifications, please contact the system administrator.`;
                             localStorage.removeItem('currentUser');
                             localStorage.removeItem('authenticated');
                             queryClient.clear();
+                            queryClient.removeQueries();
                             toast({
                               title: "Session cleared",
                               description: "You can now log in with different credentials",
                             });
+                            // Force page reload to ensure complete state reset
+                            setTimeout(() => window.location.reload(), 100);
                           }}
                         >
                           Switch User / Clear Session

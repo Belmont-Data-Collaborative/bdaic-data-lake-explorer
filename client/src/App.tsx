@@ -26,6 +26,9 @@ function Router() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // State to control JWT verification query
+  const [shouldVerifyToken, setShouldVerifyToken] = useState(false);
+
   // Verify JWT token on app start
   const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
@@ -38,7 +41,7 @@ function Router() {
       });
       return res.json();
     },
-    enabled: !!localStorage.getItem('authToken'),
+    enabled: shouldVerifyToken && !!localStorage.getItem('authToken'),
     retry: false,
     staleTime: 0, // Always consider stale to refetch when needed
   });
@@ -47,17 +50,22 @@ function Router() {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
     
-    if (token && storedUser && !isVerifying) {
-      try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
+    if (token && storedUser) {
+      setShouldVerifyToken(true);
+      if (!isVerifying) {
+        try {
+          const user = JSON.parse(storedUser);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          setShouldVerifyToken(false);
+        }
       }
     } else if (!token) {
+      setShouldVerifyToken(false);
       // Check legacy authentication for backwards compatibility
       const legacyAuth = localStorage.getItem('authenticated');
       if (legacyAuth === 'true') {
@@ -83,6 +91,7 @@ function Router() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authenticated');
+    setShouldVerifyToken(false);
     
     setIsAuthenticated(true);
     if (userData) {
@@ -90,6 +99,7 @@ function Router() {
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      setShouldVerifyToken(true);
       // Force refetch the verification to update user context immediately
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['/api/auth/verify'] });
@@ -104,6 +114,7 @@ function Router() {
   const handleLogout = () => {
     // Clear all cached data first
     queryClient.clear();
+    setShouldVerifyToken(false);
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('authenticated');
