@@ -10,6 +10,7 @@ import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
+import { apiRequest } from "@/lib/api"; // Assuming apiRequest is defined elsewhere
 
 interface Stats {
   totalDatasets: number;
@@ -131,7 +132,7 @@ export default function Home() {
     },
     enabled: !!localStorage.getItem('authToken'),
   });
-  
+
   // Debug logging for stats
   console.log('Stats from server:', globalStats);
 
@@ -141,18 +142,18 @@ export default function Home() {
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No authentication token');
-      
+
       const response = await fetch('/api/user/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch user profile');
       }
-      
+
       return response.json();
     },
     enabled: !!localStorage.getItem('authToken'),
@@ -166,11 +167,11 @@ export default function Home() {
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No authentication token');
-      
+
       const res = await apiRequest('GET', '/api/user/accessible-folders', null, {
         'Authorization': `Bearer ${token}`
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         if (res.status === 403 || res.status === 401) {
@@ -185,7 +186,7 @@ export default function Home() {
         }
         throw new Error(errorData.message || 'Failed to load accessible folders');
       }
-      
+
       return res.json();
     },
     enabled: !!localStorage.getItem('authToken'),
@@ -216,10 +217,10 @@ export default function Home() {
   const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
   const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
   const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
-  
+
   const folders = (accessibleFoldersReady && allFoldersReady) ? 
     allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder)) : [];
-  
+
   // Only show loading if either API is still loading or failed to fetch
   const foldersLoading = accessibleFoldersLoading || allFoldersLoading || !accessibleFoldersReady;
 
@@ -244,33 +245,6 @@ export default function Home() {
       count: allDatasets.filter((d) => d.topLevelFolder === folder).length,
     })),
   );
-
-  // Remove folderDataPoints query - we'll use server-calculated stats only
-
-  // Note: datasetsByFolder removed as it wasn't being used
-
-  // Helper function to extract unique data sources from datasets
-  const extractDataSources = (datasets: Dataset[]): Set<string> => {
-    const sources = new Set<string>();
-
-    for (const dataset of datasets) {
-      if (dataset.metadata && (dataset.metadata as any).dataSource) {
-        // Split by comma and clean up each source
-        const dataSources = (dataset.metadata as any).dataSource
-          .split(",")
-          .map((source: string) => source.trim())
-          .filter((source: string) => source.length > 0);
-
-        dataSources.forEach((source: string) => sources.add(source));
-      }
-    }
-
-    return sources;
-  };
-
-  // Remove custom community data points calculation - use server values only
-
-  // Note: calculateFolderStats removed as folder stats now come from server
 
   // Use server stats directly with no modifications whatsoever
   const stats = globalStats;
@@ -344,9 +318,11 @@ export default function Home() {
 
   // Show all folders with datasets (no pagination)
   const paginatedFolders = foldersWithDatasets;
-  
+
   // Additional debug logging for filtered folders
   console.log("Folders after filtering:", foldersWithDatasets);
+
+  const userAiEnabled = userProfile?.isAiEnabled || false;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -401,6 +377,7 @@ export default function Home() {
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
                 currentFolder={selectedFolder}
+                userAiEnabled={userAiEnabled} // Pass userAiEnabled here
               />
             </div>
 
@@ -442,7 +419,7 @@ export default function Home() {
                   selectedDatasetId={selectedDatasetId}
                   showPagination={false}
                   currentFolder={selectedFolder}
-                  userAiEnabled={userProfile?.isAiEnabled || false}
+                  userAiEnabled={userAiEnabled} // Pass userAiEnabled here
                 />
               </ErrorBoundary>
             </div>
@@ -466,6 +443,7 @@ export default function Home() {
                 onSelectDataset={handleSelectDataset}
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
+                userAiEnabled={userAiEnabled} // Pass userAiEnabled here
               />
             </div>
 
@@ -535,15 +513,15 @@ export default function Home() {
                               folderDatasets.reduce((total, dataset) => {
                                 const metadata = dataset.metadata as any;
                                 if (!metadata) return total;
-                                
+
                                 const records = metadata.recordCount ? parseInt(metadata.recordCount) : 0;
                                 const columns = metadata.columnCount ? parseInt(metadata.columnCount) : 0;
                                 const completeness = metadata.completenessScore ? parseFloat(metadata.completenessScore) / 100.0 : 1;
-                                
+
                                 if (isNaN(records) || isNaN(columns) || isNaN(completeness)) {
                                   return total;
                                 }
-                                
+
                                 const dataPoints = records * columns * completeness;
                                 return total + dataPoints;
                               }, 0)

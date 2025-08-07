@@ -21,6 +21,7 @@ interface SearchFiltersProps {
   isRefreshing?: boolean;
   showFolderFilter?: boolean;
   currentFolder?: string;
+  userAiEnabled?: boolean;
 }
 
 export function SearchFilters({
@@ -36,6 +37,7 @@ export function SearchFilters({
   isRefreshing = false,
   showFolderFilter = false,
   currentFolder,
+  userAiEnabled = false,
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
@@ -94,7 +96,7 @@ export function SearchFilters({
                 <SelectItem value="avro">Avro</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {showFolderFilter && (
               <Select value="all" onValueChange={() => {}}>
                 <SelectTrigger className="w-48 touch-target" aria-label="Filter by folder">
@@ -110,7 +112,7 @@ export function SearchFilters({
                 </SelectContent>
               </Select>
             )}
-            
+
             {onTagChange && (
               <Select value={tagFilter} onValueChange={onTagChange}>
                 <SelectTrigger className="w-64 touch-target" aria-label="Filter by tag">
@@ -134,30 +136,31 @@ export function SearchFilters({
                 </SelectContent>
               </Select>
             )}
-            
+
             {onSelectDataset && <DatasetSearch onSelectDataset={onSelectDataset} />}
-            
-            <Button
-              variant="secondary"
-              onClick={() => generateInsightsMutation.mutate(undefined)}
-              disabled={generateInsightsMutation.isPending}
-              className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
-              aria-label="Generate AI insights for all datasets"
-            >
-              {generateInsightsMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" aria-hidden="true"></div>
-                  <span>Generating...</span>
-                  <span className="sr-only">Generating AI insights for all datasets</span>
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2" size={16} aria-hidden="true" />
-                  <span>AI Insights</span>
-                </>
-              )}
-            </Button>
-            
+
+            {userAiEnabled && (
+              <Button
+                onClick={() => generateInsightsMutation.mutate(undefined)}
+                disabled={generateInsightsMutation.isPending}
+                className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
+                aria-label="Generate AI insights for all datasets"
+              >
+                {generateInsightsMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" aria-hidden="true"></div>
+                    <span>Generating...</span>
+                    <span className="sr-only">Generating AI insights for all datasets</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2" size={16} aria-hidden="true" />
+                    <span>AI Insights</span>
+                  </>
+                )}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={handleRefresh}

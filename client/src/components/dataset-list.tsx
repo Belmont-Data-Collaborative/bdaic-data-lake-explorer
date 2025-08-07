@@ -3,15 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { DatasetCard } from "./dataset-card";
 import { MultiDatasetChat } from "./multi-dataset-chat";
 import { useMultiSelect } from "@/hooks/use-multi-select";
-import { 
-  CheckSquare, 
-  Square, 
-  X, 
-  MessageCircle, 
-  CheckCheck 
+import {
+  CheckSquare,
+  Square,
+  X,
+  MessageCircle,
+  CheckCheck
 } from "lucide-react";
 import type { Dataset } from "@shared/schema";
 import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DatasetListProps {
   datasets: Dataset[];
@@ -25,10 +26,10 @@ interface DatasetListProps {
   userAiEnabled?: boolean;
 }
 
-export function DatasetList({ 
-  datasets, 
-  isLoading, 
-  selectedDatasetId, 
+export function DatasetList({
+  datasets,
+  isLoading,
+  selectedDatasetId,
   showPagination = false,
   currentPage = 1,
   totalPages = 1,
@@ -38,8 +39,8 @@ export function DatasetList({
 }: DatasetListProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const multiSelect = useMultiSelect<number>();
-  
-  const selectedDatasets = datasets.filter(dataset => 
+
+  const selectedDatasets = datasets.filter(dataset =>
     multiSelect.isSelected(dataset.id)
   );
 
@@ -63,6 +64,10 @@ export function DatasetList({
     if (selectedDatasets.length > 0) {
       setIsChatOpen(true);
     }
+  };
+
+  const handleClearSelection = () => {
+    multiSelect.clearSelection();
   };
 
   if (isLoading) {
@@ -103,68 +108,71 @@ export function DatasetList({
   return (
     <>
       <section className="space-y-4" role="main" aria-label={`${datasets.length} datasets`}>
-        {/* Multi-select toolbar */}
-        <div className="flex items-center justify-between bg-card rounded-lg border border-border p-3">
-          <div className="flex items-center space-x-3">
-            <Button
-              variant={multiSelect.isSelectionMode ? "default" : "outline"}
-              size="sm"
-              onClick={multiSelect.toggleSelectionMode}
-              className="flex items-center space-x-2"
-            >
-              {multiSelect.isSelectionMode ? (
+        {/* Multi-select controls - only show if AI is enabled */}
+        {userAiEnabled && (
+          <div className="flex items-center justify-between bg-card rounded-lg border border-border p-3">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant={multiSelect.isSelectionMode ? "default" : "outline"}
+                size="sm"
+                onClick={multiSelect.toggleSelectionMode}
+                className="flex items-center space-x-2"
+              >
+                {multiSelect.isSelectionMode ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    <span>Exit Selection</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="h-4 w-4" />
+                    <span>Select Multiple</span>
+                  </>
+                )}
+              </Button>
+
+              {multiSelect.isSelectionMode && (
                 <>
-                  <X className="h-4 w-4" />
-                  <span>Exit Selection</span>
-                </>
-              ) : (
-                <>
-                  <CheckSquare className="h-4 w-4" />
-                  <span>Select Multiple</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    className="flex items-center space-x-2"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    <span>
+                      {multiSelect.selectedCount === datasets.length ? 'Deselect All' : 'Select All'}
+                    </span>
+                  </Button>
+
+                  {multiSelect.selectedCount > 0 && (
+                    <Badge variant="secondary" className="px-2 py-1">
+                      {multiSelect.selectedCount} selected
+                    </Badge>
+                  )}
                 </>
               )}
-            </Button>
-            
-            {multiSelect.isSelectionMode && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                  className="flex items-center space-x-2"
-                >
-                  <CheckCheck className="h-4 w-4" />
-                  <span>
-                    {multiSelect.selectedCount === datasets.length ? 'Deselect All' : 'Select All'}
-                  </span>
-                </Button>
-                
-                {multiSelect.selectedCount > 0 && (
-                  <Badge variant="secondary" className="px-2 py-1">
-                    {multiSelect.selectedCount} selected
-                  </Badge>
-                )}
-              </>
+            </div>
+
+            {multiSelect.selectedCount > 0 && (
+              <Button
+                onClick={handleAskAI}
+                className="flex items-center space-x-2"
+                disabled={multiSelect.selectedCount === 0}
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Ask AI ({multiSelect.selectedCount})</span>
+              </Button>
             )}
           </div>
-
-          {multiSelect.selectedCount > 0 && userAiEnabled && (
-            <Button
-              onClick={handleAskAI}
-              className="flex items-center space-x-2"
-              disabled={multiSelect.selectedCount === 0}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>Ask AI ({multiSelect.selectedCount})</span>
-            </Button>
-          )}
-        </div>
+        )}
 
         <h2 className="sr-only">Dataset Results</h2>
         {datasets.map((dataset, index) => (
           <div key={dataset.id} className="relative">
-            {multiSelect.isSelectionMode && (
-              <div 
+            {/* Selection overlay - only show if AI is enabled */}
+            {userAiEnabled && multiSelect.isSelectionMode && (
+              <div
                 className="absolute top-4 left-4 z-10 cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -178,8 +186,8 @@ export function DatasetList({
                 )}
               </div>
             )}
-            <DatasetCard 
-              dataset={dataset} 
+            <DatasetCard
+              dataset={dataset}
               initiallyOpen={selectedDatasetId === dataset.id}
               isSelectionMode={multiSelect.isSelectionMode}
               isSelected={multiSelect.isSelected(dataset.id)}
