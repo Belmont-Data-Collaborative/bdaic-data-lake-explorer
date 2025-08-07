@@ -1570,14 +1570,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let stats = getCached<any>('precomputed-stats');
         
         if (stats) {
+          console.log(`Admin user ${user.username} using cached stats: totalCommunityDataPoints = ${stats.totalCommunityDataPoints}`);
           res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
           return res.json(stats);
         }
 
         // Fallback to legacy cache check for admins
         if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
+          console.log(`Admin user ${user.username} using legacy cached stats: totalCommunityDataPoints = ${statsCache.data.totalCommunityDataPoints}`);
           return res.json(statsCache.data);
         }
+      }
+      
+      console.log(`Calculating fresh stats for user ${user.username} (${user.role})`);
+      
+      // Clear any potentially stale cached values for non-admin users
+      if (user.role !== 'admin') {
+        console.log('Bypassing all caches for non-admin user');
       }
 
       // Get all datasets
