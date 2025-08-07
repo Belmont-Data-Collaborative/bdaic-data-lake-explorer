@@ -33,8 +33,7 @@ export default function FolderAccessManagement() {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [userAiEnabled, setUserAiEnabled] = useState<boolean>(false);
-  const [originalAiEnabled, setOriginalAiEnabled] = useState<boolean>(false);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -227,58 +226,16 @@ export default function FolderAccessManagement() {
   const handleEditFolderAccess = (user: UserWithFolderAccess) => {
     setEditingUserId(user.userId);
     setSelectedFolders(user.folders || []);
-    
-    // Find the user data to get their AI enabled status
-    const fullUser = users.find((u: any) => u.id === user.userId);
-    const isAiEnabled = fullUser?.isAiEnabled || false;
-    
-    console.log(`Setting original AI setting for user ${user.userId}:`, isAiEnabled);
-    setOriginalAiEnabled(isAiEnabled);
-    setUserAiEnabled(isAiEnabled);
-    
     setDialogOpen(true);
   };
 
   const handleSaveFolderAccess = async () => {
     if (editingUserId) {
-      try {
-        // Update folder access
-        updateFolderAccessMutation.mutate({
-          userId: editingUserId,
-          folderNames: selectedFolders,
-        });
-
-        // Update user AI setting if it changed
-        if (originalAiEnabled !== userAiEnabled) {
-          console.log(`Updating AI setting for user ${editingUserId} to ${userAiEnabled}`);
-          
-          const token = localStorage.getItem('authToken');
-          const response = await apiRequest('PUT', `/api/admin/users/${editingUserId}/ai-enabled`, 
-            { isAiEnabled: userAiEnabled }, 
-            { 'Authorization': `Bearer ${token}` }
-          );
-
-          if (!response.ok) {
-            throw new Error(`Failed to update user AI setting: ${response.statusText}`);
-          }
-
-          toast({
-            title: "Settings Updated",
-            description: "Folder access and AI settings have been updated successfully.",
-          });
-
-          // Refresh users data to get updated AI settings
-          queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-        }
-
-      } catch (error) {
-        console.error('Save error:', error);
-        toast({
-          title: "Update Failed",
-          description: "Failed to update settings.",
-          variant: "destructive",
-        });
-      }
+      // Update folder access only
+      updateFolderAccessMutation.mutate({
+        userId: editingUserId,
+        folderNames: selectedFolders,
+      });
     }
   };
 
@@ -290,10 +247,7 @@ export default function FolderAccessManagement() {
     );
   };
 
-  const handleAiToggle = (isEnabled: boolean) => {
-    console.log(`AI toggle for user ${editingUserId}: ${isEnabled}`);
-    setUserAiEnabled(isEnabled);
-  };
+
 
   const isLoading = usersLoading || foldersLoading || accessLoading;
 
@@ -519,22 +473,19 @@ export default function FolderAccessManagement() {
                           </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
-                            <DialogTitle>Manage Permissions for {user.username}</DialogTitle>
+                            <DialogTitle>Manage Folder Access for {user.username}</DialogTitle>
                             <DialogDescription>
-                              Select folder access and enable Ask AI functionality for this user
+                              Select which folders this user can access and download data from. Use the AI toggle button to manage AI permissions.
                             </DialogDescription>
                           </DialogHeader>
                           
-                          <div className="space-y-6">
+                          <div className="space-y-4">
                             {/* Folder Access Section */}
                             <div className="space-y-3">
                               <h3 className="text-lg font-semibold flex items-center gap-2">
                                 <Folder className="h-5 w-5" />
                                 Folder Access
                               </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Select which folders this user can access and download data from
-                              </p>
                               <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto border rounded-lg p-4 bg-muted/20">
                                 {allFolders.map((folder: string) => (
                                   <div key={folder} className="flex items-center space-x-2">
@@ -553,48 +504,11 @@ export default function FolderAccessManagement() {
                                 ))}
                               </div>
                             </div>
-
-                            {/* AI Access Section - User-based AI settings */}
-                            <div className="space-y-3">
-                              <h3 className="text-lg font-semibold flex items-center gap-2">
-                                <Bot className="h-5 w-5" />
-                                Ask AI Access
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Enable Ask AI functionality for this user across all their accessible folders
-                              </p>
-                              <div className="border rounded-lg p-4 bg-muted/20">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <Brain className="h-4 w-4 text-muted-foreground" />
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-medium">
-                                        Enable Ask AI for User
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        When enabled, this user can use Ask AI across all their accessible folders
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">
-                                      {userAiEnabled ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                    <Switch
-                                      checked={userAiEnabled}
-                                      onCheckedChange={handleAiToggle}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
                             
                             <div className="flex justify-end space-x-2">
                               <Button
                                 variant="outline"
                                 onClick={() => {
-                                  // Revert AI changes
-                                  setUserAiEnabled(originalAiEnabled);
                                   setEditingUserId(null);
                                   setSelectedFolders([]);
                                   setDialogOpen(false);
@@ -610,7 +524,7 @@ export default function FolderAccessManagement() {
                                 className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm transition-all duration-200"
                               >
                                 <Save className="h-4 w-4 mr-1" />
-                                {updateFolderAccessMutation.isPending ? "Saving..." : "Save Changes"}
+                                {updateFolderAccessMutation.isPending ? "Saving..." : "Save Folder Access"}
                               </Button>
                             </div>
                           </div>
