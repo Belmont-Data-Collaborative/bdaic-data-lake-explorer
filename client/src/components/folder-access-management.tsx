@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
+
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock, Brain, Bot } from "lucide-react";
+import { Users, Folder, Edit, Shield, Save, X, RefreshCw, UserCheck, Lock, Unlock, Brain } from "lucide-react";
 
 interface User {
   id: number;
@@ -118,20 +118,51 @@ export default function FolderAccessManagement() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "AI Setting Updated",
-        description: "User AI access has been updated successfully.",
+    onMutate: async ({ userId, isAiEnabled }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['/api/admin/users'] });
+
+      // Snapshot the previous value
+      const previousUsers = queryClient.getQueryData(['/api/admin/users']);
+
+      // Optimistically update the user in the cache
+      queryClient.setQueryData(['/api/admin/users'], (old: any[]) => {
+        if (!old) return old;
+        return old.map(user => 
+          user.id === userId 
+            ? { ...user, isAiEnabled } 
+            : user
+        );
       });
-      // Refresh users data to show updated AI status
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+
+      // Return context with snapshotted value
+      return { previousUsers };
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Revert optimistic update on error
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['/api/admin/users'], context.previousUsers);
+      }
+      
       toast({
         title: "Update Failed", 
         description: error.message || "Failed to update AI setting.",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Setting Updated",
+        description: "User AI access has been updated successfully.",
+      });
+      
+      // Invalidate queries to ensure data is fresh
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+    },
+    onSettled: () => {
+      // Always refetch users after mutation is done
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
     }
   });
 

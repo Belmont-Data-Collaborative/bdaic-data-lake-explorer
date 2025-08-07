@@ -575,7 +575,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      res.json({ message: `User AI setting updated successfully for user ${userId}` });
+      return res.json({ 
+        message: `User AI setting updated successfully for user ${userId}`,
+        user: updatedUser
+      });
     } catch (error) {
       console.error("Error updating user AI setting:", error);
       res.status(500).json({ message: "Failed to update user AI setting" });
