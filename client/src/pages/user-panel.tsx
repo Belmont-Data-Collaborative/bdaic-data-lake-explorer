@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { User, TrendingUp, Download, Calendar, ExternalLink, Eye, Folder, FolderOpen } from "lucide-react";
+import { User, TrendingUp, Download, Calendar, ExternalLink, Eye, Folder, FolderOpen, Database } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 interface User {
   id: number;
@@ -212,6 +213,32 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
             </Card>
           </div>
         )}
+
+        {/* Quick Access to Dataset Explorer */}
+        <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Database className="text-primary" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Explore Datasets</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Browse and search through your accessible data folders
+                  </p>
+                </div>
+              </div>
+              <Link href="/datasets">
+                <Button className="flex items-center space-x-2">
+                  <Database size={16} />
+                  <span>Go to Dataset Explorer</span>
+                  <ExternalLink size={14} />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="folders" className="w-full">

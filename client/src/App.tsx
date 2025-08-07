@@ -144,7 +144,8 @@ function Router() {
   return (
     <MainLayout onLogout={handleLogout} currentUser={currentUser}>
       <Switch>
-        <Route path="/" component={() => <Home />} />
+        <Route path="/" component={() => <UserPanel currentUser={currentUser} />} />
+        <Route path="/datasets" component={() => <Home />} />
         <Route path="/user-panel" component={() => <UserPanel currentUser={currentUser} />} />
         <Route path="/aws-config" component={() => {
           // Role-based access control for AWS configuration
