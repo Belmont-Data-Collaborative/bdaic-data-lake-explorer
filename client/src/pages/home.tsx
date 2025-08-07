@@ -127,17 +127,29 @@ export default function Home() {
     queryKey: ["/api/user/accessible-folders"],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
-      if (!token) return [];
+      if (!token) throw new Error('No authentication token');
       
       const res = await apiRequest('GET', '/api/user/accessible-folders', null, {
         'Authorization': `Bearer ${token}`
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403 || res.status === 401) {
+          // Token expired, clear it and redirect to login
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+          throw new Error('Authentication expired');
+        }
+        throw new Error(errorData.message || 'Failed to load accessible folders');
+      }
+      
       return res.json();
     },
     enabled: !!localStorage.getItem('authToken'),
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
-    retry: 1, // Only retry once for authentication issues
+    retry: false, // Don't retry auth errors
   });
 
   const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
@@ -157,11 +169,16 @@ export default function Home() {
   });
 
   // Filter folders based on user access
-  // Wait for both queries to complete and accessible folders to have data before showing results
-  const folders = (accessibleFoldersLoading || allFoldersLoading || accessibleFolders.length === 0) ? [] : 
-    allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
-  const foldersLoading = allFoldersLoading || accessibleFoldersLoading || 
-    (accessibleFolders.length === 0 && !accessibleFoldersError);
+  // Show loading until we successfully get accessible folders data
+  const hasAccessibleFolders = !accessibleFoldersLoading && !accessibleFoldersError && accessibleFolders.length > 0;
+  const hasAllFolders = !allFoldersLoading && allFoldersFromAPI.length > 0;
+  const folders = (hasAccessibleFolders && hasAllFolders) ? 
+    allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder)) : [];
+  
+  // Show loading state if either data is loading OR if accessible folders failed/empty
+  const foldersLoading = accessibleFoldersLoading || allFoldersLoading || 
+    (!hasAccessibleFolders && !accessibleFoldersError) ||
+    (accessibleFoldersError && !accessibleFoldersError.message?.includes('Authentication expired'));
 
   // Debug logging
   console.log("Accessible folders from API:", accessibleFolders);
@@ -169,6 +186,8 @@ export default function Home() {
   console.log("Folders from API:", folders);
   console.log("Accessible folders loading:", accessibleFoldersLoading);
   console.log("All folders loading:", allFoldersLoading);
+  console.log("Has accessible folders:", hasAccessibleFolders);
+  console.log("Has all folders:", hasAllFolders);
   console.log("Folders loading state:", foldersLoading);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
@@ -559,12 +578,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {(isRefreshing || foldersLoading) && (
+              {(isRefreshing || (foldersLoading && !allDatasetsLoading)) && (
                 <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                   <div className="bg-white rounded-lg shadow-lg p-6 flex items-center space-x-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <span className="text-gray-700">
-                      {foldersLoading ? 'Filtering folders by tag...' : 'Refreshing datasets from S3...'}
+                      {accessibleFoldersLoading ? 'Loading your folder permissions...' : 
+                       allFoldersLoading ? 'Loading available folders...' :
+                       foldersLoading ? 'Applying folder access controls...' : 
+                       'Refreshing datasets from S3...'}
                     </span>
                   </div>
                 </div>
@@ -572,8 +594,8 @@ export default function Home() {
 
               <ErrorBoundary>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {allDatasetsLoading ? (
-                    // Show skeleton cards while loading
+                  {(allDatasetsLoading || foldersLoading || folders.length === 0) ? (
+                    // Show skeleton cards while loading or when no folders are available yet
                     Array.from({ length: 12 }, (_, index) => (
                       <SkeletonFolderCard key={`skeleton-${index}`} index={index} />
                     ))
