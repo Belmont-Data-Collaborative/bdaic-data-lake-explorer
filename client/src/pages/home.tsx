@@ -508,10 +508,19 @@ export default function Home() {
                             onClick={() => handleFolderSelect(folderName)}
                             totalCommunityDataPoints={
                               folderDatasets.reduce((total, dataset) => {
-                                const records = dataset.recordCount || 0;
-                                const columns = dataset.columnCount || 0;
-                                const completeness = dataset.completeness || 1;
-                                return total + (records * columns * completeness);
+                                const metadata = dataset.metadata as any;
+                                if (!metadata) return total;
+                                
+                                const records = metadata.recordCount ? parseInt(metadata.recordCount) : 0;
+                                const columns = metadata.columnCount ? parseInt(metadata.columnCount) : 0;
+                                const completeness = metadata.completenessScore ? parseFloat(metadata.completenessScore) / 100.0 : 1;
+                                
+                                if (isNaN(records) || isNaN(columns) || isNaN(completeness)) {
+                                  return total;
+                                }
+                                
+                                const dataPoints = records * columns * completeness;
+                                return total + dataPoints;
                               }, 0)
                             }
                           />

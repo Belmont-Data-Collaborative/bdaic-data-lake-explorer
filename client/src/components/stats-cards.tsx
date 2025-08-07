@@ -43,11 +43,6 @@ export function StatsCards({ stats }: StatsCardsProps) {
   console.log('StatsCards - stats received:', !!stats);
   console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
   console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
-  
-  // Force a re-render when stats change
-  if (stats && stats.totalCommunityDataPoints !== undefined) {
-    console.log('StatsCards - Valid stats received, will show real data');
-  }
 
 
   // Loading state placeholders (will be used when stats are not available)
