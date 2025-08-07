@@ -115,19 +115,42 @@ export default function Home() {
     }
   };
 
-  // Use authenticated stats endpoint that handles user-specific data properly
+  // Use a completely fresh query to bypass all caching
   const { data: globalStats } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
-    staleTime: 0, // No caching to ensure fresh user-specific data
-    gcTime: 0, // No garbage collection cache
-    enabled: !!localStorage.getItem('authToken'), // Only run when authenticated
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    retry: 1, // Retry once on failure
+    queryKey: ["/api/stats", "fresh-user-specific", Date.now()],
+    queryFn: async () => {
+      console.log('Making fresh authenticated API call to /api/stats...');
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No auth token found');
+      
+      const response = await fetch('/api/stats', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Fresh stats API response:', JSON.stringify(data, null, 2));
+      return data;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    enabled: !!localStorage.getItem('authToken'),
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
   
   // Debug logging for calculated stats
   console.log('Calculated user stats:', globalStats);
+  console.log('API call being made to:', '/api/stats');
 
 
 
@@ -367,12 +390,7 @@ export default function Home() {
           totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
         };
       })()
-    : globalStats
-      ? {
-          ...globalStats,
-          totalCommunityDataPoints: getTotalCommunityDataPoints(), // Ensure global stats always use API data
-        }
-      : undefined;
+    : globalStats; // Use server-calculated stats directly - they already include user-specific filtering
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;

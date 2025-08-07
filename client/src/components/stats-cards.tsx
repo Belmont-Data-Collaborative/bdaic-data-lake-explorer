@@ -42,6 +42,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   // Debug: Check if stats are being received
   console.log('StatsCards - stats received:', !!stats);
   console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
+  console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
   
   // Force a re-render when stats change
   if (stats && stats.totalCommunityDataPoints !== undefined) {
