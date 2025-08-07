@@ -79,6 +79,8 @@ function Router() {
   const handleLogin = (userData?: { token: string; user: User }) => {
     setIsAuthenticated(true);
     if (userData) {
+      // Clear cached data for fresh user-specific data
+      queryClient.clear();
       // JWT-based login
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
@@ -95,6 +97,8 @@ function Router() {
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    // Clear all cached data when logging out
+    queryClient.clear();
   };
 
   if (isLoading || isVerifying) {
