@@ -439,7 +439,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/users-folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
+      // Force no-cache headers to ensure fresh database fetch
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      console.log('Fetching fresh users-folder-access data from database');
       const usersWithAccess = await storage.getUsersWithFolderAccess();
+      console.log(`Found ${usersWithAccess.length} users with folder access data`);
       res.json(usersWithAccess);
     } catch (error) {
       console.error("Error fetching users with folder access:", error);
@@ -487,6 +496,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.user!.id
       );
 
+      console.log(`Updated folder access for user ${userId} with folders:`, validation.data.folderNames);
+      
       res.json({
         message: "Folder access updated successfully",
         accessRecords,

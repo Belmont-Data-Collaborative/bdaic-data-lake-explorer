@@ -34,23 +34,29 @@ export default function FolderAccessManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Manual refresh function
+  // Manual refresh function - force fresh database fetch
   const handleRefreshData = async () => {
     toast({
       title: "Refreshing data...",
-      description: "Updating folder access information.",
+      description: "Fetching latest folder access from database.",
     });
     
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] })
-    ]);
-
-    toast({
-      title: "Data refreshed",
-      description: "Folder access information has been updated.",
-    });
+    try {
+      // Clear cache completely and force fresh fetch
+      queryClient.clear();
+      await refetchUsersAccess();
+      
+      toast({
+        title: "Data refreshed",
+        description: "Latest folder access information loaded from database.",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "Could not fetch latest data from database.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Fetch all users
@@ -74,16 +80,20 @@ export default function FolderAccessManagement() {
     },
   });
 
-  // Fetch users with folder access
-  const { data: usersWithAccess = [], isLoading: accessLoading } = useQuery({
+  // Fetch users with folder access - always fetch fresh from database
+  const { data: usersWithAccess = [], isLoading: accessLoading, refetch: refetchUsersAccess } = useQuery({
     queryKey: ['/api/admin/users-folder-access'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
       const res = await apiRequest('GET', '/api/admin/users-folder-access', null, {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       });
       return res.json();
     },
+    staleTime: 0, // Always consider stale
+    gcTime: 0, // Don't keep in cache
   });
 
   // Update folder access mutation
@@ -140,16 +150,33 @@ export default function FolderAccessManagement() {
         description: "User folder permissions have been updated successfully.",
       });
       
-      // Force immediate cache invalidation and refetch
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/user/accessible-folders'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/folders'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/datasets'] })
-      ]);
+      // Clear all caches completely to force fresh database fetch
+      queryClient.clear();
       
-      // Force immediate refetch for the table data
-      await queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      // Force fresh database fetch with no cache
+      const token = localStorage.getItem('authToken');
+      try {
+        const freshResponse = await fetch('/api/admin/users-folder-access', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (freshResponse.ok) {
+          const freshData = await freshResponse.json();
+          // Set fresh data in cache
+          queryClient.setQueryData(['/api/admin/users-folder-access'], freshData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch fresh data:', error);
+      }
+      
+      // Also invalidate other related queries
+      queryClient.invalidateQueries({ queryKey: ['/api/user/accessible-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/datasets'] });
       
       setEditingUserId(null);
       setSelectedFolders([]);
