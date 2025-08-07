@@ -448,10 +448,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         </DialogContent>
                       </Dialog>
 
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Dialog>
+                            <DialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -460,39 +460,39 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {currentUser?.id === user.id 
-                                ? "Cannot delete your own account" 
-                                : "Delete user"
-                              }
-                            </TooltipContent>
-                          </Tooltip>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete User</DialogTitle>
-                            <DialogDescription>
-                              Are you sure you want to delete "{deletingUser?.username}"? This action cannot be undone and will remove the user permanently.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => setDeletingUser(null)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={handleDeleteUser}
-                              disabled={deleteUserMutation.isPending}
-                            >
-                              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Delete User</DialogTitle>
+                                <DialogDescription>
+                                  Are you sure you want to delete "{deletingUser?.username}"? This action cannot be undone and will remove the user permanently.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setDeletingUser(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={handleDeleteUser}
+                                  disabled={deleteUserMutation.isPending}
+                                >
+                                  {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {currentUser?.id === user.id 
+                            ? "Cannot delete your own account" 
+                            : "Delete user"
+                          }
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
