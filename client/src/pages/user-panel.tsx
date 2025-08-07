@@ -235,6 +235,16 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                         </div>
                       </div>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-emerald-800">AI Features</span>
+                      <span className={`text-sm font-medium ${
+                        (currentUser as any).isAiEnabled 
+                          ? 'text-emerald-700' 
+                          : 'text-gray-500'
+                      }`}>
+                        {(currentUser as any).isAiEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -310,7 +320,7 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                             {folder.replace(/_/g, " ").toUpperCase()}
                           </span>
                         </div>
-                        <Badge className={getFolderColor(folder)} variant="secondary" size="sm">
+                        <Badge className={getFolderColor(folder)} variant="secondary">
                           {folder}
                         </Badge>
                       </div>
