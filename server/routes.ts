@@ -1647,6 +1647,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
       };
 
+      console.log(`About to send stats response for user ${user.username}:`, JSON.stringify(stats, null, 2));
+
       // Only cache stats for admins (full dataset stats)
       if (user.role === 'admin') {
         statsCache = {
