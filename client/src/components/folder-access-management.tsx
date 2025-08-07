@@ -105,6 +105,36 @@ export default function FolderAccessManagement() {
 
   // Remove the folder AI settings useEffect since we're now using user-based AI settings
 
+  // Quick AI toggle mutation for individual users
+  const quickAiToggleMutation = useMutation({
+    mutationFn: async ({ userId, isAiEnabled }: { userId: number, isAiEnabled: boolean }) => {
+      const token = localStorage.getItem('authToken');
+      const res = await apiRequest('PUT', `/api/admin/users/${userId}/ai-enabled`, 
+        { isAiEnabled }, 
+        { 'Authorization': `Bearer ${token}` }
+      );
+      if (!res.ok) {
+        throw new Error(`Failed to update AI setting: ${res.statusText}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Setting Updated",
+        description: "User AI access has been updated successfully.",
+      });
+      // Refresh users data to show updated AI status
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed", 
+        description: error.message || "Failed to update AI setting.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Update folder access mutation
   const updateFolderAccessMutation = useMutation({
     mutationFn: async ({ userId, folderNames }: { userId: number; folderNames: string[] }) => {
@@ -445,25 +475,47 @@ export default function FolderAccessManagement() {
                       )}
                     </TableCell>
                     <TableCell className="py-4">
-                      <Dialog open={dialogOpen && editingUserId === user.id} onOpenChange={setDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditFolderAccess(userAccess || { 
-                              userId: user.id, 
-                              username: user.username, 
-                              email: user.email, 
-                              role: user.role, 
-                              folders: [] 
-                            })}
-                            className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 font-medium shadow-sm"
-                            title={`Manage folder access for ${user.username}`}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Manage Access
-                          </Button>
-                        </DialogTrigger>
+                      <div className="flex items-center space-x-2">
+                        {/* Quick AI Toggle Button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => quickAiToggleMutation.mutate({ 
+                            userId: user.id, 
+                            isAiEnabled: !(user as any).isAiEnabled 
+                          })}
+                          disabled={quickAiToggleMutation.isPending}
+                          className={
+                            (user as any).isAiEnabled 
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 font-medium shadow-sm"
+                              : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-all duration-200 font-medium shadow-sm"
+                          }
+                          title={`${(user as any).isAiEnabled ? 'Disable' : 'Enable'} AI for ${user.username}`}
+                        >
+                          <Brain className="h-4 w-4 mr-1" />
+                          {(user as any).isAiEnabled ? 'Disable AI' : 'Enable AI'}
+                        </Button>
+
+                        {/* Manage Access Button */}
+                        <Dialog open={dialogOpen && editingUserId === user.id} onOpenChange={setDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditFolderAccess(userAccess || { 
+                                userId: user.id, 
+                                username: user.username, 
+                                email: user.email, 
+                                role: user.role, 
+                                folders: [] 
+                              })}
+                              className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 font-medium shadow-sm"
+                              title={`Manage folder access for ${user.username}`}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Manage Access
+                            </Button>
+                          </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Manage Permissions for {user.username}</DialogTitle>
@@ -563,6 +615,7 @@ export default function FolderAccessManagement() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
