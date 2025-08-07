@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Folder, Edit, Shield, Save, X } from "lucide-react";
+import { Users, Folder, Edit, Shield, Save, X, RefreshCw } from "lucide-react";
 
 interface User {
   id: number;
@@ -33,6 +33,25 @@ export default function FolderAccessManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Manual refresh function
+  const handleRefreshData = async () => {
+    toast({
+      title: "Refreshing data...",
+      description: "Updating folder access information.",
+    });
+    
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/folders'] })
+    ]);
+
+    toast({
+      title: "Data refreshed",
+      description: "Folder access information has been updated.",
+    });
+  };
 
   // Fetch all users
   const { data: users = [], isLoading: usersLoading } = useQuery({
@@ -77,32 +96,64 @@ export default function FolderAccessManagement() {
       );
       return res.json();
     },
-    onMutate: () => {
+    onMutate: async ({ userId, folderNames }) => {
+      // Show updating toast
       toast({
         title: "Updating folder access...",
         description: "Please wait while we update the user's folder permissions.",
       });
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/admin/users-folder-access'] });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(['/api/admin/users-folder-access']);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['/api/admin/users-folder-access'], (old: UserWithFolderAccess[] | undefined) => {
+        if (!old) return old;
+        
+        return old.map(user => 
+          user.userId === userId 
+            ? { ...user, folders: folderNames }
+            : user
+        );
+      });
+
+      // Return context with snapshot
+      return { previousData };
     },
-    onSuccess: () => {
+    onError: (err, _variables, context) => {
+      // Revert on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/admin/users-folder-access'], context.previousData);
+      }
+      toast({
+        title: "Update failed",
+        description: err.message || "Failed to update folder access",
+        variant: "destructive",
+      });
+    },
+    onSuccess: async () => {
       toast({
         title: "Folder access updated",
         description: "User folder permissions have been updated successfully.",
       });
-      // Invalidate all relevant queries to ensure immediate UI update
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user/accessible-folders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/datasets'] });
+      
+      // Force immediate cache invalidation and refetch
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/user/accessible-folders'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/folders'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/datasets'] })
+      ]);
+      
+      // Force immediate refetch for the table data
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      
       setEditingUserId(null);
       setSelectedFolders([]);
-      setDialogOpen(false); // Close dialog after successful update
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Update failed",
-        description: error.message || "Failed to update folder access",
-        variant: "destructive",
-      });
+      setDialogOpen(false);
     },
   });
 
@@ -183,10 +234,23 @@ export default function FolderAccessManagement() {
       {/* Folder Access Management Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Folder Access Management</CardTitle>
-          <CardDescription>
-            Manage which folders each user can access. Admins have access to all folders by default.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Folder Access Management</CardTitle>
+              <CardDescription>
+                Manage which folders each user can access. Admins have access to all folders by default.
+              </CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefreshData}
+              disabled={updateFolderAccessMutation.isPending}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
