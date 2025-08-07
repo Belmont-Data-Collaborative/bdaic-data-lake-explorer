@@ -12,16 +12,11 @@ import {
   type AwsConfig,
   type InsertAwsConfig,
   type AuthConfig,
-  type InsertAuthConfig,
-  type RefreshLog,
-  type InsertRefreshLog,
   type Download,
-  type InsertDownload,
   type User,
   type InsertUser,
   type UpdateUser,
-  type UserFolderAccess,
-  type InsertUserFolderAccess
+  type UserFolderAccess
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
@@ -60,6 +55,7 @@ export interface IStorage {
   recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
   incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void>;
   getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }>;
+  getBatchDownloadStats(datasetIds: number[]): Promise<Record<number, { sample: number; full: number; metadata: number; total: number }>>;
 
   // User management operations
   createUser(userData: InsertUser): Promise<User>;
@@ -487,6 +483,42 @@ export class DatabaseStorage implements IStorage {
       metadata: dataset.metadata,
       total: dataset.sample + dataset.full + dataset.metadata,
     };
+  }
+
+  async getBatchDownloadStats(datasetIds: number[]): Promise<Record<number, { sample: number; full: number; metadata: number; total: number }>> {
+    if (datasetIds.length === 0) {
+      return {};
+    }
+
+    const results = await db
+      .select({
+        id: datasets.id,
+        sample: datasets.downloadCountSample,
+        full: datasets.downloadCountFull,
+        metadata: datasets.downloadCountMetadata,
+      })
+      .from(datasets)
+      .where(inArray(datasets.id, datasetIds));
+
+    const stats: Record<number, { sample: number; full: number; metadata: number; total: number }> = {};
+    
+    results.forEach(dataset => {
+      stats[dataset.id] = {
+        sample: dataset.sample,
+        full: dataset.full,
+        metadata: dataset.metadata,
+        total: dataset.sample + dataset.full + dataset.metadata,
+      };
+    });
+
+    // Fill in missing datasets with zero stats
+    datasetIds.forEach(id => {
+      if (!stats[id]) {
+        stats[id] = { sample: 0, full: 0, metadata: 0, total: 0 };
+      }
+    });
+
+    return stats;
   }
 
   // Folder access management

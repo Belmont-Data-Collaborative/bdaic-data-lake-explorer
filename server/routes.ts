@@ -4,14 +4,14 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema, updateFolderAiSettingsSchema } from "@shared/schema";
+import { insertAwsConfigSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
 import { z } from "zod";
-import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
+import { authenticateToken, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
 // Simple cache for expensive operations
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-function getCached<T>(key: string, ttl: number = 30000): T | null {
+function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data as T;
@@ -246,13 +246,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.verifyPassword(password);
       
       if (isValid) {
-        res.json({ success: true });
+        return res.json({ success: true });
       } else {
-        res.status(401).json({ message: "Invalid password" });
+        return res.status(401).json({ message: "Invalid password" });
       }
     } catch (error) {
       console.error("Error during login:", error);
-      res.status(500).json({ message: "Login failed" });
+      return res.status(500).json({ message: "Login failed" });
     }
   });
 
@@ -280,10 +280,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.setPassword(newPassword);
-      res.json({ message: "Password updated successfully" });
+      return res.json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("Error setting password:", error);
-      res.status(500).json({ message: "Failed to update password" });
+      return res.status(500).json({ message: "Failed to update password" });
     }
   });
 
@@ -296,10 +296,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authConfig = await storage.setPassword("DataIsGood");
       }
       
-      res.json({ hasPassword: !!authConfig });
+      return res.json({ hasPassword: !!authConfig });
     } catch (error) {
       console.error("Error checking auth status:", error);
-      res.status(500).json({ message: "Failed to check auth status" });
+      return res.status(500).json({ message: "Failed to check auth status" });
     }
   });
 
@@ -338,10 +338,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       }));
-      res.json(safeUsers);
+      return res.json(safeUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      return res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
@@ -362,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+      return res.json({
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
@@ -371,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      return res.status(500).json({ message: "Failed to update user" });
     }
   });
 
@@ -389,10 +389,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({ message: "User deleted successfully" });
+      return res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: "Failed to delete user" });
+      return res.status(500).json({ message: "Failed to delete user" });
     }
   });
 
@@ -404,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+      return res.json({
         id: user.id,
         username: user.username,
         email: user.email,
@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
-      res.status(500).json({ message: "Failed to fetch profile" });
+      return res.status(500).json({ message: "Failed to fetch profile" });
     }
   });
 
@@ -435,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+      return res.json({
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
@@ -443,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error updating profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      return res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
@@ -451,10 +451,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const folderAccess = await storage.getAllFolderAccess();
-      res.json(folderAccess);
+      return res.json(folderAccess);
     } catch (error) {
       console.error("Error fetching folder access:", error);
-      res.status(500).json({ message: "Failed to fetch folder access" });
+      return res.status(500).json({ message: "Failed to fetch folder access" });
     }
   });
 
@@ -470,10 +470,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Fetching fresh users-folder-access data from database');
       const usersWithAccess = await storage.getUsersWithFolderAccess();
       console.log(`Found ${usersWithAccess.length} users with folder access data`);
-      res.json(usersWithAccess);
+      return res.json(usersWithAccess);
     } catch (error) {
       console.error("Error fetching users with folder access:", error);
-      res.status(500).json({ message: "Failed to fetch users with folder access" });
+      return res.status(500).json({ message: "Failed to fetch users with folder access" });
     }
   });
 
@@ -481,10 +481,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const folderAccess = await storage.getUserFolderAccess(userId);
-      res.json(folderAccess);
+      return res.json(folderAccess);
     } catch (error) {
       console.error("Error fetching user folder access:", error);
-      res.status(500).json({ message: "Failed to fetch user folder access" });
+      return res.status(500).json({ message: "Failed to fetch user folder access" });
     }
   });
 
@@ -519,23 +519,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Updated folder access for user ${userId} with folders:`, validation.data.folderNames);
       
-      res.json({
+      return res.json({
         message: "Folder access updated successfully",
         accessRecords,
       });
     } catch (error) {
       console.error("Error updating user folder access:", error);
-      res.status(500).json({ message: "Failed to update user folder access" });
+      return res.status(500).json({ message: "Failed to update user folder access" });
     }
   });
 
   app.get("/api/user/accessible-folders", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {
       const accessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
-      res.json(accessibleFolders);
+      return res.json(accessibleFolders);
     } catch (error) {
       console.error("Error fetching accessible folders:", error);
-      res.status(500).json({ message: "Failed to fetch accessible folders" });
+      return res.status(500).json({ message: "Failed to fetch accessible folders" });
     }
   });
 
