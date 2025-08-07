@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/format-number";
 import Register from "./register";
 import ReactMarkdown from "react-markdown";
@@ -202,6 +202,9 @@ For detailed API specifications, please contact the system administrator.`;
       return response.json();
     },
     onSuccess: (data) => {
+      // Clear all cached data to ensure fresh user-specific data
+      queryClient.clear();
+      
       if (data.token && data.user) {
         // JWT-based authentication
         localStorage.setItem('authToken', data.token);

@@ -27,7 +27,7 @@ function Router() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Verify JWT token on app start
-  const { data: verificationData, isLoading: isVerifying } = useQuery({
+  const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -40,6 +40,7 @@ function Router() {
     },
     enabled: !!localStorage.getItem('authToken'),
     retry: false,
+    staleTime: 0, // Always consider stale to refetch when needed
   });
 
   useEffect(() => {
@@ -85,6 +86,10 @@ function Router() {
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      // Force refetch the verification to update user context immediately
+      setTimeout(() => {
+        refetchVerification();
+      }, 100);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
@@ -92,13 +97,15 @@ function Router() {
   };
 
   const handleLogout = () => {
+    // Clear all cached data first
+    queryClient.clear();
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    // Clear all cached data when logging out
-    queryClient.clear();
+    // Force a page reload to ensure completely clean state
+    window.location.href = '/';
   };
 
   if (isLoading || isVerifying) {
