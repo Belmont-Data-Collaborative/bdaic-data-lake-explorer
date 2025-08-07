@@ -157,9 +157,7 @@ export default function Home() {
       }
 
       const data = await response.json();
-      console.log('API response for user profile:', data);
-      console.log('Has isAiEnabled field?', 'isAiEnabled' in data);
-      console.log('isAiEnabled value:', data.isAiEnabled);
+
       return data;
     },
     enabled: !!localStorage.getItem('authToken'),
@@ -330,9 +328,7 @@ export default function Home() {
 
   const userAiEnabled = userProfile?.isAiEnabled || false;
   
-  // Debug logging for AI status
-  console.log('Fresh user profile data:', userProfile);
-  console.log('User AI enabled status:', userAiEnabled);
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
