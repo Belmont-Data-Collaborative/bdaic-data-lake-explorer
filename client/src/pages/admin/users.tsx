@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft } from "lucide-react";
+import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
@@ -181,35 +181,35 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-blue-900">Total Users</CardTitle>
+            <Users className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users?.length || 0}</div>
+            <div className="text-2xl font-bold text-blue-900">{users?.length || 0}</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-purple-900">Admin Users</CardTitle>
+            <Shield className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-900">
               {users?.filter((user: User) => user.role === 'admin').length || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-green-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-green-900">Active Users</CardTitle>
+            <UserCheck className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-900">
               {users?.filter((user: User) => user.isActive).length || 0}
             </div>
           </CardContent>
@@ -217,10 +217,10 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       </div>
 
       {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>
+      <Card className="shadow-sm border-gray-200 bg-white">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-25 border-b border-gray-100">
+          <CardTitle className="text-gray-900 font-semibold">User Management</CardTitle>
+          <CardDescription className="text-gray-600">
             View and manage all registered users. Click <strong>"Edit"</strong> to modify user roles and status, or <strong>"Delete"</strong> to remove users.
           </CardDescription>
         </CardHeader>
@@ -244,48 +244,54 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
               </TableHeader>
               <TableBody>
                 {users?.map((user: User) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{user.username}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                  <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-900">{user.username}</div>
+                        <div className="text-sm text-gray-600">{user.email}</div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                        {user.role}
+                    <TableCell className="py-4">
+                      <Badge 
+                        variant={user.role === 'admin' ? 'default' : 'secondary'}
+                        className={user.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1'
+                          : 'bg-gray-100 text-gray-700 border-gray-200 font-medium px-3 py-1'
+                        }
+                      >
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       <div className="flex items-center space-x-2">
                         {user.isActive ? (
                           <>
-                            <UserCheck className="h-4 w-4 text-green-600" />
-                            <span className="text-green-600">Active</span>
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-green-700 font-medium">Active</span>
                           </>
                         ) : (
                           <>
-                            <UserX className="h-4 w-4 text-red-600" />
-                            <span className="text-red-600">Inactive</span>
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span className="text-red-700 font-medium">Inactive</span>
                           </>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4 text-gray-600 font-medium">
                       {format(new Date(user.createdAt), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4 text-gray-600 font-medium">
                       {user.lastLoginAt ? format(new Date(user.lastLoginAt), 'MMM d, yyyy') : 'Never'}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                    <TableCell className="text-right py-4">
+                      <div className="flex items-center justify-end space-x-3">
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setEditingUser(user)}
-                              className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-medium shadow-sm"
                               title="Edit user role and status"
                             >
                               <Edit className="h-4 w-4 mr-1" />
@@ -352,6 +358,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                                       }
                                     })}
                                     disabled={updateUserMutation.isPending}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm transition-all duration-200"
                                   >
                                     {updateUserMutation.isPending ? 'Updating...' : 'Save Changes'}
                                   </Button>
@@ -368,11 +375,11 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setDeletingUser(user)}
-                                className="hover:bg-red-50 hover:border-red-300 transition-colors"
+                                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 transition-all duration-200 font-medium shadow-sm"
                                 title="Delete user permanently"
                               >
-                                <Trash2 className="h-4 w-4 text-red-600 mr-1" />
-                                <span className="hidden sm:inline text-red-600">Delete</span>
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Delete</span>
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -393,6 +400,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                                   variant="destructive"
                                   onClick={() => deleteUserMutation.mutate(user.id)}
                                   disabled={deleteUserMutation.isPending}
+                                  className="bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm transition-all duration-200"
                                 >
                                   {deleteUserMutation.isPending ? 'Deleting...' : 'Delete User'}
                                 </Button>

@@ -227,44 +227,44 @@ export default function FolderAccessManagement() {
     <div className="space-y-6">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Folders</CardTitle>
-            <Folder className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-emerald-900">Total Folders</CardTitle>
+            <Folder className="h-5 w-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{allFolders.length}</div>
+            <div className="text-2xl font-bold text-emerald-900">{allFolders.length}</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users with Access</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-indigo-900">Users with Access</CardTitle>
+            <Users className="h-5 w-5 text-indigo-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{usersWithAccess.length}</div>
+            <div className="text-2xl font-bold text-indigo-900">{usersWithAccess.length}</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-amber-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Manageable Users</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-amber-900">Manageable Users</CardTitle>
+            <Shield className="h-5 w-5 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{nonAdminUsers.length}</div>
+            <div className="text-2xl font-bold text-amber-900">{nonAdminUsers.length}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Folder Access Management Table */}
-      <Card>
-        <CardHeader>
+      <Card className="shadow-sm border-gray-200 bg-white">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-25 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Folder Access Management</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-gray-900 font-semibold">Folder Access Management</CardTitle>
+              <CardDescription className="text-gray-600">
                 Manage which folders each user can access. Admins have access to all folders by default. Click <strong>"Manage Access"</strong> to edit user permissions.
               </CardDescription>
             </div>
@@ -273,7 +273,7 @@ export default function FolderAccessManagement() {
               size="sm" 
               onClick={handleRefreshData}
               disabled={updateFolderAccessMutation.isPending}
-              className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 font-medium shadow-sm"
               title="Refresh folder access data from database"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -294,19 +294,20 @@ export default function FolderAccessManagement() {
             <TableBody>
               {/* Show admin users with all access */}
               {users.filter((user: User) => user.role === 'admin').map((user: User) => (
-                <TableRow key={user.id} className="bg-blue-50">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center space-x-2">
-                      <span>{user.username}</span>
-                      <Badge variant="default">Admin</Badge>
+                <TableRow key={user.id} className="bg-gradient-to-r from-purple-50 to-purple-25 border-purple-100">
+                  <TableCell className="font-semibold py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-gray-900">{user.username}</span>
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-2 py-1">Admin</Badge>
                     </div>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">All Folders (Admin)</Badge>
+                  <TableCell className="py-4 text-gray-700">{user.email}</TableCell>
+                  <TableCell className="py-4">
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1">All Folders (Admin)</Badge>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-muted-foreground text-sm italic">No action needed</span>
+                  <TableCell className="text-center py-4">
+                    <span className="text-gray-500 text-sm font-medium italic">No action needed</span>
                   </TableCell>
                 </TableRow>
               ))}
@@ -317,28 +318,28 @@ export default function FolderAccessManagement() {
                 const folderCount = userAccess?.folders?.length || 0;
 
                 return (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
+                  <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                    <TableCell className="font-semibold py-4 text-gray-900">{user.username}</TableCell>
+                    <TableCell className="py-4 text-gray-700">{user.email}</TableCell>
+                    <TableCell className="py-4">
                       {folderCount > 0 ? (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-2">
                           {userAccess!.folders.slice(0, 3).map((folder: string) => (
-                            <Badge key={folder} variant="outline" className="text-xs">
+                            <Badge key={folder} className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs font-medium px-2 py-1">
                               {folder.replace(/_/g, ' ').toUpperCase()}
                             </Badge>
                           ))}
                           {folderCount > 3 && (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs font-medium px-2 py-1">
                               +{folderCount - 3} more
                             </Badge>
                           )}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">No folder access</span>
+                        <span className="text-gray-500 font-medium italic">No folder access</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       <Dialog open={dialogOpen && editingUserId === user.id} onOpenChange={setDialogOpen}>
                         <DialogTrigger asChild>
                           <Button
@@ -351,7 +352,7 @@ export default function FolderAccessManagement() {
                               role: user.role, 
                               folders: [] 
                             })}
-                            className="hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"
+                            className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 font-medium shadow-sm"
                             title={`Manage folder access for ${user.username}`}
                           >
                             <Edit className="h-4 w-4 mr-2" />
@@ -401,6 +402,7 @@ export default function FolderAccessManagement() {
                               <Button
                                 onClick={handleSaveFolderAccess}
                                 disabled={updateFolderAccessMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm transition-all duration-200"
                               >
                                 <Save className="h-4 w-4 mr-1" />
                                 {updateFolderAccessMutation.isPending ? "Saving..." : "Save Changes"}
