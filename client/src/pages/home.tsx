@@ -115,16 +115,30 @@ export default function Home() {
   };
 
   // Use private stats endpoint for accurate user-specific data (no caching)
-  const { data: globalStats } = useQuery<Stats>({
+  const { data: globalStats, error: statsError, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/stats/private"],
     queryFn: async () => {
+      console.log('Calling private stats endpoint...');
       const response = await apiRequest('GET', '/api/stats/private');
-      return response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Private stats API error:', response.status, errorText);
+        throw new Error(`Stats API error: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Private stats response:', data);
+      return data;
     },
     staleTime: 0, // No caching to ensure fresh user-specific data
     gcTime: 0, // No garbage collection cache
     enabled: !!localStorage.getItem('authToken'), // Only run when authenticated
+    retry: 1, // Retry once on failure
   });
+  
+  // Debug logging for stats
+  console.log('Stats loading:', statsLoading);
+  console.log('Stats error:', statsError);
+  console.log('Stats data:', globalStats);
 
 
 

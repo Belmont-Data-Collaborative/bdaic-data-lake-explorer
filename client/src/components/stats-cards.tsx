@@ -39,6 +39,9 @@ export function StatsCards({ stats }: StatsCardsProps) {
     delay: 500,
   });
 
+  // Debug: Check if stats are being received
+  console.log('StatsCards - stats received:', !!stats);
+  console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
 
 
   // Loading state placeholders (will be used when stats are not available)
