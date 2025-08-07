@@ -78,16 +78,21 @@ function Router() {
   }, [verificationData]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
+    // First, clear any existing authentication state completely
+    queryClient.clear();
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated');
+    
     setIsAuthenticated(true);
     if (userData) {
-      // Clear cached data for fresh user-specific data
-      queryClient.clear();
       // JWT-based login
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
       // Force refetch the verification to update user context immediately
       setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/verify'] });
         refetchVerification();
       }, 100);
     } else {

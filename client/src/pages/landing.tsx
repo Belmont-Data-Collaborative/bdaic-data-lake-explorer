@@ -244,6 +244,12 @@ For detailed API specifications, please contact the system administrator.`;
       return;
     }
 
+    // Clear any existing authentication data before new login attempt
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated');
+    queryClient.clear();
+    
     // Support legacy password-only login if no username provided
     const credentials = loginData.username.trim() 
       ? loginData 
@@ -735,6 +741,27 @@ For detailed API specifications, please contact the system administrator.`;
                     <CardDescription>
                       Enter your credentials to access the full data lake explorer interface
                     </CardDescription>
+                    {(localStorage.getItem('authToken') || localStorage.getItem('currentUser')) && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('currentUser');
+                            localStorage.removeItem('authenticated');
+                            queryClient.clear();
+                            toast({
+                              title: "Session cleared",
+                              description: "You can now log in with different credentials",
+                            });
+                          }}
+                        >
+                          Switch User / Clear Session
+                        </Button>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
