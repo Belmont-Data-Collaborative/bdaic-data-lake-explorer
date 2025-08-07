@@ -48,14 +48,16 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   const [docsError, setDocsError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Fetch global statistics for public display - disabled for now since stats require auth
+  // Fetch global statistics for public display
   const { data: globalStats } = useQuery<GlobalStatsResponse>({
-    queryKey: ['/api/stats'],
+    queryKey: ['/api/stats/public'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/stats');
+      const response = await fetch('/api/stats/public');
+      if (!response.ok) {
+        throw new Error('Failed to fetch public stats');
+      }
       return response.json();
     },
-    enabled: false, // Disabled for landing page since stats now require authentication
   });
 
   // Fetch datasets for comprehensive stats
