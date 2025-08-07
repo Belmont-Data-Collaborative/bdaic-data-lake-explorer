@@ -706,14 +706,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const token = authHeader.substring(7);
           const decoded = storage.verifyJWT(token);
           if (decoded) {
-            const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
-            console.log(`User ${decoded.id} has access to folders:`, userAccessibleFolders);
-            
-            // Filter datasets to only show those in accessible folders
-            allDatasets = allDatasets.filter(d => 
-              userAccessibleFolders.includes(d.topLevelFolder)
-            );
-            console.log(`After folder access filtering: ${allDatasets.length} datasets remaining`);
+            // Admin users have access to all folders by default
+            if (decoded.role === 'admin') {
+              console.log(`User ${decoded.id} is admin - has access to all folders`);
+            } else {
+              const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+              console.log(`User ${decoded.id} has access to folders:`, userAccessibleFolders);
+              
+              // Filter datasets to only show those in accessible folders
+              allDatasets = allDatasets.filter(d => 
+                userAccessibleFolders.includes(d.topLevelFolder)
+              );
+              console.log(`After folder access filtering: ${allDatasets.length} datasets remaining`);
+            }
           }
         } catch (error) {
           // If token is invalid, continue without filtering
@@ -1433,10 +1438,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const token = authHeader.substring(7);
           const decoded = storage.verifyJWT(token);
           if (decoded) {
-            const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
-            datasets = datasets.filter(d => 
-              userAccessibleFolders.includes(d.topLevelFolder)
-            );
+            // Admin users have access to all folders by default
+            if (decoded.role !== 'admin') {
+              const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+              datasets = datasets.filter(d => 
+                userAccessibleFolders.includes(d.topLevelFolder)
+              );
+            }
           }
         } catch (error) {
           // If token is invalid, continue without filtering
