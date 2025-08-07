@@ -238,11 +238,11 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-emerald-800">AI Features</span>
                       <span className={`text-sm font-medium ${
-                        (currentUser as any).isAiEnabled 
+                        (currentUser.role === 'admin' || (currentUser as any).isAiEnabled)
                           ? 'text-emerald-700' 
                           : 'text-gray-500'
                       }`}>
-                        {(currentUser as any).isAiEnabled ? 'Enabled' : 'Disabled'}
+                        {(currentUser.role === 'admin' || (currentUser as any).isAiEnabled) ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
                   </div>

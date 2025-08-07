@@ -326,7 +326,7 @@ export default function Home() {
   // Additional debug logging for filtered folders
   console.log("Folders after filtering:", foldersWithDatasets);
 
-  const userAiEnabled = userProfile?.isAiEnabled || false;
+  const userAiEnabled = userProfile?.role === 'admin' || userProfile?.isAiEnabled || false;
   
 
 
