@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Database, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
@@ -11,6 +11,7 @@ import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
+import { formatFileSize } from "@/lib/format-number";
 
 interface Stats {
   totalDatasets: number;
@@ -114,45 +115,19 @@ export default function Home() {
     }
   };
 
-  // Use private stats endpoint for accurate user-specific data (no caching)
-  const { data: globalStats, error: statsError, isLoading: statsLoading } = useQuery<Stats>({
-    queryKey: ["/api/stats/private"],
-    queryFn: async () => {
-      console.log('Calling private stats endpoint...');
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-      
-      const response = await apiRequest('GET', '/api/stats/private', null, {
-        'Authorization': `Bearer ${token}`
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Private stats API error:', response.status, errorText);
-        if (response.status === 401 || response.status === 403) {
-          // Token expired, clear it and redirect to login
-          localStorage.removeItem('authToken');
-          window.location.href = '/login';
-        }
-        throw new Error(`Stats API error: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('Private stats response:', data);
-      return data;
-    },
+  // Use authenticated stats endpoint that handles user-specific data properly
+  const { data: globalStats } = useQuery<Stats>({
+    queryKey: ["/api/stats"],
     staleTime: 0, // No caching to ensure fresh user-specific data
     gcTime: 0, // No garbage collection cache
     enabled: !!localStorage.getItem('authToken'), // Only run when authenticated
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus
     retry: 1, // Retry once on failure
   });
   
-  // Debug logging for stats
-  console.log('Stats loading:', statsLoading);
-  console.log('Stats error:', statsError);
-  console.log('Stats data:', globalStats);
-  console.log('Auth token exists:', !!localStorage.getItem('authToken'));
+  // Debug logging for calculated stats
+  console.log('Calculated user stats:', globalStats);
 
 
 
