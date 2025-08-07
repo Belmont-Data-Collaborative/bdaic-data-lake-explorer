@@ -157,13 +157,19 @@ export default function Home() {
   });
 
   // Filter folders based on user access
-  const folders = accessibleFoldersLoading ? [] : allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
-  const foldersLoading = allFoldersLoading || accessibleFoldersLoading;
+  // Wait for both queries to complete and accessible folders to have data before showing results
+  const folders = (accessibleFoldersLoading || allFoldersLoading || accessibleFolders.length === 0) ? [] : 
+    allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder));
+  const foldersLoading = allFoldersLoading || accessibleFoldersLoading || 
+    (accessibleFolders.length === 0 && !accessibleFoldersError);
 
   // Debug logging
   console.log("Accessible folders from API:", accessibleFolders);
   console.log("All folders from API:", allFoldersFromAPI);
   console.log("Folders from API:", folders);
+  console.log("Accessible folders loading:", accessibleFoldersLoading);
+  console.log("All folders loading:", allFoldersLoading);
+  console.log("Folders loading state:", foldersLoading);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
   console.log(
