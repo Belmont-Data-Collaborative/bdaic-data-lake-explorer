@@ -30,6 +30,7 @@ interface UserWithFolderAccess {
 export default function FolderAccessManagement() {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,16 +77,25 @@ export default function FolderAccessManagement() {
       );
       return res.json();
     },
+    onMutate: () => {
+      toast({
+        title: "Updating folder access...",
+        description: "Please wait while we update the user's folder permissions.",
+      });
+    },
     onSuccess: () => {
       toast({
         title: "Folder access updated",
         description: "User folder permissions have been updated successfully.",
       });
+      // Invalidate all relevant queries to ensure immediate UI update
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/accessible-folders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/datasets'] });
       setEditingUserId(null);
       setSelectedFolders([]);
+      setDialogOpen(false); // Close dialog after successful update
     },
     onError: (error: any) => {
       toast({
@@ -99,6 +109,7 @@ export default function FolderAccessManagement() {
   const handleEditFolderAccess = (user: UserWithFolderAccess) => {
     setEditingUserId(user.userId);
     setSelectedFolders(user.folders || []);
+    setDialogOpen(true);
   };
 
   const handleSaveFolderAccess = () => {
@@ -235,7 +246,7 @@ export default function FolderAccessManagement() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Dialog>
+                      <Dialog open={dialogOpen && editingUserId === user.id} onOpenChange={setDialogOpen}>
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
@@ -285,7 +296,9 @@ export default function FolderAccessManagement() {
                                 onClick={() => {
                                   setEditingUserId(null);
                                   setSelectedFolders([]);
+                                  setDialogOpen(false);
                                 }}
+                                disabled={updateFolderAccessMutation.isPending}
                               >
                                 <X className="h-4 w-4 mr-1" />
                                 Cancel
