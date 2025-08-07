@@ -265,7 +265,7 @@ export default function FolderAccessManagement() {
             <div>
               <CardTitle>Folder Access Management</CardTitle>
               <CardDescription>
-                Manage which folders each user can access. Admins have access to all folders by default.
+                Manage which folders each user can access. Admins have access to all folders by default. Click <strong>"Manage Access"</strong> to edit user permissions.
               </CardDescription>
             </div>
             <Button 
@@ -273,9 +273,11 @@ export default function FolderAccessManagement() {
               size="sm" 
               onClick={handleRefreshData}
               disabled={updateFolderAccessMutation.isPending}
+              className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              title="Refresh folder access data from database"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              Refresh Data
             </Button>
           </div>
         </CardHeader>
@@ -286,7 +288,7 @@ export default function FolderAccessManagement() {
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Accessible Folders</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -303,8 +305,8 @@ export default function FolderAccessManagement() {
                   <TableCell>
                     <Badge variant="secondary">All Folders (Admin)</Badge>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-muted-foreground text-sm">No action needed</span>
+                  <TableCell className="text-center">
+                    <span className="text-muted-foreground text-sm italic">No action needed</span>
                   </TableCell>
                 </TableRow>
               ))}
@@ -349,9 +351,11 @@ export default function FolderAccessManagement() {
                               role: user.role, 
                               folders: [] 
                             })}
+                            className="hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"
+                            title={`Manage folder access for ${user.username}`}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit Access
+                            <Edit className="h-4 w-4 mr-2" />
+                            Manage Access
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">

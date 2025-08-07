@@ -221,7 +221,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>
-            View and manage all registered users
+            View and manage all registered users. Click <strong>"Edit"</strong> to modify user roles and status, or <strong>"Delete"</strong> to remove users.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -285,8 +285,11 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => setEditingUser(user)}
+                              className="hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                              title="Edit user role and status"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Edit</span>
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
@@ -365,8 +368,11 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setDeletingUser(user)}
+                                className="hover:bg-red-50 hover:border-red-300 transition-colors"
+                                title="Delete user permanently"
                               >
-                                <Trash2 className="h-4 w-4 text-red-600" />
+                                <Trash2 className="h-4 w-4 text-red-600 mr-1" />
+                                <span className="hidden sm:inline text-red-600">Delete</span>
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
