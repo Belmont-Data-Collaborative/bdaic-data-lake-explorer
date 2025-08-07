@@ -119,10 +119,23 @@ export default function Home() {
     queryKey: ["/api/stats/private"],
     queryFn: async () => {
       console.log('Calling private stats endpoint...');
-      const response = await apiRequest('GET', '/api/stats/private');
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No auth token found');
+      }
+      
+      const response = await apiRequest('GET', '/api/stats/private', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Private stats API error:', response.status, errorText);
+        if (response.status === 401 || response.status === 403) {
+          // Token expired, clear it and redirect to login
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+        }
         throw new Error(`Stats API error: ${response.status}`);
       }
       const data = await response.json();
@@ -139,6 +152,7 @@ export default function Home() {
   console.log('Stats loading:', statsLoading);
   console.log('Stats error:', statsError);
   console.log('Stats data:', globalStats);
+  console.log('Auth token exists:', !!localStorage.getItem('authToken'));
 
 
 
