@@ -406,11 +406,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('User from storage:', user);
+      console.log('User isAiEnabled field:', user.isAiEnabled);
+
       return res.json({
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
+        isAiEnabled: user.isAiEnabled,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       });

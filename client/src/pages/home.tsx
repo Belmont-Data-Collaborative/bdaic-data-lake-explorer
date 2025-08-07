@@ -136,7 +136,7 @@ export default function Home() {
   // Debug logging for stats
   console.log('Stats from server:', globalStats);
 
-  // Get user profile (includes AI enabled status)
+  // Get user profile (includes AI enabled status) 
   const { data: userProfile } = useQuery({
     queryKey: ["/api/user/profile"],
     queryFn: async () => {
@@ -147,6 +147,8 @@ export default function Home() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
       });
 
@@ -154,11 +156,15 @@ export default function Home() {
         throw new Error('Failed to fetch user profile');
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('API response for user profile:', data);
+      console.log('Has isAiEnabled field?', 'isAiEnabled' in data);
+      console.log('isAiEnabled value:', data.isAiEnabled);
+      return data;
     },
     enabled: !!localStorage.getItem('authToken'),
-    staleTime: 60000, // 1 minute
-    gcTime: 300000, // 5 minutes
+    staleTime: 0, // Always fetch fresh to get isAiEnabled updates
+    gcTime: 30000, // Short cache time
   });
 
   // Get user's accessible folders
@@ -323,6 +329,10 @@ export default function Home() {
   console.log("Folders after filtering:", foldersWithDatasets);
 
   const userAiEnabled = userProfile?.isAiEnabled || false;
+  
+  // Debug logging for AI status
+  console.log('Fresh user profile data:', userProfile);
+  console.log('User AI enabled status:', userAiEnabled);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
