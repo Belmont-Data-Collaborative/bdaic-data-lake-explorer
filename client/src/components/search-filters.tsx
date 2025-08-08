@@ -23,6 +23,7 @@ interface SearchFiltersProps {
   currentFolder?: string;
   userAiEnabled?: boolean;
   hasDatasetAccess?: boolean;
+  isAdminUser?: boolean;
 }
 
 export function SearchFilters({
@@ -40,6 +41,7 @@ export function SearchFilters({
   currentFolder,
   userAiEnabled = false,
   hasDatasetAccess = true,
+  isAdminUser = false,
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
@@ -141,7 +143,7 @@ export function SearchFilters({
 
             {onSelectDataset && hasDatasetAccess && <DatasetSearch onSelectDataset={onSelectDataset} />}
 
-            {userAiEnabled && hasDatasetAccess && (
+            {userAiEnabled && hasDatasetAccess && isAdminUser && (
               <Button
                 onClick={() => generateInsightsMutation.mutate(undefined)}
                 disabled={generateInsightsMutation.isPending}
@@ -163,7 +165,7 @@ export function SearchFilters({
               </Button>
             )}
 
-            {hasDatasetAccess && (
+            {isAdminUser && (
               <Button
                 variant="outline"
                 onClick={handleRefresh}

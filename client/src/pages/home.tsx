@@ -385,6 +385,7 @@ export default function Home() {
                 currentFolder={selectedFolder}
                 userAiEnabled={userAiEnabled}
                 hasDatasetAccess={folders.length > 0}
+                isAdminUser={userProfile?.role === 'admin'}
               />
             </div>
 
@@ -452,6 +453,7 @@ export default function Home() {
                 showFolderFilter={false}
                 userAiEnabled={userAiEnabled}
                 hasDatasetAccess={folders.length > 0}
+                isAdminUser={userProfile?.role === 'admin'}
               />
             </div>
 
