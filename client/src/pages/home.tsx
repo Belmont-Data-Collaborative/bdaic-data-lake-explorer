@@ -114,39 +114,6 @@ export default function Home() {
     }
   };
 
-  // Stats query that takes into account the selected folder
-  const { data: globalStats, error: statsError } = useQuery<Stats>({
-    queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
-    queryFn: async () => {
-      const url = selectedFolder 
-        ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
-        : '/api/stats';
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const data = await response.json();
-      
-      // Check if response contains error message instead of stats
-      if (data.message && !data.totalDatasets) {
-        console.log('Stats API returned error:', data.message);
-        throw new Error(data.message);
-      }
-      
-      return data;
-    },
-    enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
-    retry: false, // Don't retry on auth errors
-    staleTime: 0, // Always refetch when folders change
-  });
-
-  // Debug logging for stats
-  console.log('Stats from server:', globalStats);
-
   // Get user profile (includes AI enabled status) 
   const { data: userProfile } = useQuery({
     queryKey: ["/api/user/profile"],
@@ -176,7 +143,7 @@ export default function Home() {
     gcTime: 30000, // Short cache time
   });
 
-  // Get user's accessible folders
+  // Get user's accessible folders first
   const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError, isFetched: accessibleFoldersFetched } = useQuery<string[]>({
     queryKey: ["/api/user/accessible-folders"],
     queryFn: async () => {
@@ -209,6 +176,39 @@ export default function Home() {
     gcTime: 300000, // 5 minutes
     retry: false, // Don't retry auth errors
   });
+
+  // Stats query that takes into account the selected folder - placed after accessibleFolders declaration
+  const { data: globalStats, error: statsError } = useQuery<Stats>({
+    queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
+    queryFn: async () => {
+      const url = selectedFolder 
+        ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
+        : '/api/stats';
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      // Check if response contains error message instead of stats
+      if (data.message && !data.totalDatasets) {
+        console.log('Stats API returned error:', data.message);
+        throw new Error(data.message);
+      }
+      
+      return data;
+    },
+    enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
+    retry: false, // Don't retry on auth errors
+    staleTime: 0, // Always refetch when folders change
+  });
+
+  // Debug logging for stats
+  console.log('Stats from server:', globalStats);
 
   const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
