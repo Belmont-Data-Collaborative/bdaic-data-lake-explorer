@@ -1599,20 +1599,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get tag frequencies for filtering (always global, not folder-scoped)
-  app.get("/api/tags", async (req, res) => {
+  app.get("/api/tags", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const cacheKey = 'tag-frequencies-global';
+      // Get user's accessible folders
+      const userAccessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      const cacheKey = `tag-frequencies-user-${req.user!.id}-${userAccessibleFolders.sort().join(',')}`;
       
       const cached = getCached<Array<{tag: string, count: number}>>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
 
-      const datasets = await storage.getDatasets();
+      // Get all datasets and filter by user's accessible folders
+      const allDatasets = await storage.getDatasets();
+      const accessibleDatasets = allDatasets.filter(dataset => 
+        userAccessibleFolders.includes(dataset.topLevelFolder)
+      );
+
       const tagCounts = new Map<string, number>();
 
-      // Extract tags from each dataset's metadata across all folders
-      datasets.forEach(dataset => {
+      // Extract tags from each accessible dataset's metadata
+      accessibleDatasets.forEach(dataset => {
         const metadata = dataset.metadata as any;
         if (metadata && metadata.tags && Array.isArray(metadata.tags)) {
           metadata.tags.forEach((tag: string) => {
@@ -1629,7 +1636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count);
 
-      console.log(`Found ${tagFrequencies.length} unique tags across entire data lake`);
+      console.log(`Found ${tagFrequencies.length} unique tags across ${accessibleDatasets.length} accessible datasets for user ${req.user!.username}`);
       
       setCache(cacheKey, tagFrequencies, 600000); // Cache for 10 minutes
       res.json(tagFrequencies);
