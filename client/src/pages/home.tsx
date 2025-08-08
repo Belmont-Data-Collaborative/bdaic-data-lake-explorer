@@ -115,7 +115,7 @@ export default function Home() {
   };
 
   // Stats query that takes into account the selected folder
-  const { data: globalStats } = useQuery<Stats>({
+  const { data: globalStats, error: statsError } = useQuery<Stats>({
     queryKey: ["/api/stats", selectedFolder || "all"],
     queryFn: async () => {
       const url = selectedFolder 
@@ -128,9 +128,19 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
       });
-      return response.json();
+      
+      const data = await response.json();
+      
+      // Check if response contains error message instead of stats
+      if (data.message && !data.totalDatasets) {
+        console.log('Stats API returned error:', data.message);
+        throw new Error(data.message);
+      }
+      
+      return data;
     },
     enabled: !!localStorage.getItem('authToken'),
+    retry: false, // Don't retry on auth errors
   });
 
   // Debug logging for stats

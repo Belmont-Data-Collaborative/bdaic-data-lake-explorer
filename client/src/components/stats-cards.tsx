@@ -43,6 +43,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
   console.log('StatsCards - stats received:', !!stats);
   console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
   console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
+  
+  // Check if we received an error object instead of stats
+  if (stats && (stats as any).message && !stats.totalDatasets) {
+    console.log('StatsCards received error response:', (stats as any).message);
+    // Don't render stats for error responses - let loading state show
+    stats = undefined;
+  }
 
 
   // Loading state placeholders (will be used when stats are not available)
