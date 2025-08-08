@@ -367,7 +367,9 @@ export default function FolderAccessManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-indigo-900">
-              {Number(aiUsageStats?.reduce((total: number, stat: any) => total + (Number(stat.totalUsage) || 0), 0) || 0)}
+              {aiUsageStats?.reduce((acc: number, stat: any) => {
+                return acc + (parseInt(String(stat.totalUsage), 10) || 0);
+              }, 0) || 0}
             </div>
             <p className="text-xs text-indigo-700 mt-1">Across all users</p>
           </CardContent>
@@ -442,13 +444,13 @@ export default function FolderAccessManagement() {
                       <div className="text-gray-900 font-medium">
                         {(() => {
                           const adminStats = aiUsageStats?.find((stat: any) => stat.userId === user.id);
-                          return adminStats?.totalUsage || 0;
+                          return parseInt(String(adminStats?.totalUsage || 0), 10);
                         })()} total
                       </div>
                       <div className="text-xs text-gray-500">
                         {(() => {
                           const adminStats = aiUsageStats?.find((stat: any) => stat.userId === user.id);
-                          return adminStats?.successfulUsage || 0;
+                          return parseInt(String(adminStats?.successfulUsage || 0), 10);
                         })()} successful
                       </div>
                     </div>
@@ -501,10 +503,10 @@ export default function FolderAccessManagement() {
                     <TableCell className="py-4">
                       <div className="space-y-1">
                         <div className="text-gray-900 font-medium">
-                          {userWithStats?.aiUsageStats?.totalUsage || 0} total
+                          {parseInt(String(userWithStats?.aiUsageStats?.totalUsage || 0), 10)} total
                         </div>
                         <div className="text-xs text-gray-500">
-                          {userWithStats?.aiUsageStats?.successfulUsage || 0} successful
+                          {parseInt(String(userWithStats?.aiUsageStats?.successfulUsage || 0), 10)} successful
                         </div>
                       </div>
                     </TableCell>
