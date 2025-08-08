@@ -191,7 +191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Assign default folder access for non-admin users
       if (role !== 'admin') {
+        console.log('Assigning default folder access for new user:', newUser.id);
         await storage.assignDefaultFolderAccess(newUser.id, newUser.id);
+        console.log('Default folder access assigned successfully');
       }
 
       // Generate JWT token

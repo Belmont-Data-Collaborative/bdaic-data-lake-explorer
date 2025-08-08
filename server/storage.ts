@@ -331,6 +331,7 @@ export class DatabaseStorage implements IStorage {
   async assignDefaultFolderAccess(userId: number, createdBy: number): Promise<void> {
     // Default folders for new users
     const defaultFolders = ['cdc_places', 'cdc_svi'];
+    console.log('Assigning default folders to user:', userId, 'folders:', defaultFolders);
     
     const accessRecords = defaultFolders.map(folderName => ({
       userId,
@@ -339,10 +340,13 @@ export class DatabaseStorage implements IStorage {
       createdBy,
     }));
 
-    await db
+    const result = await db
       .insert(userFolderAccess)
       .values(accessRecords)
-      .onConflictDoNothing(); // Prevent duplicates if called multiple times
+      .onConflictDoNothing() // Prevent duplicates if called multiple times
+      .returning();
+    
+    console.log('Default folder access inserted:', result.length, 'records created');
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
