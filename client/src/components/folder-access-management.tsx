@@ -367,7 +367,7 @@ export default function FolderAccessManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-indigo-900">
-              {aiUsageStats?.reduce((total: number, stat: any) => total + (stat.totalUsage || 0), 0) || 0}
+              {Number(aiUsageStats?.reduce((total: number, stat: any) => total + (Number(stat.totalUsage) || 0), 0) || 0)}
             </div>
             <p className="text-xs text-indigo-700 mt-1">Across all users</p>
           </CardContent>
