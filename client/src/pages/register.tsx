@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, UserPlus, Mail, Lock, User } from "lucide-react";
@@ -20,7 +20,7 @@ export default function Register({ onRegistrationSuccess, onBackToLogin }: Regis
     email: "",
     password: "",
     confirmPassword: "",
-    role: "user" as "user" | "admin",
+    role: "user" as const,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -213,18 +213,7 @@ export default function Register({ onRegistrationSuccess, onBackToLogin }: Regis
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Account Type</Label>
-              <Select value={formData.role} onValueChange={(value: "user" | "admin") => handleInputChange("role", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">User - Standard Access</SelectItem>
-                  <SelectItem value="admin">Admin - Full Access</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             <Button
               type="submit"
