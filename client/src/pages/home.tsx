@@ -116,7 +116,7 @@ export default function Home() {
 
   // Stats query that takes into account the selected folder
   const { data: globalStats, error: statsError } = useQuery<Stats>({
-    queryKey: ["/api/stats", selectedFolder || "all"],
+    queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
     queryFn: async () => {
       const url = selectedFolder 
         ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
@@ -139,8 +139,9 @@ export default function Home() {
       
       return data;
     },
-    enabled: !!localStorage.getItem('authToken'),
+    enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
     retry: false, // Don't retry on auth errors
+    staleTime: 0, // Always refetch when folders change
   });
 
   // Debug logging for stats
