@@ -531,19 +531,20 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                     </TableCell>
                     <TableCell className="text-right py-4">
                       <div className="flex items-center justify-end space-x-3">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setEditingUser(user)}
-                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-medium shadow-sm"
-                              title="Edit user role and status"
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">Edit</span>
-                            </Button>
-                          </DialogTrigger>
+                        {user.id !== currentUser?.id && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingUser(user)}
+                                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-medium shadow-sm"
+                                title="Edit user role and status"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Edit</span>
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Edit User</DialogTitle>
@@ -612,7 +613,8 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                               </div>
                             )}
                           </DialogContent>
-                        </Dialog>
+                          </Dialog>
+                        )}
 
                         {user.id !== currentUser?.id && (
                           <Dialog>
