@@ -105,7 +105,11 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      // Force immediate refetch of both user list and folder access data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'], refetchType: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
       toast({
         title: "User deleted",
         description: "User has been successfully deleted.",
