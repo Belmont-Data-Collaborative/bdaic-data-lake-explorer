@@ -7,6 +7,7 @@ import {
   users, 
   userFolderAccess,
   folderAiSettings,
+  aiUsageLog,
   type Dataset,
   type InsertDataset,
   type AwsConfig,
@@ -16,7 +17,8 @@ import {
   type User,
   type InsertUser,
   type UpdateUser,
-  type UserFolderAccess
+  type UserFolderAccess,
+  insertAiUsageLogSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
@@ -83,6 +85,11 @@ export interface IStorage {
   getFolderAiSetting(folderName: string): Promise<any | undefined>;
   upsertFolderAiSetting(folderName: string, isAiEnabled: boolean, updatedBy: number): Promise<any>;
   getFolderAiSettingsForFolders(folderNames: string[]): Promise<any[]>;
+
+  // AI usage tracking operations
+  logAiUsage(userId: number, datasetId: number | null, usageType: 'ask_ai' | 'generate_insights' | 'multi_chat', query: string | null, responseReceived: boolean, ipAddress?: string, userAgent?: string): Promise<void>;
+  getUserAiUsageStats(userId: number): Promise<{ totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>;
+  getAllUsersAiUsage(): Promise<Array<{ userId: number; username: string; totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>>;
 
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
@@ -707,6 +714,76 @@ export class DatabaseStorage implements IStorage {
       isAiEnabled: settingsMap.get(folderName)?.isAiEnabled || false,
       updatedAt: settingsMap.get(folderName)?.updatedAt || null
     }));
+  }
+
+  // AI usage tracking operations
+  async logAiUsage(userId: number, datasetId: number | null, usageType: 'ask_ai' | 'generate_insights' | 'multi_chat', query: string | null, responseReceived: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
+    await db.insert(aiUsageLog).values({
+      userId,
+      datasetId,
+      usageType,
+      query,
+      responseReceived,
+      ipAddress,
+      userAgent
+    });
+  }
+
+  async getAllUsersAiUsage() {
+    const result = await db
+      .select({
+        userId: aiUsageLog.userId,
+        username: users.username,
+        totalUsage: sql<number>`count(*)`,
+        successfulUsage: sql<number>`count(case when ${aiUsageLog.responseReceived} = true then 1 end)`,
+        askAiUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'ask_ai' then 1 end)`,
+        insightsUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'generate_insights' then 1 end)`,
+        multiChatUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'multi_chat' then 1 end)`,
+      })
+      .from(aiUsageLog)
+      .leftJoin(users, eq(aiUsageLog.userId, users.id))
+      .groupBy(aiUsageLog.userId, users.username);
+
+    return result;
+  }
+
+  async getUserAiUsageStats(userId: number) {
+    const result = await db
+      .select({
+        totalUsage: sql<number>`count(*)`,
+        successfulUsage: sql<number>`count(case when ${aiUsageLog.responseReceived} = true then 1 end)`,
+        askAiUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'ask_ai' then 1 end)`,
+        insightsUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'generate_insights' then 1 end)`,
+        multiChatUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'multi_chat' then 1 end)`,
+      })
+      .from(aiUsageLog)
+      .where(eq(aiUsageLog.userId, userId));
+
+    return result[0] || {
+      totalUsage: 0,
+      successfulUsage: 0,
+      askAiUsage: 0,
+      insightsUsage: 0,
+      multiChatUsage: 0
+    };
+  }
+
+  async getAllUsersAiUsage(): Promise<Array<{ userId: number; username: string; totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>> {
+    const usageStats = await db.select({
+      userId: aiUsageLog.userId,
+      username: users.username,
+      totalUsage: sql<number>`COUNT(*)`,
+      successfulUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      askAiUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'ask_ai' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      insightsUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'generate_insights' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      multiChatUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'multi_chat' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`
+    })
+    .from(aiUsageLog)
+    .leftJoin(users, eq(aiUsageLog.userId, users.id))
+    .groupBy(aiUsageLog.userId, users.username)
+    .orderBy(desc(sql`COUNT(*)`));
+
+    return usageStats;
   }
 
   async query(sql: string): Promise<any[]> {

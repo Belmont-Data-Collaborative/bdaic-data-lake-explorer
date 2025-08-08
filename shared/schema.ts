@@ -142,6 +142,32 @@ export const folderAiSettings = pgTable("folder_ai_settings", {
   isAiEnabledIdx: index("idx_folder_ai_settings_is_ai_enabled").on(table.isAiEnabled),
 }));
 
+// Table for tracking AI usage per user
+export const aiUsageLog = pgTable("ai_usage_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  datasetId: integer("dataset_id").references(() => datasets.id, { onDelete: "set null" }),
+  usageType: text("usage_type").notNull(), // 'ask_ai', 'generate_insights', 'multi_chat'
+  query: text("query"), // The user's question/prompt
+  responseReceived: boolean("response_received").notNull().default(false), // Only count successful responses
+  usedAt: timestamp("used_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+}, (table) => ({
+  // Index on userId for fast user lookups
+  userIdIdx: index("idx_ai_usage_log_user_id").on(table.userId),
+  // Index on datasetId for dataset-specific usage
+  datasetIdIdx: index("idx_ai_usage_log_dataset_id").on(table.datasetId),
+  // Index on usageType for filtering by feature type
+  usageTypeIdx: index("idx_ai_usage_log_usage_type").on(table.usageType),
+  // Index on usedAt for time-based queries
+  usedAtIdx: index("idx_ai_usage_log_used_at").on(table.usedAt),
+  // Index on responseReceived to filter successful uses
+  responseReceivedIdx: index("idx_ai_usage_log_response_received").on(table.responseReceived),
+  // Composite index for user + successful responses
+  userSuccessIdx: index("idx_ai_usage_log_user_success").on(table.userId, table.responseReceived),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -188,6 +214,11 @@ export const insertFolderAiSettingsSchema = createInsertSchema(folderAiSettings)
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertAiUsageLogSchema = createInsertSchema(aiUsageLog).omit({
+  id: true,
+  usedAt: true,
 });
 
 // Schema for updating folder AI settings

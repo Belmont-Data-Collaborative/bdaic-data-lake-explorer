@@ -404,6 +404,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI usage tracking routes
+  app.get('/api/admin/ai-usage', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const allUsersUsage = await storage.getAllUsersAiUsage();
+      res.json(allUsersUsage);
+    } catch (error) {
+      console.error('Error getting AI usage stats:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // User routes - profile management
   app.get("/api/user/profile", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {
@@ -1099,10 +1110,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced dataset chat endpoint with file access and visualization
-  app.post("/api/datasets/:id/chat", async (req, res) => {
+  app.post("/api/datasets/:id/chat", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { message, conversationHistory, enableVisualization } = req.body;
+      const user = req.user as User;
       
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
@@ -1113,14 +1125,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Dataset not found" });
       }
 
-      const response = await openAIService.chatWithDatasetEnhanced(
-        dataset, 
-        message, 
-        conversationHistory || [], 
-        enableVisualization || false
-      );
-      
-      res.json(response);
+      try {
+        const response = await openAIService.chatWithDatasetEnhanced(
+          dataset, 
+          message, 
+          conversationHistory || [], 
+          enableVisualization || false
+        );
+        
+        // Log successful AI usage
+        await storage.logAiUsage(
+          user.id,
+          dataset.id,
+          'ask_ai',
+          message,
+          true, // response received successfully
+          req.ip,
+          req.get('User-Agent')
+        );
+        
+        res.json(response);
+      } catch (aiError) {
+        // Log failed AI usage attempt  
+        await storage.logAiUsage(
+          user.id,
+          dataset.id,
+          'ask_ai',
+          message,
+          false, // response failed
+          req.ip,
+          req.get('User-Agent')
+        );
+        throw aiError;
+      }
     } catch (error) {
       console.error("Error in dataset chat:", error);
       res.status(500).json({ message: "Failed to process chat message" });
@@ -1128,9 +1165,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch dataset chat endpoint for multi-dataset analysis
-  app.post("/api/datasets/batch-chat", async (req, res) => {
+  app.post("/api/datasets/batch-chat", authenticateToken, async (req, res) => {
     try {
       const { message, datasetIds, conversationHistory, enableVisualization } = req.body;
+      const user = req.user as User;
       
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
@@ -1151,14 +1189,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      const response = await openAIService.chatWithMultipleDatasets(
-        datasets, 
-        message, 
-        conversationHistory || [], 
-        enableVisualization || false
-      );
-      
-      res.json(response);
+      try {
+        const response = await openAIService.chatWithMultipleDatasets(
+          datasets, 
+          message, 
+          conversationHistory || [], 
+          enableVisualization || false
+        );
+        
+        // Log successful AI usage for multi-dataset chat
+        await storage.logAiUsage(
+          user.id,
+          datasets.length > 0 ? datasets[0].id : null, // Use first dataset or null
+          'multi_chat',
+          message,
+          true, // response received successfully
+          req.ip,
+          req.get('User-Agent')
+        );
+        
+        res.json(response);
+      } catch (aiError) {
+        // Log failed AI usage attempt
+        await storage.logAiUsage(
+          user.id,
+          datasets.length > 0 ? datasets[0].id : null,
+          'multi_chat',
+          message,
+          false, // response failed
+          req.ip,
+          req.get('User-Agent')
+        );
+        throw aiError;
+      }
     } catch (error) {
       console.error("Error in batch dataset chat:", error);
       res.status(500).json({ message: "Failed to process batch chat message" });
