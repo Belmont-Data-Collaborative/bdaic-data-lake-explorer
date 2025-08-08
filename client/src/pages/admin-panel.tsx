@@ -101,16 +101,20 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       return res.json();
     },
     onSuccess: () => {
+      // Close dialog immediately
+      setDeletingUser(null);
+      
+      // Clear entire query cache and force immediate refetch
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      
       toast({
         title: "User deleted",
         description: "User has been deleted successfully.",
       });
-      // Force immediate refetch of both user list and folder access data
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'], refetchType: 'active' });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'], refetchType: 'active' });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
-      setDeletingUser(null);
     },
     onError: (error: any) => {
       toast({
