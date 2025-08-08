@@ -23,13 +23,6 @@ interface User {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  aiUsageStats?: {
-    totalUsage: number;
-    successfulUsage: number;
-    askAiUsage: number;
-    insightsUsage: number;
-    multiChatUsage: number;
-  };
 }
 
 interface AdminUsersProps {
@@ -42,20 +35,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch AI usage statistics
-  const { data: aiUsageStats } = useQuery({
-    queryKey: ['/api/admin/ai-usage'],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) return [];
-      
-      const res = await apiRequest('GET', '/api/admin/ai-usage', null, {
-        'Authorization': `Bearer ${token}`
-      });
-      return await res.json();
-    },
-    staleTime: 30000, // Cache for 30 seconds
-  });
+
 
   // Fetch all users
   const { data: users, isLoading, error, refetch } = useQuery({
@@ -83,20 +63,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
     gcTime: 0, // No caching
   });
 
-  // Merge users with AI usage stats
-  const usersWithAiStats = users?.map((user: User) => {
-    const userAiStats = aiUsageStats?.find((stat: any) => stat.userId === user.id);
-    return {
-      ...user,
-      aiUsageStats: userAiStats || {
-        totalUsage: 0,
-        successfulUsage: 0,
-        askAiUsage: 0,
-        insightsUsage: 0,
-        multiChatUsage: 0
-      }
-    };
-  }) || [];
+
 
   // Update user mutation
   const updateUserMutation = useMutation({
@@ -273,16 +240,17 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-25 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-orange-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-indigo-900">Total AI Usage</CardTitle>
-            <Activity className="h-5 w-5 text-indigo-600" />
+            <CardTitle className="text-sm font-semibold text-orange-900">Recent Logins</CardTitle>
+            <Activity className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-900">
-              {aiUsageStats?.reduce((total: number, stat: any) => total + (stat.totalUsage || 0), 0) || 0}
+            <div className="text-2xl font-bold text-orange-900">
+              {users?.filter((user: User) => user.lastLoginAt && 
+                new Date(user.lastLoginAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length || 0}
             </div>
-            <p className="text-xs text-indigo-700 mt-1">Across all users</p>
+            <p className="text-xs text-orange-700 mt-1">Logins this week</p>
           </CardContent>
         </Card>
       </div>
@@ -444,14 +412,13 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                   <TableHead>User Information</TableHead>
                   <TableHead>Role & Permissions</TableHead>
                   <TableHead>Account Status</TableHead>
-                  <TableHead>AI Usage</TableHead>
                   <TableHead>Registration Date</TableHead>
                   <TableHead>Last Login Activity</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usersWithAiStats.map((user: User) => (
+                {users?.map((user: User) => (
                   <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors duration-150">
                     <TableCell className="py-4">
                       <div className="space-y-1">
@@ -497,16 +464,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                             <span className="text-red-700 font-medium">Inactive</span>
                           </>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="space-y-1">
-                        <div className="text-gray-900 font-medium">
-                          {user.aiUsageStats?.totalUsage || 0} total
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {user.aiUsageStats?.successfulUsage || 0} successful
-                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="py-4 text-gray-600 font-medium">

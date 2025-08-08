@@ -29,6 +29,13 @@ interface UserWithFolderAccess {
   email: string;
   role: string;
   folders: string[];
+  aiUsageStats?: {
+    totalUsage: number;
+    successfulUsage: number;
+    askAiUsage: number;
+    insightsUsage: number;
+    multiChatUsage: number;
+  };
 }
 
 export default function FolderAccessManagement() {
@@ -39,7 +46,20 @@ export default function FolderAccessManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-
+  // Fetch AI usage statistics
+  const { data: aiUsageStats } = useQuery({
+    queryKey: ['/api/admin/ai-usage'],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return [];
+      
+      const res = await apiRequest('GET', '/api/admin/ai-usage', null, {
+        'Authorization': `Bearer ${token}`
+      });
+      return await res.json();
+    },
+    staleTime: 30000, // Cache for 30 seconds
+  });
 
   // Manual refresh function - force fresh database fetch
   const handleRefreshData = async () => {
@@ -54,6 +74,7 @@ export default function FolderAccessManagement() {
       
       // Also invalidate and refetch users data
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ai-usage'] });
       await refetchUsersAccess();
       
       toast({
@@ -310,6 +331,21 @@ export default function FolderAccessManagement() {
   // Get non-admin users for folder access management
   const nonAdminUsers = users.filter((user: User) => user.role !== 'admin' && user.isActive);
 
+  // Merge users with AI usage stats for display
+  const usersWithAiStats = usersWithAccess?.map((user: any) => {
+    const userAiStats = aiUsageStats?.find((stat: any) => stat.userId === user.userId);
+    return {
+      ...user,
+      aiUsageStats: userAiStats || {
+        totalUsage: 0,
+        successfulUsage: 0,
+        askAiUsage: 0,
+        insightsUsage: 0,
+        multiChatUsage: 0
+      }
+    };
+  }) || [];
+
   return (
     <div className="space-y-6">
       {/* Statistics Cards */}
@@ -326,11 +362,14 @@ export default function FolderAccessManagement() {
 
         <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-25 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-indigo-900">Users with Access</CardTitle>
-            <Users className="h-5 w-5 text-indigo-600" />
+            <CardTitle className="text-sm font-semibold text-indigo-900">Total AI Usage</CardTitle>
+            <Brain className="h-5 w-5 text-indigo-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-900">{usersWithAccess.length}</div>
+            <div className="text-2xl font-bold text-indigo-900">
+              {aiUsageStats?.reduce((total: number, stat: any) => total + (stat.totalUsage || 0), 0) || 0}
+            </div>
+            <p className="text-xs text-indigo-700 mt-1">Across all users</p>
           </CardContent>
         </Card>
 
@@ -374,6 +413,7 @@ export default function FolderAccessManagement() {
               <TableRow>
                 <TableHead>User Information</TableHead>
                 <TableHead>Email & Role</TableHead>
+                <TableHead>AI Usage Stats</TableHead>
                 <TableHead>Folder Access Summary</TableHead>
                 <TableHead className="text-center">Manage Permissions</TableHead>
               </TableRow>
@@ -398,6 +438,22 @@ export default function FolderAccessManagement() {
                     </div>
                   </TableCell>
                   <TableCell className="py-4">
+                    <div className="space-y-1">
+                      <div className="text-gray-900 font-medium">
+                        {(() => {
+                          const adminStats = aiUsageStats?.find((stat: any) => stat.userId === user.id);
+                          return adminStats?.totalUsage || 0;
+                        })()} total
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {(() => {
+                          const adminStats = aiUsageStats?.find((stat: any) => stat.userId === user.id);
+                          return adminStats?.successfulUsage || 0;
+                        })()} successful
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4">
                     <div className="space-y-2">
                       <Badge className="bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1">
                         <Unlock className="w-3 h-3 mr-1" />
@@ -415,6 +471,7 @@ export default function FolderAccessManagement() {
               {/* Show non-admin users */}
               {nonAdminUsers.map((user: User) => {
                 const userAccess = usersWithAccess.find((ua: UserWithFolderAccess) => ua.userId === user.id);
+                const userWithStats = usersWithAiStats.find((u: any) => u.userId === user.id);
                 const folderCount = userAccess?.folders?.length || 0;
 
                 return (
@@ -439,6 +496,16 @@ export default function FolderAccessManagement() {
                         }>
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <div className="text-gray-900 font-medium">
+                          {userWithStats?.aiUsageStats?.totalUsage || 0} total
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {userWithStats?.aiUsageStats?.successfulUsage || 0} successful
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
