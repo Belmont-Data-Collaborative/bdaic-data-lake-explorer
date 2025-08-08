@@ -321,6 +321,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async assignDefaultFolderAccess(userId: number, createdBy: number): Promise<void> {
+    // Default folders for new users
+    const defaultFolders = ['cdc_places', 'cdc_svi'];
+    
+    const accessRecords = defaultFolders.map(folderName => ({
+      userId,
+      folderName,
+      canAccess: true,
+      createdBy,
+    }));
+
+    await db
+      .insert(userFolderAccess)
+      .values(accessRecords)
+      .onConflictDoNothing(); // Prevent duplicates if called multiple times
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db
       .select()

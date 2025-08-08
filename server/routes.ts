@@ -188,6 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
       });
 
+      // Assign default folder access for non-admin users
+      if (role !== 'admin') {
+        await storage.assignDefaultFolderAccess(newUser.id, newUser.id);
+      }
+
       // Generate JWT token
       const token = storage.generateJWT(newUser);
 
