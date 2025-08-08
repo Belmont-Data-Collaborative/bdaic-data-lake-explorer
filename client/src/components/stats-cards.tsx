@@ -45,10 +45,11 @@ export function StatsCards({ stats }: StatsCardsProps) {
   console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
   
   // Check if we received an error object instead of stats
+  let validStats = stats;
   if (stats && (stats as any).message && !stats.totalDatasets) {
     console.log('StatsCards received error response:', (stats as any).message);
     // Don't render stats for error responses - let loading state show
-    stats = undefined;
+    validStats = undefined;
   }
 
 
@@ -58,7 +59,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   const placeholderPoints = useCountAnimation({ target: 15000000, duration: 2500, delay: 400 });
 
   // Loading state with animated placeholders
-  if (!stats) {
+  if (!validStats) {
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
@@ -141,7 +142,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Total Size",
-      value: stats.totalSize,
+      value: validStats.totalSize,
       icon: HardDrive,
       bgColor: "bg-green-100",
       iconColor: "text-green-600",
