@@ -41,6 +41,17 @@ interface DatasetVisit {
 }
 
 export default function UserPanel({ currentUser }: UserPanelProps) {
+  // Fetch user profile with AI status
+  const { data: userProfile } = useQuery({
+    queryKey: ['/api/user/profile'],
+    enabled: !!currentUser,
+    staleTime: 300000,
+    gcTime: 600000,
+  });
+
+  // Use userProfile if available, fallback to currentUser
+  const displayUser = userProfile || currentUser;
+
   // Fetch user's accessible folders
   const { data: accessibleFolders = [], isLoading: foldersLoading } = useQuery({
     queryKey: ['/api/user/accessible-folders'],
@@ -175,25 +186,25 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-800">Username</span>
-                      <span className="font-semibold text-blue-900">{currentUser.username}</span>
+                      <span className="font-semibold text-blue-900">{displayUser?.username}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-800">Email</span>
-                      <span className="text-sm text-blue-700 truncate max-w-36" title={currentUser.email}>{currentUser.email}</span>
+                      <span className="text-sm text-blue-700 truncate max-w-36" title={displayUser?.email}>{displayUser?.email}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-800">User ID</span>
-                      <span className="text-sm text-blue-700">#{currentUser.id}</span>
+                      <span className="text-sm text-blue-700">#{displayUser?.id}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-800">Role</span>
-                      <Badge variant={currentUser.role === 'admin' ? 'default' : 'secondary'} 
-                             className={currentUser.role === 'admin' 
+                      <Badge variant={displayUser?.role === 'admin' ? 'default' : 'secondary'} 
+                             className={displayUser?.role === 'admin' 
                                ? 'bg-purple-100 text-purple-800 border-purple-200' 
-                               : currentUser.role === 'editor' 
+                               : displayUser?.role === 'editor' 
                                ? 'bg-blue-100 text-blue-800 border-blue-200'
                                : 'bg-gray-100 text-gray-700 border-gray-200'}>
-                        {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+                        {displayUser?.role?.charAt(0).toUpperCase() + displayUser?.role?.slice(1)}
                       </Badge>
                     </div>
                   </div>
@@ -213,22 +224,22 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-emerald-800">Data Access</span>
                       <span className="text-sm text-emerald-700">
-                        {currentUser.role === 'admin' ? 'Full Access' : 'Restricted'}
+                        {displayUser?.role === 'admin' ? 'Full Access' : 'Restricted'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-emerald-800">Accessible Folders</span>
                       <span className="font-semibold text-emerald-900">
-                        {foldersLoading ? '...' : currentUser.role === 'admin' ? 'All' : accessibleFolders.length}
+                        {foldersLoading ? '...' : displayUser?.role === 'admin' ? 'All' : accessibleFolders.length}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-emerald-800">Permissions</span>
                       <div className="text-right">
                         <div className="text-xs text-emerald-600">
-                          {currentUser.role === 'admin' 
+                          {displayUser?.role === 'admin' 
                             ? 'Full system access' 
-                            : currentUser.role === 'editor' 
+                            : displayUser?.role === 'editor' 
                             ? 'Edit & download access'
                             : 'View & download access'
                           }
@@ -238,11 +249,11 @@ export default function UserPanel({ currentUser }: UserPanelProps) {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-emerald-800">AI Features</span>
                       <span className={`text-sm font-medium ${
-                        (currentUser.role === 'admin' || (currentUser as any).isAiEnabled)
+                        (displayUser?.role === 'admin' || (displayUser as any)?.isAiEnabled)
                           ? 'text-emerald-700' 
                           : 'text-gray-500'
                       }`}>
-                        {(currentUser.role === 'admin' || (currentUser as any).isAiEnabled) ? 'Enabled' : 'Disabled'}
+                        {(displayUser?.role === 'admin' || (displayUser as any)?.isAiEnabled) ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
                   </div>
