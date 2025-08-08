@@ -261,7 +261,7 @@ export default function Home() {
   );
 
   // Use server stats directly with no modifications whatsoever
-  const stats = globalStats;
+
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;
@@ -337,6 +337,20 @@ export default function Home() {
   console.log("Folders after filtering:", foldersWithDatasets);
 
   const userAiEnabled = userProfile?.role === 'admin' || userProfile?.isAiEnabled || false;
+  
+  // Create default "no access" stats when user has no folders
+  const noAccessStats = {
+    totalDatasets: 0,
+    totalSize: "0 B",
+    dataSources: 0,
+    lastUpdated: "No access",
+    lastRefreshTime: null,
+    totalCommunityDataPoints: 0
+  };
+  
+  // Use no access stats if user has no accessible folders and no stats were returned
+  const stats = globalStats || 
+    (accessibleFolders && accessibleFolders.length === 0 ? noAccessStats : undefined);
   
 
 
