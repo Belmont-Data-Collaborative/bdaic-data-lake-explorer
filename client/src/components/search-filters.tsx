@@ -49,14 +49,9 @@ export function SearchFilters({
   // Use currentFolder parameter for potential future enhancements
   console.log("Current folder context:", currentFolder);
 
-  // Fetch global tags (not folder-scoped anymore for top-level filtering)
+  // Fetch user-accessible tags (based on folder permissions)
   const { data: tagFrequencies = [] } = useQuery({
     queryKey: ["/api/tags"],
-    queryFn: async () => {
-      const response = await fetch('/api/tags');
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    },
     enabled: !!onTagChange,
     staleTime: 600000, // 10 minutes cache
     gcTime: 1800000, // 30 minutes garbage collection
