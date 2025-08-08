@@ -398,14 +398,22 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+  async verifyUserPassword(username: string, password: string): Promise<{ user: User | null; error?: 'user_not_found' | 'inactive_user' | 'invalid_password' }> {
     const user = await this.getUserByUsername(username);
-    if (!user || !user.isActive) {
-      return null;
+    if (!user) {
+      return { user: null, error: 'user_not_found' };
+    }
+    
+    if (!user.isActive) {
+      return { user: null, error: 'inactive_user' };
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : null;
+    if (!isValid) {
+      return { user: null, error: 'invalid_password' };
+    }
+    
+    return { user };
   }
 
   async updateUserLastLogin(id: number): Promise<void> {

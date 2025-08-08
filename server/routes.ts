@@ -220,25 +220,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userValidation.success) {
         const { username, password } = userValidation.data;
         
-        const user = await storage.verifyUserPassword(username, password);
+        const result = await storage.verifyUserPassword(username, password);
         
-        if (user) {
+        if (result.user) {
           // Update last login time
-          await storage.updateUserLastLogin(user.id);
+          await storage.updateUserLastLogin(result.user.id);
           
           // Generate JWT token
-          const token = storage.generateJWT(user);
+          const token = storage.generateJWT(result.user);
           
           return res.json({ 
             success: true,
             token,
             user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              role: user.role,
+              id: result.user.id,
+              username: result.user.username,
+              email: result.user.email,
+              role: result.user.role,
             },
           });
+        } else {
+          // Return specific error messages based on the error type
+          let message: string;
+          switch (result.error) {
+            case 'user_not_found':
+              message = "Username not found";
+              break;
+            case 'inactive_user':
+              message = "User account is inactive";
+              break;
+            case 'invalid_password':
+              message = "Invalid password";
+              break;
+            default:
+              message = "Authentication failed";
+          }
+          return res.status(401).json({ message });
         }
       }
 
