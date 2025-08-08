@@ -97,9 +97,12 @@ export function DatasetList({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-1 1m0 0l-1 1m2-2h2M9 7l1 1m0 0l1 1M7 7h2" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">No datasets found</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-2">No datasets available</h3>
         <p className="text-muted-foreground mb-4">
-          Configure your AWS S3 settings and refresh to load datasets from your bucket.
+          {currentFolder 
+            ? `No datasets found in the ${currentFolder.replace(/_/g, ' ')} folder. You may not have access to datasets in this folder.`
+            : "You do not have access to any datasets. Contact your administrator to request access to data sources."
+          }
         </p>
       </div>
     );

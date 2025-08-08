@@ -498,11 +498,24 @@ export default function Home() {
 
               <ErrorBoundary>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {(allDatasetsLoading || foldersLoading || folders.length === 0) ? (
-                    // Show skeleton cards while loading or when no folders are available yet
+                  {(allDatasetsLoading || foldersLoading) ? (
+                    // Show skeleton cards while loading
                     Array.from({ length: 12 }, (_, index) => (
                       <SkeletonFolderCard key={`skeleton-${index}`} index={index} />
                     ))
+                  ) : folders.length === 0 ? (
+                    // Show no access message when user has no folder permissions
+                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Database className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        You do not have access to any datasets
+                      </h3>
+                      <p className="text-gray-500 max-w-md">
+                        Contact your administrator to request access to data sources and begin exploring the data lake.
+                      </p>
+                    </div>
                   ) : (
                     paginatedFolders.map((folderName, index) => {
                       // Use all datasets to find datasets for this folder
