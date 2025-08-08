@@ -17,40 +17,41 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
-  const dynamicLastUpdated = useDynamicTime(stats?.lastRefreshTime || null);
-  
-  // Always call hooks at the top level - never conditionally
-  // Animated counting for numeric stats (will be used when stats are available)
-  const animatedDatasets = useCountAnimation({
-    target: stats?.totalDatasets || 0,
-    duration: 1800,
-    delay: 100,
-  });
-  
-  const animatedDataSources = useCountAnimation({
-    target: stats?.dataSources || 0,
-    duration: 1600,
-    delay: 300,
-  });
-  
-  const animatedCommunityPoints = useCountAnimation({
-    target: stats?.totalCommunityDataPoints || 0,
-    duration: 2200,
-    delay: 500,
-  });
-
-  // Debug: Check if stats are being received
-  console.log('StatsCards - stats received:', !!stats);
-  console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
-  console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
-  
-  // Check if we received an error object instead of stats
+  // Check if we received an error object instead of stats first
   let validStats = stats;
   if (stats && (stats as any).message && !stats.totalDatasets) {
     console.log('StatsCards received error response:', (stats as any).message);
     // Don't render stats for error responses - let loading state show
     validStats = undefined;
   }
+
+  const dynamicLastUpdated = useDynamicTime(validStats?.lastRefreshTime || null);
+
+  // Always call hooks at the top level - never conditionally
+  // Animated counting for numeric stats (will be used when stats are available)
+  const animatedDatasets = useCountAnimation({
+    target: validStats?.totalDatasets || 0,
+    duration: 1800,
+    delay: 100,
+  });
+  
+  const animatedDataSources = useCountAnimation({
+    target: validStats?.dataSources || 0,
+    duration: 1600,
+    delay: 300,
+  });
+  
+  const animatedCommunityPoints = useCountAnimation({
+    target: validStats?.totalCommunityDataPoints || 0,
+    duration: 2200,
+    delay: 500,
+  });
+
+  // Debug: Check if stats are being received
+  console.log('StatsCards - stats received:', !!stats);
+  console.log('StatsCards - validStats received:', !!validStats);
+  console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
+  console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
 
 
   // Loading state placeholders (will be used when stats are not available)
