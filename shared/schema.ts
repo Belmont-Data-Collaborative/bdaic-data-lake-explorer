@@ -67,7 +67,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("user"), // 'user', 'admin'
   isActive: boolean("is_active").notNull().default(true),
-  isAiEnabled: boolean("is_ai_enabled").notNull().default(false),
+  isAiEnabled: boolean("is_ai_enabled").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),

@@ -179,13 +179,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash the password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create new user
+      // Create new user with AI enabled by default
       const newUser = await storage.createUser({
         username,
         email,
         passwordHash,
         role,
         isActive: true,
+        isAiEnabled: true, // Enable AI features by default
       });
 
       // Assign default folder access for non-admin users
