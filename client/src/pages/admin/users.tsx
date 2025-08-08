@@ -36,7 +36,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
   const queryClient = useQueryClient();
 
   // Fetch all users
-  const { data: users, isLoading, error } = useQuery({
+  const { data: users, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/admin/users'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -50,12 +50,15 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
         });
         
         const data = await res.json();
+        console.log(`Fetched ${data?.length || 0} users from API`);
         return data;
       } catch (err) {
         console.error('Admin API error:', err);
         throw err;
       }
     },
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // No caching
   });
 
   // Update user mutation
@@ -105,11 +108,18 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       return res.json();
     },
     onSuccess: () => {
-      // Force immediate refetch of both user list and folder access data
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'], refetchType: 'active' });
+      console.log("User deletion successful, refreshing data...");
+      // Clear all caches and force immediate refetch
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      
+      // Wait a moment then refetch
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['/api/admin/users'], type: 'active' });
+        queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'], type: 'active' });
+      }, 100);
+      
       toast({
         title: "User deleted",
         description: "User has been successfully deleted.",
