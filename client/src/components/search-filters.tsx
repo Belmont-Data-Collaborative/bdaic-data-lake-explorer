@@ -22,6 +22,7 @@ interface SearchFiltersProps {
   showFolderFilter?: boolean;
   currentFolder?: string;
   userAiEnabled?: boolean;
+  hasDatasetAccess?: boolean;
 }
 
 export function SearchFilters({
@@ -38,6 +39,7 @@ export function SearchFilters({
   showFolderFilter = false,
   currentFolder,
   userAiEnabled = false,
+  hasDatasetAccess = true,
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
@@ -137,9 +139,9 @@ export function SearchFilters({
               </Select>
             )}
 
-            {onSelectDataset && <DatasetSearch onSelectDataset={onSelectDataset} />}
+            {onSelectDataset && hasDatasetAccess && <DatasetSearch onSelectDataset={onSelectDataset} />}
 
-            {userAiEnabled && (
+            {userAiEnabled && hasDatasetAccess && (
               <Button
                 onClick={() => generateInsightsMutation.mutate(undefined)}
                 disabled={generateInsightsMutation.isPending}
@@ -161,26 +163,28 @@ export function SearchFilters({
               </Button>
             )}
 
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={refreshDatasetsMutation.isPending || isRefreshing}
-              className="touch-target"
-              aria-label="Refresh datasets from AWS S3"
-            >
-              {(refreshDatasetsMutation.isPending || isRefreshing) ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
-                  <span>{isRefreshing ? "Auto-refreshing..." : "Refreshing..."}</span>
-                  <span className="sr-only">Refreshing datasets from AWS S3</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2" size={16} aria-hidden="true" />
-                  <span>Refresh</span>
-                </>
-              )}
-            </Button>
+            {hasDatasetAccess && (
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={refreshDatasetsMutation.isPending || isRefreshing}
+                className="touch-target"
+                aria-label="Refresh datasets from AWS S3"
+              >
+                {(refreshDatasetsMutation.isPending || isRefreshing) ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                    <span>{isRefreshing ? "Auto-refreshing..." : "Refreshing..."}</span>
+                    <span className="sr-only">Refreshing datasets from AWS S3</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2" size={16} aria-hidden="true" />
+                    <span>Refresh</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </section>

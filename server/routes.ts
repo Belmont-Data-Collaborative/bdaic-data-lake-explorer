@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Find datasets by query
-  app.post("/api/datasets/search", async (req, res) => {
+  app.post("/api/datasets/search", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { query } = req.body;
       
@@ -1169,12 +1169,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Starting search for:', query);
-      const datasets = await storage.getDatasets();
-      console.log('Found datasets:', datasets.length);
       
-      // Use fallback search primarily with AI search as enhancement
+      // Get user's accessible folders
+      const userAccessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      console.log('User accessible folders:', userAccessibleFolders);
+      
+      // If user has no accessible folders, return empty results
+      if (userAccessibleFolders.length === 0) {
+        console.log('User has no accessible folders, returning empty results');
+        return res.json({ results: [] });
+      }
+      
+      // Get all datasets and filter by user's accessible folders
+      const allDatasets = await storage.getDatasets();
+      const accessibleDatasets = allDatasets.filter(dataset => 
+        userAccessibleFolders.includes(dataset.topLevelFolder)
+      );
+      
+      console.log('Found datasets:', allDatasets.length);
+      console.log('Accessible datasets:', accessibleDatasets.length);
+      
+      // Use fallback search on accessible datasets only
       console.log('Running fallback search...');
-      const fallbackResults = openAIService.fallbackSearch(query, datasets);
+      const fallbackResults = openAIService.fallbackSearch(query, accessibleDatasets);
       console.log('Fallback results:', fallbackResults.length);
       
       // Return results immediately to avoid timeouts

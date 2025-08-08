@@ -383,7 +383,8 @@ export default function Home() {
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
                 currentFolder={selectedFolder}
-                userAiEnabled={userAiEnabled} // Pass userAiEnabled here
+                userAiEnabled={userAiEnabled}
+                hasDatasetAccess={folders.length > 0}
               />
             </div>
 
@@ -449,7 +450,8 @@ export default function Home() {
                 onSelectDataset={handleSelectDataset}
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
-                userAiEnabled={userAiEnabled} // Pass userAiEnabled here
+                userAiEnabled={userAiEnabled}
+                hasDatasetAccess={folders.length > 0}
               />
             </div>
 
