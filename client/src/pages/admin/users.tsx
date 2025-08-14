@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, UserPlus, Eye, EyeOff } from "lucide-react";
+import { Users, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, UserPlus, Eye, EyeOff, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
