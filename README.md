@@ -12,10 +12,13 @@ A comprehensive full-stack web application for exploring and analyzing AWS S3 da
 - **Real-time Statistics**: Dynamic stats calculation with performance optimization
 
 ### Security & Access Control
-- **Role-Based Permissions**: Admin, Editor, and Viewer access levels
+- **Role-Based Permissions**: Admin and User access levels with granular control
 - **JWT Authentication**: Secure token-based authentication system
-- **Folder Access Control**: Granular permissions for data lake sections
-- **Session Management**: Comprehensive user session handling
+- **Folder Access Control**: Granular permissions for specific data lake sections
+- **AI Feature Control**: Individual user-level AI capability management
+- **Inactive Account Protection**: Immediate account deactivation functionality
+- **Admin-Only Registration**: Complete control over new user account creation
+- **Session Management**: Comprehensive user session handling with security logging
 
 ### Performance & Scalability
 - **Intelligent Caching**: Multi-layered caching with optimal TTL strategies
@@ -112,9 +115,11 @@ npm run dev
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **[API Reference](docs/API.md)** - Complete API documentation
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
-- **[Architecture Overview](docs/README.md)** - Detailed system architecture
+- **[API Reference](docs/API.md)** - Complete API documentation with authentication and security details
+- **[Security Guide](docs/SECURITY.md)** - Security architecture, access control, and best practices
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions for multiple platforms
+- **[AI Context Engineering](Context_Engineering_for_Ask_AI_Feature.md)** - Technical documentation for AI features
+- **[Architecture Overview](replit.md)** - Detailed system architecture and user preferences
 
 ## 🏗 Project Structure
 
@@ -174,12 +179,20 @@ See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions on vari
 
 ## 🔐 Security
 
-- **JWT-based authentication** with secure token handling
-- **Role-based access control** for granular permissions
-- **bcrypt password hashing** for user security
-- **Input validation** using Zod schemas
-- **CORS protection** for cross-origin requests
-- **Rate limiting** to prevent abuse
+### Authentication & Authorization
+- **JWT-based authentication** with secure token handling and session management
+- **Role-based access control** with Admin and User roles
+- **Individual AI permissions** controlled at user level
+- **Folder-level access control** for granular data lake permissions
+- **Admin-only registration** ensuring complete user onboarding control
+
+### Security Features
+- **bcrypt password hashing** with secure salt rounds
+- **Input validation** using comprehensive Zod schemas
+- **Inactive account protection** with immediate login prevention
+- **CORS protection** for cross-origin request security
+- **Rate limiting** to prevent abuse and ensure fair usage
+- **Audit logging** for user actions and administrative changes
 
 ## 📊 Performance Features
 
@@ -207,11 +220,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: Report bugs or request features via GitHub Issues
 - **Health Checks**: Monitor application status at `/api/health`
 
-## 🔄 Recent Updates
+## 🔄 Recent Updates (August 2025)
 
-- ✅ Fixed community data points calculation for admin users
-- ✅ Implemented server-side stats caching with proper field inclusion
-- ✅ Enhanced folder access control system
-- ✅ Added comprehensive performance monitoring
-- ✅ Improved error handling and logging
-- ✅ Updated documentation with deployment guides
+### Security & Access Control Enhancements
+- ✅ **Registration Completely Disabled**: New accounts can only be created by administrators
+- ✅ **User-Based AI Control**: AI features (Ask AI, Generate Insights, Multi-dataset Chat) now controlled at individual user level
+- ✅ **Inactive Account Restrictions**: Comprehensive login prevention for inactive accounts with custom messaging
+- ✅ **Admin-Only Actions**: Restricted Refresh and AI Insights buttons to admin users only
+- ✅ **Zero-Access Registration**: New users start with no dataset access, requiring manual permission assignment
+
+### User Interface Improvements
+- ✅ **Simplified User Management**: Removed complex folder access and AI settings tabs for cleaner interface
+- ✅ **Conditional AI UI**: Dynamic showing/hiding of AI features based on individual user permissions
+- ✅ **Enhanced Error Handling**: Better parsing and display of server validation errors
+- ✅ **Table Refresh Logic**: Immediate database refresh after user role updates
+
+### Performance & Reliability
+- ✅ **Cache-Busting Implementation**: Forced fresh database queries for user management
+- ✅ **Server-Side Caching**: Intelligent multi-layered caching with optimized TTL strategies
+- ✅ **Community Data Points Fix**: Accurate calculation for admin users across all accessible datasets
+- ✅ **Performance Monitoring**: Comprehensive slow query detection and optimization

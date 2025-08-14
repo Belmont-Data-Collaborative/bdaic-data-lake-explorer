@@ -24,29 +24,12 @@ All responses follow this format:
 ### Authentication
 
 #### POST `/auth/register`
-Register a new user account.
-
-**Request:**
-```json
-{
-  "username": "john_doe",
-  "email": "john@example.com", 
-  "password": "securepassword123",
-  "role": "user" // Optional: "admin" | "user"
-}
-```
+⚠️ **DISABLED**: User registration has been completely disabled for security. New accounts can only be created by administrators through the admin panel.
 
 **Response:**
 ```json
 {
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "id": 1,
-    "username": "john_doe",
-    "email": "john@example.com",
-    "role": "user"
-  }
+  "message": "User registration is disabled. Contact an administrator to create an account."
 }
 ```
 
@@ -61,7 +44,7 @@ Authenticate user credentials.
 }
 ```
 
-**Response:**
+**Success Response:**
 ```json
 {
   "message": "Login successful",
@@ -70,8 +53,17 @@ Authenticate user credentials.
     "id": 1,
     "username": "john_doe",
     "email": "john@example.com",
-    "role": "user"
+    "role": "user",
+    "isActive": true,
+    "isAiEnabled": false
   }
+}
+```
+
+**Inactive Account Response:**
+```json
+{
+  "message": "Your account is inactive. Please contact the administrator."
 }
 ```
 
@@ -227,50 +219,76 @@ Request download access for a dataset.
 
 ### AI Integration
 
-#### POST `/ai/analyze`
-Generate AI insights for a dataset.
+⚠️ **Note**: AI features are only available to users with `isAiEnabled: true`. Contact an administrator to enable AI capabilities for your account.
+
+#### POST `/datasets/:id/chat`
+Single dataset AI analysis.
 
 **Headers:** `Authorization: Bearer <token>`
 
 **Request:**
 ```json
 {
-  "datasetId": 6724,
-  "analysisType": "summary" | "patterns" | "use_cases"
+  "question": "What patterns do you see in this healthcare data?",
+  "enableVisualization": true
 }
 ```
 
 **Response:**
 ```json
 {
-  "analysis": "AI-generated insights about the dataset...",
-  "confidence": 0.95,
-  "processingTime": "2.3s"
+  "response": "Based on the healthcare dataset, I can see several interesting patterns...",
+  "visualizationData": {
+    "chartType": "bar",
+    "data": {...},
+    "title": "Health Outcomes by County"
+  },
+  "processingTime": "3.2s"
 }
 ```
 
-#### POST `/ai/chat`
-Conversational AI analysis.
+#### POST `/datasets/batch-chat`
+Multi-dataset AI analysis.
 
 **Headers:** `Authorization: Bearer <token>`
 
 **Request:**
 ```json
 {
-  "message": "What patterns do you see in the healthcare data?",
-  "context": {
-    "datasetIds": [6724, 6725],
-    "previousMessages": []
-  }
+  "question": "Compare health outcomes between these datasets",
+  "datasetIds": [6724, 6725, 6726],
+  "enableVisualization": true
 }
 ```
 
 **Response:**
 ```json
 {
-  "response": "Based on the healthcare datasets, I can see several interesting patterns...",
-  "relatedDatasets": [6724, 6725],
-  "suggestions": ["Explore geographic trends", "Analyze temporal patterns"]
+  "response": "Comparing across the three healthcare datasets, here are the key findings...",
+  "visualizationData": {
+    "chartType": "line",
+    "data": {...},
+    "title": "Comparative Health Trends"
+  },
+  "relatedDatasets": [6724, 6725, 6726]
+}
+```
+
+#### POST `/datasets/:id/generate-insights`
+Generate comprehensive AI insights (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "insights": {
+    "summary": "Dataset contains health outcome data...",
+    "keyPatterns": ["Geographic disparities", "Temporal trends"],
+    "potentialUseCases": ["Policy analysis", "Research studies"],
+    "dataQualityNotes": "High completeness, minimal outliers"
+  },
+  "confidence": 0.92
 }
 ```
 
@@ -290,7 +308,88 @@ Get all users (admin only).
     "email": "admin@example.com",
     "role": "admin",
     "isActive": true,
-    "createdAt": "2025-01-01T00:00:00.000Z"
+    "isAiEnabled": true,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastLoginAt": "2025-08-14T10:00:00.000Z"
+  }
+]
+```
+
+#### POST `/admin/users`
+Create a new user (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "securepassword123",
+  "role": "user"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "User created successfully",
+  "user": {
+    "id": 2,
+    "username": "new_user",
+    "email": "user@example.com",
+    "role": "user",
+    "isActive": true,
+    "isAiEnabled": false
+  }
+}
+```
+
+#### PUT `/admin/users/:id`
+Update user information (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "role": "admin",
+  "isActive": false
+}
+```
+
+#### PUT `/admin/users/:id/ai-enabled`
+Toggle AI features for a user (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "enabled": true
+}
+```
+
+#### DELETE `/admin/users/:id`
+Delete a user (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+#### GET `/admin/users-folder-access`
+Get folder access information for all users (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+[
+  {
+    "userId": 2,
+    "username": "user",
+    "email": "user@example.com",
+    "accessibleFolders": ["cdc_places", "census_acs5"],
+    "totalUsage": 15,
+    "successfulInteractions": 12
   }
 ]
 ```
@@ -306,6 +405,11 @@ Grant folder access to a user (admin only).
   "folderNames": ["cdc_places", "census_acs5"]
 }
 ```
+
+#### DELETE `/admin/users/:userId/folder-access/:folderName`
+Remove folder access from a user (admin only).
+
+**Headers:** `Authorization: Bearer <token>`
 
 #### POST `/admin/refresh`
 Trigger dataset refresh from S3 (admin only).
