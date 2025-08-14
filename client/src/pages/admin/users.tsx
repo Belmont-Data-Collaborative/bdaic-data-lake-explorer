@@ -54,12 +54,17 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       }
       
       try {
-        const res = await apiRequest('GET', '/api/admin/users', null, {
-          'Authorization': `Bearer ${token}`
+        // Add cache-busting timestamp to ensure fresh data from database
+        const timestamp = Date.now();
+        const res = await apiRequest('GET', `/api/admin/users?_t=${timestamp}`, null, {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         });
         
         const data = await res.json();
-        console.log(`Fetched ${data?.length || 0} users from API`);
+        console.log(`Fetched ${data?.length || 0} users from API with timestamp ${timestamp}`);
         return data;
       } catch (err) {
         console.error('Admin API error:', err);
@@ -86,8 +91,10 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      // Invalidate and refetch to ensure fresh data from database
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await refetch(); // Force immediate refetch
       toast({
         title: "User updated",
         description: "User information has been successfully updated.",
@@ -118,8 +125,10 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       
       return res.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async (data) => {
+      // Invalidate and refetch to ensure fresh data from database
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await refetch(); // Force immediate refetch
       toast({
         title: "User created successfully",
         description: `New user ${data.user.username} has been created.`,
@@ -152,77 +161,23 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       
       return res.json();
     },
-    onMutate: async (userId: number) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['/api/admin/users'] });
-
-      // Snapshot the previous value
-      const previousUsers = queryClient.getQueryData(['/api/admin/users']);
-
-      // Optimistically remove the user from the cache
-      queryClient.setQueryData(['/api/admin/users'], (old: any[]) => {
-        if (!old) return old;
-        return old.filter(user => user.id !== userId);
+    onSuccess: async () => {
+      // Invalidate and refetch to ensure fresh data from database
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await refetch(); // Force immediate refetch
+      toast({
+        title: "User deleted",
+        description: "User has been successfully deleted.",
       });
-
-      // Return context with snapshot
-      return { previousUsers, userId };
+      setDeletingUser(null);
     },
-    onError: (error: any, userId: number, context) => {
-      // Revert optimistic update on error
-      if (context?.previousUsers) {
-        queryClient.setQueryData(['/api/admin/users'], context.previousUsers);
-      }
-      
+    onError: (error: any) => {
       console.error('Delete user error:', error);
       toast({
         title: "Delete failed",
         description: "Failed to delete user. Please try again.",
         variant: "destructive",
       });
-    },
-    onSuccess: async () => {
-      console.log("User deletion successful, refreshing data...");
-      
-      // Close the dialog immediately
-      setDeletingUser(null);
-      
-      toast({
-        title: "User deleted",
-        description: "User has been successfully deleted.",
-      });
-      
-      // Clear cache and force fresh fetch
-      queryClient.clear();
-      
-      // Force immediate fresh database fetch
-      const token = localStorage.getItem('authToken');
-      try {
-        const freshResponse = await fetch('/api/admin/users', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        if (freshResponse.ok) {
-          const freshUsers = await freshResponse.json();
-          console.log(`Fetched ${freshUsers.length} users from API`);
-          queryClient.setQueryData(['/api/admin/users'], freshUsers);
-        }
-      } catch (fetchError) {
-        console.error('Failed to fetch fresh user data:', fetchError);
-        await refetch();
-      }
-      
-      // Also refresh related queries
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/ai-usage'] });
-    },
-    onSettled: () => {
-      // Always ensure queries are refetched
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
     },
   });
 
