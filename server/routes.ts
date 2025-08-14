@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, registerUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
+import { insertAwsConfigSchema, registerUserSchema, adminCreateUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
 import { z } from "zod";
 import { authenticateToken, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
@@ -350,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only user creation endpoint
   app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const validation = registerUserSchema.safeParse(req.body);
+      const validation = adminCreateUserSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ 
           message: "Validation failed", 

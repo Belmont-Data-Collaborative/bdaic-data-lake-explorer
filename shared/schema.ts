@@ -238,6 +238,14 @@ export const registerUserSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Admin user creation schema (no password confirmation needed)
+export const adminCreateUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+  role: z.enum(["admin", "user"]).default("user"),
+});
+
 // Login schema
 export const loginUserSchema = z.object({
   username: z.string().min(1, "Username is required"),

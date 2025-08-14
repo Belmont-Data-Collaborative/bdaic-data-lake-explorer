@@ -32,7 +32,7 @@ Register a new user account.
   "username": "john_doe",
   "email": "john@example.com", 
   "password": "securepassword123",
-  "role": "user" // Optional: "admin" | "editor" | "user"
+  "role": "user" // Optional: "admin" | "user"
 }
 ```
 

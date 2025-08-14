@@ -52,7 +52,7 @@ The application employs a modern full-stack architecture, separating frontend an
 ### Feature Specifications:
 - **Smart Dataset Discovery**: Automated S3 bucket scanning with comprehensive metadata extraction and intelligent organization.
 - **AI-Powered Analytics**: Advanced insights generation using OpenAI GPT-4o for data analysis, pattern recognition, and conversational exploration.
-- **Enterprise Authentication**: Comprehensive JWT-based authentication with role-based access control (Admin, Editor, User), secure password handling, and session management.
+- **Enterprise Authentication**: Comprehensive JWT-based authentication with role-based access control (Admin, User), secure password handling, and session management.
 - **Advanced Filtering & Search**: Multi-dimensional filtering by folder, format, size, tags, and intelligent search capabilities.
 - **Hierarchical Tag Filtering**: Sophisticated tag-based filtering system with persistence across user sessions and navigation.
 - **Download Tracking**: Comprehensive usage monitoring with granular tracking for sample, full, and metadata downloads.

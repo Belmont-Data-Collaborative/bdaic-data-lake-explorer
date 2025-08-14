@@ -350,7 +350,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -467,7 +466,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {['admin', 'editor', 'user'].map((role) => {
+              {['admin', 'user'].map((role) => {
                 const roleUsers = users?.filter((user: User) => user.role === role) || [];
                 const roleCount = roleUsers.length;
                 const percentage = users?.length ? Math.round((roleCount / users.length) * 100) : 0;
@@ -476,8 +475,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                   <div key={role} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className={`w-3 h-3 rounded-full ${
-                        role === 'admin' ? 'bg-purple-500' :
-                        role === 'editor' ? 'bg-blue-500' : 'bg-gray-400'
+                        role === 'admin' ? 'bg-purple-500' : 'bg-gray-400'
                       }`}></div>
                       <span className="font-medium capitalize">{role}</span>
                     </div>
@@ -631,8 +629,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                           className={
                             user.role === 'admin' 
                               ? 'bg-purple-100 text-purple-800 border-purple-200 font-medium px-3 py-1'
-                              : user.role === 'editor'
-                              ? 'bg-blue-100 text-blue-800 border-blue-200 font-medium px-3 py-1'
                               : 'bg-gray-100 text-gray-700 border-gray-200 font-medium px-3 py-1'
                           }
                         >
@@ -641,8 +637,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                         <div className="text-xs text-gray-500">
                           {user.role === 'admin' 
                             ? 'Full system access' 
-                            : user.role === 'editor' 
-                            ? 'Edit & download access'
                             : 'View & download access'
                           }
                         </div>
@@ -721,7 +715,6 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="user">User</SelectItem>
-                                      <SelectItem value="editor">Editor</SelectItem>
                                       <SelectItem value="admin">Admin</SelectItem>
                                     </SelectContent>
                                   </Select>
