@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message = "Username not found";
               break;
             case 'inactive_user':
-              message = "User account is inactive";
+              message = "Your account is inactive. Please contact the administrator";
               break;
             case 'invalid_password':
               message = "Invalid password";
