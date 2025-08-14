@@ -152,64 +152,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
   
-  // User Registration and Authentication endpoints
+  // User Registration - DISABLED
+  // Contact administrator for new account creation
   app.post("/api/auth/register", async (req, res) => {
-    try {
-      const validation = registerUserSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const { username, email, password, role = "user" } = validation.data;
-
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(409).json({ message: "Username already exists" });
-      }
-
-      const existingEmail = await storage.getUserByEmail(email);
-      if (existingEmail) {
-        return res.status(409).json({ message: "Email already exists" });
-      }
-
-      // Hash the password
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      // Create new user with AI disabled by default
-      const newUser = await storage.createUser({
-        username,
-        email,
-        passwordHash,
-        role,
-        isActive: true,
-        isAiEnabled: false, // AI features disabled by default - admins must enable manually
-      });
-
-      // No default folder access - users start with zero access
-      // Administrators will need to manually assign folder permissions
-      console.log('New user registered with no default folder access:', newUser.id);
-
-      // Generate JWT token
-      const token = storage.generateJWT(newUser);
-
-      res.status(201).json({
-        message: "User registered successfully",
-        token,
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email,
-          role: newUser.role,
-        },
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Registration failed" });
-    }
+    return res.status(403).json({ 
+      message: "User registration is disabled. Please contact your administrator for new account creation." 
+    });
   });
 
   app.post("/api/auth/login", async (req, res) => {

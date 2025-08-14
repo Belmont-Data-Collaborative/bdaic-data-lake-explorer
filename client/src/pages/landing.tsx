@@ -823,16 +823,7 @@ For detailed API specifications, please contact the system administrator.`;
                       </Button>
                     </form>
                     
-                    <div className="mt-4 text-center">
-                      <Button
-                        variant="link"
-                        onClick={() => setShowRegister(true)}
-                        className="text-sm"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        New user? Register here
-                      </Button>
-                    </div>
+                    {/* Registration disabled - contact administrator for new accounts */}
                   </CardContent>
                 </Card>
               ) : (
