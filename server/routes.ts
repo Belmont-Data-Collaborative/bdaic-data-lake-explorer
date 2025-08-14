@@ -347,6 +347,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only user creation endpoint
+  app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const validation = registerUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { username, email, password, role = "user" } = validation.data;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+
+      // Hash the password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create new user with AI disabled by default (admin can enable later)
+      const newUser = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        role,
+        isActive: true,
+        isAiEnabled: false, // AI features disabled by default
+      });
+
+      console.log(`Admin ${req.user!.username} created new user: ${newUser.username} (ID: ${newUser.id})`);
+
+      return res.status(201).json({
+        message: "User created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role,
+          isActive: newUser.isActive,
+          isAiEnabled: newUser.isAiEnabled,
+        }
+      });
+    } catch (error) {
+      console.error("Admin user creation error:", error);
+      return res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
   app.delete("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const userId = parseInt(req.params.id);

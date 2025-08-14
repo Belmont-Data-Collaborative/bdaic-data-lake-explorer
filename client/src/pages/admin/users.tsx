@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings } from "lucide-react";
+import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, UserPlus, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import FolderAccessManagement from "@/components/folder-access-management";
@@ -32,6 +34,14 @@ interface AdminUsersProps {
 export default function AdminUsers({ currentUser }: AdminUsersProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'user'
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -92,6 +102,40 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
       toast({
         title: "Update failed",
         description: "Failed to update user. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: typeof newUserData) => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const res = await apiRequest('POST', '/api/admin/users', userData, {
+        'Authorization': `Bearer ${token}`
+      });
+      
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      toast({
+        title: "User created successfully",
+        description: `New user ${data.user.username} has been created.`,
+      });
+      setCreatingUser(false);
+      setNewUserData({ username: '', email: '', password: '', role: 'user' });
+      setShowPassword(false);
+    },
+    onError: (error: any) => {
+      console.error('Create user error:', error);
+      toast({
+        title: "Failed to create user",
+        description: error.message || "Please check the information and try again.",
         variant: "destructive",
       });
     },
@@ -227,21 +271,131 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
             <p className="text-muted-foreground">Manage users, roles, and permissions</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-            toast({
-              title: "Refreshing data",
-              description: "User data is being refreshed...",
-            });
-          }}
-          className="flex items-center space-x-2"
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Reload</span>
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Dialog open={creatingUser} onOpenChange={setCreatingUser}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white">
+                <UserPlus className="h-4 w-4" />
+                <span>Create User</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+                <DialogDescription>
+                  Add a new user account with specified role and permissions.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-username">Username</Label>
+                  <Input
+                    id="new-username"
+                    type="text"
+                    value={newUserData.username}
+                    onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })}
+                    placeholder="Enter username"
+                    disabled={createUserMutation.isPending}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Email</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    value={newUserData.email}
+                    onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                    placeholder="Enter email address"
+                    disabled={createUserMutation.isPending}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showPassword ? "text" : "password"}
+                      value={newUserData.password}
+                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                      placeholder="Enter password"
+                      className="pr-10"
+                      disabled={createUserMutation.isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Password must be at least 6 characters long
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-role">Role</Label>
+                  <Select
+                    value={newUserData.role}
+                    onValueChange={(value) => setNewUserData({ ...newUserData, role: value })}
+                    disabled={createUserMutation.isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCreatingUser(false);
+                      setNewUserData({ username: '', email: '', password: '', role: 'user' });
+                      setShowPassword(false);
+                    }}
+                    disabled={createUserMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => createUserMutation.mutate(newUserData)}
+                    disabled={createUserMutation.isPending || !newUserData.username || !newUserData.email || !newUserData.password}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {createUserMutation.isPending ? 'Creating...' : 'Create User'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Button
+            variant="outline"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+              toast({
+                title: "Refreshing data",
+                description: "User data is being refreshed...",
+              });
+            }}
+            className="flex items-center space-x-2"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Reload</span>
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
