@@ -8,14 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, UserPlus, Eye, EyeOff } from "lucide-react";
+import { Users, UserCheck, Edit, Trash2, AlertTriangle, RefreshCw, ArrowLeft, Clock, Calendar, Activity, Settings, UserPlus, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import FolderAccessManagement from "@/components/folder-access-management";
 
 interface User {
   id: number;
@@ -572,20 +569,8 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
         </Card>
       </div>
 
-      {/* Admin Management Tabs */}
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            User Management
-          </TabsTrigger>
-          <TabsTrigger value="folder-access" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Folder Access & AI Settings
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="mt-6">
+      {/* User Management Section */}
+      <div className="mt-6">
           {/* Users Table */}
       <Card className="shadow-sm border-gray-200 bg-white">
         <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-25 border-b border-gray-100">
@@ -812,13 +797,7 @@ export default function AdminUsers({ currentUser }: AdminUsersProps) {
           )}
         </CardContent>
       </Card>
-        </TabsContent>
-
-        <TabsContent value="folder-access" className="mt-6">
-          <FolderAccessManagement />
-        </TabsContent>
-
-      </Tabs>
+      </div>
     </div>
   );
 }
