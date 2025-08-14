@@ -350,8 +350,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only user creation endpoint
   app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
+      console.log('Admin create user request body:', req.body);
       const validation = adminCreateUserSchema.safeParse(req.body);
       if (!validation.success) {
+        console.log('Validation failed:', validation.error.errors);
         return res.status(400).json({ 
           message: "Validation failed", 
           errors: validation.error.errors 
