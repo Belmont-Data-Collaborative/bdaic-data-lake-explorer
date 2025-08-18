@@ -2035,11 +2035,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "API Documentation section not found" });
       }
       
-      // Find the next major section to stop at
-      const nextSectionIndex = content.indexOf('\n## ', apiDocsStart + 1);
-      const apiDocsContent = nextSectionIndex !== -1 
-        ? content.substring(apiDocsStart, nextSectionIndex)
-        : content.substring(apiDocsStart);
+      // Return all content from API Documentation to the end of file
+      const apiDocsContent = content.substring(apiDocsStart);
       
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.send(apiDocsContent);

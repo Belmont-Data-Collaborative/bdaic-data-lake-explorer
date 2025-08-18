@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Book, FileText, Search, ChevronRight } from "lucide-react";
+import { Book, FileText, Search, ChevronRight, List } from "lucide-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,8 +91,8 @@ For complete documentation, please check the project files or contact the develo
     let match;
 
     while ((match = headerRegex.exec(content)) !== null) {
-      const level = match[1].length;
-      const title = match[2].trim();
+      const level = match[1]?.length || 1;
+      const title = match[2]?.trim() || "";
       const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       
       headers.push({
@@ -143,90 +143,195 @@ For complete documentation, please check the project files or contact the develo
   return (
     <>
       <style>{`
-        .api-docs-content pre code,
-        .api-docs-content pre,
+        /* Dark IDE Theme Styling */
+        .api-docs-content {
+          background: #1e1e1e;
+          color: #d4d4d4;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        .api-docs-content pre {
+          background: #252526 !important;
+          border: 1px solid #3e3e42;
+          border-radius: 8px;
+          padding: 16px;
+          color: #d4d4d4 !important;
+          overflow-x: auto;
+        }
+        
         .api-docs-content code {
-          color: #000000 !important;
+          background: #3c3c3c !important;
+          color: #ce9178 !important;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.9em;
         }
-        .api-docs-content .prose code {
-          color: #000000 !important;
+        
+        .api-docs-content pre code {
+          background: transparent !important;
+          color: #d4d4d4 !important;
+          padding: 0;
         }
-        .api-docs-content .prose pre {
-          color: #000000 !important;
+        
+        .api-docs-content h1 {
+          color: #569cd6;
+          border-bottom: 2px solid #404040;
+          padding-bottom: 8px;
+        }
+        
+        .api-docs-content h2 {
+          color: #4ec9b0;
+          border-left: 4px solid #007acc;
+          padding-left: 12px;
+          margin: 24px 0 16px 0;
+        }
+        
+        .api-docs-content h3 {
+          color: #dcdcaa;
+          margin: 20px 0 12px 0;
+        }
+        
+        .api-docs-content h4 {
+          color: #c586c0;
+          margin: 16px 0 8px 0;
+        }
+        
+        .api-docs-content strong {
+          color: #f44747;
+          font-weight: 600;
+        }
+        
+        .api-docs-content ul li::marker {
+          color: #569cd6;
+        }
+        
+        .api-docs-content ul li {
+          color: #d4d4d4;
+          margin: 4px 0;
+        }
+        
+        .api-docs-content p {
+          line-height: 1.6;
+          margin: 12px 0;
+        }
+        
+        .api-docs-content blockquote {
+          background: #2d2d30;
+          border-left: 4px solid #007acc;
+          padding: 12px 16px;
+          margin: 16px 0;
+          border-radius: 0 4px 4px 0;
+        }
+        
+        .api-docs-content hr {
+          border: 1px solid #404040;
+          margin: 24px 0;
+        }
+        
+        /* JSON syntax highlighting */
+        .api-docs-content .token.string {
+          color: #ce9178;
+        }
+        
+        .api-docs-content .token.number {
+          color: #b5cea8;
+        }
+        
+        .api-docs-content .token.boolean {
+          color: #569cd6;
+        }
+        
+        .api-docs-content .token.null {
+          color: #569cd6;
+        }
+        
+        .api-docs-content .token.property {
+          color: #9cdcfe;
+        }
+        
+        .api-docs-content .token.punctuation {
+          color: #d4d4d4;
         }
       `}</style>
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 api-docs-content">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Book className="text-white" size={20} />
+    <div className="min-h-screen bg-[#1e1e1e] api-docs-content">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header with VS Code style */}
+        <div className="mb-8 bg-[#252526] border border-[#3e3e42] rounded-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-[#007acc] rounded-lg flex items-center justify-center">
+              <Book className="text-white" size={24} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-[#569cd6] font-mono">🐍 API Documentation</h1>
+              <p className="text-[#6a9955] font-mono text-sm mt-1"># Complete reference for the Data Lake Explorer API</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">📘 API Documentation</h1>
-            <p className="text-gray-600">Complete reference for the Data Lake Explorer API</p>
-          </div>
-        </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <Input
-            type="text"
-            placeholder="Search documentation..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+          {/* Search with terminal style */}
+          <div className="relative max-w-md">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#569cd6]">
+              <Search size={16} />
+            </div>
+            <Input
+              type="text"
+              placeholder=">>> search_docs(query='...')"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-[#1e1e1e] border-[#3e3e42] text-[#d4d4d4] font-mono text-sm focus:border-[#007acc] placeholder:text-[#6a9955]"
+            />
+          </div>
         </div>
-      </div>
 
         {error && (
-          <Card className="mb-6 border-yellow-200 bg-yellow-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2 text-yellow-800">
-                <FileText size={16} />
-                <span className="font-medium">Documentation Note</span>
-              </div>
-              <p className="text-yellow-700 mt-2">{error}</p>
-            </CardContent>
-          </Card>
+          <div className="mb-6 bg-[#2d2d30] border border-[#f44747] rounded-lg p-4">
+            <div className="flex items-center space-x-2 text-[#f44747]">
+              <FileText size={16} />
+              <span className="font-mono font-medium">⚠️ DocumentationError</span>
+            </div>
+            <p className="text-[#d4d4d4] mt-2 font-mono text-sm"># {error}</p>
+          </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Table of Contents */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Table of Contents - Terminal Style */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-8 shadow-lg border-gray-200">
-              <CardHeader className="bg-gray-50 border-b border-gray-200">
-                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                  <List size={18} className="text-blue-600" />
-                  <span>Table of Contents</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="sticky top-8 bg-[#252526] border border-[#3e3e42] rounded-lg shadow-2xl">
+              <div className="bg-[#2d2d30] border-b border-[#3e3e42] p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="flex space-x-1">
+                    <div className="w-3 h-3 bg-[#f44747] rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#ff9800] rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#4caf50] rounded-full"></div>
+                  </div>
+                  <span className="text-[#d4d4d4] font-mono text-sm">api_explorer.py</span>
+                </div>
+              </div>
+              <div className="p-4">
                 <ScrollArea className="h-96">
-                  <nav className="space-y-2">
+                  <nav className="space-y-1 font-mono text-sm">
                     {filteredToc.map((item, index) => (
-                      <Button
+                      <button
                         key={index}
-                        variant="ghost"
-                        size="sm"
                         onClick={() => scrollToSection(item.id)}
-                        className={`w-full justify-start text-left h-auto py-2 px-3 hover:bg-blue-50 hover:text-blue-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          item.level === 1 ? 'font-medium text-gray-900' : 
-                          item.level === 2 ? 'pl-6 text-sm text-gray-700' :
-                          item.level === 3 ? 'pl-9 text-xs text-gray-600' : 'pl-12 text-xs text-gray-500'
+                        className={`w-full text-left py-1 px-2 rounded hover:bg-[#2d2d30] transition-colors focus:outline-none focus:ring-1 focus:ring-[#007acc] ${
+                          item.level === 1 ? 'text-[#4ec9b0] font-semibold' : 
+                          item.level === 2 ? 'pl-4 text-[#dcdcaa]' :
+                          item.level === 3 ? 'pl-6 text-[#9cdcfe] text-xs' : 'pl-8 text-[#d4d4d4] text-xs'
                         }`}
-                        aria-label={`Navigate to ${item.title}`}
+                        title={`Navigate to ${item.title}`}
                       >
-                        <ChevronRight size={12} className="mr-2 flex-shrink-0 text-gray-400" />
-                        <span className="truncate">{item.title}</span>
-                      </Button>
+                        <span className="text-[#569cd6]">{item.level === 1 ? 'class' : item.level === 2 ? 'def' : '  •'}</span>
+                        <span className="ml-2">{item.title.replace(/^(GET|POST|PUT|DELETE)\s*/, '')}</span>
+                        {item.title.match(/^(GET|POST|PUT|DELETE)/) && (
+                          <span className="ml-1 text-[#ce9178] text-xs">({item.title.match(/^(GET|POST|PUT|DELETE)/)?.[1]})</span>
+                        )}
+                      </button>
                     ))}
                   </nav>
                 </ScrollArea>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Documentation Content */}
