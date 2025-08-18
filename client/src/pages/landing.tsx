@@ -402,7 +402,7 @@ For detailed API specifications, please contact the system administrator.`;
                     <span>Smart Dataset Discovery</span>
                   </CardTitle>
                   <CardDescription>
-                    Automatically discover and catalog 259 datasets across 16 S3 folders with intelligent metadata extraction
+                    Automatically discover and catalog {globalStats?.totalDatasets || '...'} datasets across {globalStats?.dataSources || '...'} S3 folders with intelligent metadata extraction
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -410,7 +410,7 @@ For detailed API specifications, please contact the system administrator.`;
                     <li>• Multi-format support (CSV, JSON, Parquet, YAML)</li>
                     <li>• Automatic metadata extraction with 30+ field variations</li>
                     <li>• Real-time S3 synchronization and refresh</li>
-                    <li>• Folder-based organization with 16 active data sources</li>
+                    <li>• Folder-based organization with {globalStats?.dataSources || '...'} active data sources</li>
                     <li>• File size analysis and completeness scoring</li>
                   </ul>
                 </CardContent>
@@ -590,24 +590,35 @@ For detailed API specifications, please contact the system administrator.`;
                 <h3 className="text-2xl font-bold text-foreground mb-4">Current Data Lake Status</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">259</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {globalStats?.totalDatasets ? formatNumber(globalStats.totalDatasets) : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Total Datasets</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">16</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {globalStats?.dataSources ? formatNumber(globalStats.dataSources) : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Data Sources</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">27.4 GB</div>
+                    <div className="text-3xl font-bold text-purple-600">
+                      {globalStats?.totalSize || '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Total Size</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600">15.4M+</div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      {globalStats?.totalCommunityDataPoints ? `${formatNumber(globalStats.totalCommunityDataPoints)}+` : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Community Data Points</div>
                   </div>
                 </div>
                 <p className="text-muted-foreground mt-4">
                   Connected to <strong>bdaic-public-transform</strong> S3 bucket with real-time synchronization
+                  {globalStats?.lastUpdated && (
+                    <span> • Last updated: {globalStats.lastUpdated}</span>
+                  )}
                 </p>
               </div>
             </div>
