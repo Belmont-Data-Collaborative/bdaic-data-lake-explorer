@@ -1831,6 +1831,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public stats endpoint for landing page (no authentication required)
+  app.get("/api/stats/public", async (req, res) => {
+    try {
+      // Use precomputed stats from cache for maximum performance
+      let stats = getCached<any>('precomputed-stats');
+      
+      if (!stats) {
+        // Fallback: compute stats if not cached
+        const datasets = await storage.getDatasets();
+        const lastRefreshTime = await storage.getLastRefreshTime();
+        const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
+        const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+        const uniqueDataSources = new Set();
+        
+        // Calculate community data points
+        let totalCommunityDataPoints = 0;
+        datasets.forEach(d => {
+          if (d.metadata && (d.metadata as any).dataSource) {
+            (d.metadata as any).dataSource
+              .split(',')
+              .map((s: string) => s.trim())
+              .forEach((s: string) => uniqueDataSources.add(s));
+          }
+          
+          const metadata = d.metadata as any;
+          if (metadata && 
+              metadata.recordCount && 
+              metadata.columnCount && 
+              metadata.completenessScore &&
+              !isNaN(parseInt(metadata.recordCount)) &&
+              !isNaN(metadata.columnCount) &&
+              !isNaN(metadata.completenessScore)) {
+            
+            const recordCount = parseInt(metadata.recordCount);
+            const columnCount = parseInt(metadata.columnCount);
+            const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+            const dataPoints = recordCount * columnCount * completenessScore;
+            totalCommunityDataPoints += dataPoints;
+          }
+        });
+        
+        stats = {
+          totalDatasets: datasets.length,
+          totalSize: formatFileSize(totalSize),
+          dataSources: uniqueDataSources.size,
+          lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+          lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+          totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
+        };
+        
+        // Cache the computed stats
+        setCache('precomputed-stats', stats, 1800000); // 30 minutes
+      }
+      
+      console.log(`Public stats endpoint serving stats: lastUpdated = ${stats.lastUpdated}, lastRefreshTime = ${stats.lastRefreshTime}`);
+      
+      res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching public stats:", error);
+      res.status(500).json({ message: "Failed to fetch public statistics" });
+    }
+  });
+
   // Optimized stats endpoint with caching
   let statsCache: { data: any; timestamp: number } | null = null;
   const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
