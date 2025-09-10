@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -177,38 +177,57 @@ export default function Home() {
     retry: false, // Don't retry auth errors
   });
 
-  // Stats query that takes into account the selected folder - placed after accessibleFolders declaration
+  // Calculate if accessible folders are ready
+  const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
+  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
+
+  // Stats query - use exact same pattern as working accessibleFolders query
   const { data: globalStats, error: statsError } = useQuery<Stats>({
     queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
     queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+
       const url = selectedFolder 
         ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
         : '/api/stats';
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(url, {
+
+      const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-      
-      const data = await response.json();
-      
-      // Check if response contains error message instead of stats
-      if (data.message && !data.totalDatasets) {
-        console.log('Stats API returned error:', data.message);
-        throw new Error(data.message);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403 || res.status === 401) {
+          localStorage.removeItem('authToken');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
+          throw new Error('Authentication expired');
+        }
+        throw new Error(errorData.message || 'Failed to load stats');
       }
-      
-      return data;
+
+      return res.json();
     },
     enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
-    retry: false, // Don't retry on auth errors
-    staleTime: 0, // Always refetch when folders change
+    staleTime: 60000,
+    gcTime: 300000,
+    retry: false,
   });
 
-  // Debug logging for stats
-  console.log('Stats from server:', globalStats);
+  // Debug logging for stats query execution
+  console.log('=== STATS QUERY DEBUG ===');
+  console.log('Stats query key:', ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0]);
+  console.log('Stats query enabled condition:', !!localStorage.getItem('authToken') && accessibleFoldersReady);
+  console.log('- authToken exists:', !!localStorage.getItem('authToken'));
+  console.log('- accessibleFoldersReady:', accessibleFoldersReady);
+  console.log('- globalStats:', globalStats);
+  console.log('- statsError:', statsError);
+  console.log('=== END STATS QUERY DEBUG ===');
 
   const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
@@ -229,8 +248,6 @@ export default function Home() {
   // Filter folders based on user access
   // Data is ready when successfully fetched (regardless of array content)
   // Check if error actually has content (empty object {} is not a real error)
-  const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
-  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
   const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
 
   const folders = (accessibleFoldersReady && allFoldersReady) ? 
@@ -253,6 +270,7 @@ export default function Home() {
   console.log("Folders loading state:", foldersLoading);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
+  console.log("Stats query enabled:", !!localStorage.getItem('authToken') && accessibleFoldersReady);
   console.log(
     "Folders with datasets:",
     folders.map((folder) => ({

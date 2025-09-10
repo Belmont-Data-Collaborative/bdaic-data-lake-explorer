@@ -1899,7 +1899,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   let statsCache: { data: any; timestamp: number } | null = null;
   const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  // Simple test endpoint to verify authentication  
+  app.get("/api/test-auth", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    console.log('=== /api/test-auth endpoint hit ===');
+    const user = req.user!;
+    res.json({ 
+      message: 'Authentication working', 
+      user: user.username, 
+      userId: user.id,
+      role: user.role 
+    });
+  });
+
   app.get("/api/stats", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    console.log('=== /api/stats endpoint hit ===');
+    console.log('Request headers authorization:', req.headers.authorization ? 'Present' : 'Missing');
+    console.log('Authenticated user:', req.user?.username || 'NO USER');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
     try {
       const user = req.user!;
       const { folder } = req.query;
