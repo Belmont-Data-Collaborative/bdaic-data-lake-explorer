@@ -115,7 +115,7 @@ export const userFolderAccess = pgTable("user_folder_access", {
   folderName: text("folder_name").notNull(),
   canAccess: boolean("can_access").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
 }, (table) => ({
   // Index on userId for fast user lookups
   userIdIdx: index("idx_user_folder_access_user_id").on(table.userId),
@@ -134,7 +134,7 @@ export const folderAiSettings = pgTable("folder_ai_settings", {
   isAiEnabled: boolean("is_ai_enabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  updatedBy: integer("updated_by").notNull().references(() => users.id),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
 }, (table) => ({
   // Index on folderName for fast folder lookups
   folderNameIdx: index("idx_folder_ai_settings_folder_name").on(table.folderName),
