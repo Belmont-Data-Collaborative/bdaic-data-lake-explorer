@@ -1,6 +1,6 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Database, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { SearchFilters } from "@/components/search-filters";
@@ -10,6 +10,7 @@ import { FolderCard } from "@/components/folder-card";
 import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Stats {
   totalDatasets: number;
@@ -113,16 +114,122 @@ export default function Home() {
     }
   };
 
-  // Use direct API queries with enhanced caching for maximum performance
-  const { data: globalStats } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
-    staleTime: 1800000, // 30 minutes cache
-    gcTime: 3600000, // 1 hour garbage collection
+  // Get user profile (includes AI enabled status) 
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/user/profile"],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+
+      const response = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+
+      const data = await response.json();
+
+      return data;
+    },
+    enabled: !!localStorage.getItem('authToken'),
+    staleTime: 0, // Always fetch fresh to get isAiEnabled updates
+    gcTime: 30000, // Short cache time
   });
 
+  // Get user's accessible folders first
+  const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError, isFetched: accessibleFoldersFetched } = useQuery<string[]>({
+    queryKey: ["/api/user/accessible-folders"],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
 
+      const res = await apiRequest('GET', '/api/user/accessible-folders', null, {
+        'Authorization': `Bearer ${token}`
+      });
 
-  const { data: folders = [], isLoading: foldersLoading } = useQuery<string[]>({
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403 || res.status === 401) {
+          // Token expired, clear it and redirect to login
+          console.log('Authentication expired, clearing token and redirecting...');
+          localStorage.removeItem('authToken');
+          // Use a small delay to ensure storage is cleared
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
+          throw new Error('Authentication expired');
+        }
+        throw new Error(errorData.message || 'Failed to load accessible folders');
+      }
+
+      return res.json();
+    },
+    enabled: !!localStorage.getItem('authToken'),
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
+    retry: false, // Don't retry auth errors
+  });
+
+  // Calculate if accessible folders are ready
+  const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
+  const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
+
+  // Stats query - use exact same pattern as working accessibleFolders query
+  const { data: globalStats, error: statsError } = useQuery<Stats>({
+    queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+
+      const url = selectedFolder 
+        ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
+        : '/api/stats';
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403 || res.status === 401) {
+          localStorage.removeItem('authToken');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
+          throw new Error('Authentication expired');
+        }
+        throw new Error(errorData.message || 'Failed to load stats');
+      }
+
+      return res.json();
+    },
+    enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
+    staleTime: 60000,
+    gcTime: 300000,
+    retry: false,
+  });
+
+  // Debug logging for stats query execution
+  console.log('=== STATS QUERY DEBUG ===');
+  console.log('Stats query key:', ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0]);
+  console.log('Stats query enabled condition:', !!localStorage.getItem('authToken') && accessibleFoldersReady);
+  console.log('- authToken exists:', !!localStorage.getItem('authToken'));
+  console.log('- accessibleFoldersReady:', accessibleFoldersReady);
+  console.log('- globalStats:', globalStats);
+  console.log('- statsError:', statsError);
+  console.log('=== END STATS QUERY DEBUG ===');
+
+  const { data: allFoldersFromAPI = [], isLoading: allFoldersLoading } = useQuery<string[]>({
     queryKey: ["/api/folders", tagFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -131,17 +238,39 @@ export default function Home() {
       }
       const response = await fetch(`/api/folders?${params}`);
       const data = await response.json();
-      console.log("Folders from API:", data);
+      console.log("All folders from API:", data);
       return data;
     },
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
   });
 
+  // Filter folders based on user access
+  // Data is ready when successfully fetched (regardless of array content)
+  // Check if error actually has content (empty object {} is not a real error)
+  const allFoldersReady = !allFoldersLoading && allFoldersFromAPI.length > 0;
+
+  const folders = (accessibleFoldersReady && allFoldersReady) ? 
+    allFoldersFromAPI.filter(folder => accessibleFolders.includes(folder)) : [];
+
+  // Only show loading if either API is still loading or failed to fetch
+  const foldersLoading = accessibleFoldersLoading || allFoldersLoading || !accessibleFoldersReady;
+
   // Debug logging
+  console.log("Accessible folders from API:", accessibleFolders);
+  console.log("All folders from API:", allFoldersFromAPI);
   console.log("Folders from API:", folders);
+  console.log("Accessible folders loading:", accessibleFoldersLoading);
+  console.log("All folders loading:", allFoldersLoading);
+  console.log("Accessible folders fetched:", accessibleFoldersFetched);
+  console.log("Accessible folders error:", accessibleFoldersError);
+  console.log("Has real error:", hasRealError);
+  console.log("Accessible folders ready:", accessibleFoldersReady);
+  console.log("All folders ready:", allFoldersReady);
+  console.log("Folders loading state:", foldersLoading);
   console.log("All datasets count:", allDatasets.length);
   console.log("Current tag filter:", tagFilter);
+  console.log("Stats query enabled:", !!localStorage.getItem('authToken') && accessibleFoldersReady);
   console.log(
     "Folders with datasets:",
     folders.map((folder) => ({
@@ -150,163 +279,8 @@ export default function Home() {
     })),
   );
 
-  const { data: folderDataPoints = [] } = useQuery<
-    Array<{ folder_label: string; total_community_data_points: number }>
-  >({
-    queryKey: ["/api/folders/community-data-points"],
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
-  });
+  // Use server stats directly with no modifications whatsoever
 
-  // Group datasets by folder for folder cards and stats
-  const datasetsByFolder = allDatasets.reduce(
-    (acc, dataset) => {
-      const folder = dataset.topLevelFolder || "uncategorized";
-      if (!acc[folder]) acc[folder] = [];
-      acc[folder].push(dataset);
-      return acc;
-    },
-    {} as Record<string, Dataset[]>,
-  );
-
-  // Helper function to extract unique data sources from datasets
-  const extractDataSources = (datasets: Dataset[]): Set<string> => {
-    const sources = new Set<string>();
-
-    for (const dataset of datasets) {
-      if (dataset.metadata && (dataset.metadata as any).dataSource) {
-        // Split by comma and clean up each source
-        const dataSources = (dataset.metadata as any).dataSource
-          .split(",")
-          .map((source: string) => source.trim())
-          .filter((source: string) => source.length > 0);
-
-        dataSources.forEach((source: string) => sources.add(source));
-      }
-    }
-
-    return sources;
-  };
-
-  // Calculate total community data points from API data
-  const getTotalCommunityDataPoints = (forFolder?: string): number => {
-    if (!folderDataPoints || folderDataPoints.length === 0) {
-      return 0;
-    }
-    
-    if (forFolder) {
-      // Get community data points for specific folder
-      // Handle both display names (e.g., "CDC PLACES(496,496,210)") and raw folder names (e.g., "cdc_places")
-      const folderData = folderDataPoints.find((fp) => {
-        const displayLabel = fp.folder_label.toLowerCase();
-        const rawFolder = forFolder.toLowerCase();
-        
-        // Direct match
-        if (displayLabel === rawFolder) return true;
-        
-        // Match by extracting folder name from display label
-        // Convert "CDC PLACES(496,496,210)" -> "cdc_places"
-        const extractedName = displayLabel
-          .split('(')[0] // Remove parentheses part
-          .trim()
-          .replace(/\s+/g, '_') // Replace spaces with underscores
-          .toLowerCase();
-        
-        // Convert "cdc_places" -> "cdc places" for reverse matching
-        const normalizedRaw = rawFolder.replace(/_/g, ' ');
-        
-        const isMatch = extractedName === rawFolder || displayLabel.includes(normalizedRaw);
-        
-        // Debug logging for folder matching
-        if (rawFolder === 'cdc_svi' || rawFolder === 'irs_990_efile') {
-          console.log(`Folder matching debug for ${rawFolder}:`, {
-            displayLabel,
-            extractedName,
-            normalizedRaw,
-            isMatch,
-            totalPoints: fp.total_community_data_points
-          });
-        }
-        
-        return isMatch;
-      });
-      
-      return folderData?.total_community_data_points || 0;
-    }
-    
-    // Get total community data points across all folders
-    return folderDataPoints.reduce(
-      (total, fp) => total + (fp.total_community_data_points || 0),
-      0
-    );
-  };
-
-  // Calculate stats based on current selection (folder or global)
-  const calculateStats = (datasetsToCalculate: Dataset[], forFolder?: string): Stats => {
-    const totalDatasets = datasetsToCalculate.length;
-    const totalSizeBytes = datasetsToCalculate.reduce(
-      (total, dataset) => total + (dataset.sizeBytes || 0),
-      0,
-    );
-
-    const formatFileSize = (bytes: number): string => {
-      if (bytes === 0) return "0 B";
-      const k = 1024;
-      const sizes = ["B", "KB", "MB", "GB", "TB"];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-    };
-
-    const uniqueDataSources = extractDataSources(datasetsToCalculate);
-
-    return {
-      totalDatasets,
-      totalSize: formatFileSize(totalSizeBytes),
-      dataSources: uniqueDataSources.size,
-      lastUpdated: globalStats?.lastUpdated || "Never",
-      lastRefreshTime: globalStats?.lastRefreshTime || null,
-      totalCommunityDataPoints: getTotalCommunityDataPoints(forFolder),
-    };
-  };
-
-  // Get proper stats for folder view
-  const stats = selectedFolder
-    ? (() => {
-        // For folder view, calculate stats based on the selected folder's datasets only
-        const folderDatasets = datasetsByFolder[selectedFolder] || [];
-        if (folderDatasets.length === 0 && datasetsLoading) {
-          // If data is still loading, show loading state but use API data points if available
-          return {
-            totalDatasets: 0,
-            totalSize: "Loading...",
-            dataSources: 0,
-            lastUpdated: globalStats?.lastUpdated || "Never",
-            lastRefreshTime: globalStats?.lastRefreshTime || null,
-            totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
-          };
-        }
-
-        // If we have folder datasets from allDatasets, use those for accurate stats
-        if (folderDatasets.length > 0) {
-          return calculateStats(folderDatasets, selectedFolder);
-        }
-
-        // Fallback: use server response count but calculate other stats from available data
-        return {
-          totalDatasets: datasetsResponse?.totalCount || 0,
-          totalSize: "Calculating...",
-          dataSources: 0,
-          lastUpdated: globalStats?.lastUpdated || "Never",
-          lastRefreshTime: globalStats?.lastRefreshTime || null,
-          totalCommunityDataPoints: getTotalCommunityDataPoints(selectedFolder),
-        };
-      })()
-    : globalStats
-      ? {
-          ...globalStats,
-          totalCommunityDataPoints: getTotalCommunityDataPoints(), // Ensure global stats always use API data
-        }
-      : undefined;
 
   // Datasets are already filtered by the server query based on selectedFolder
   const filteredDatasets = datasets;
@@ -377,9 +351,27 @@ export default function Home() {
 
   // Show all folders with datasets (no pagination)
   const paginatedFolders = foldersWithDatasets;
-  
+
   // Additional debug logging for filtered folders
   console.log("Folders after filtering:", foldersWithDatasets);
+
+  const userAiEnabled = userProfile?.role === 'admin' || userProfile?.isAiEnabled || false;
+  
+  // Create default "no access" stats when user has no folders
+  const noAccessStats = {
+    totalDatasets: 0,
+    totalSize: "0 B",
+    dataSources: 0,
+    lastUpdated: "No access",
+    lastRefreshTime: null,
+    totalCommunityDataPoints: 0
+  };
+  
+  // Use no access stats if user has no accessible folders and no stats were returned
+  const stats = globalStats || 
+    (accessibleFolders && accessibleFolders.length === 0 ? noAccessStats : undefined);
+  
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -434,6 +426,9 @@ export default function Home() {
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
                 currentFolder={selectedFolder}
+                userAiEnabled={userAiEnabled}
+                hasDatasetAccess={folders.length > 0}
+                isAdminUser={userProfile?.role === 'admin'}
               />
             </div>
 
@@ -474,6 +469,8 @@ export default function Home() {
                   isLoading={datasetsLoading || isRefreshing}
                   selectedDatasetId={selectedDatasetId}
                   showPagination={false}
+                  currentFolder={selectedFolder}
+                  userAiEnabled={userAiEnabled} // Pass userAiEnabled here
                 />
               </ErrorBoundary>
             </div>
@@ -497,6 +494,9 @@ export default function Home() {
                 onSelectDataset={handleSelectDataset}
                 isRefreshing={isRefreshing}
                 showFolderFilter={false}
+                userAiEnabled={userAiEnabled}
+                hasDatasetAccess={folders.length > 0}
+                isAdminUser={userProfile?.role === 'admin'}
               />
             </div>
 
@@ -529,12 +529,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {(isRefreshing || foldersLoading) && (
+              {(isRefreshing || (foldersLoading && !allDatasetsLoading)) && (
                 <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                   <div className="bg-white rounded-lg shadow-lg p-6 flex items-center space-x-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <span className="text-gray-700">
-                      {foldersLoading ? 'Filtering folders by tag...' : 'Refreshing datasets from S3...'}
+                      {accessibleFoldersLoading ? 'Loading your folder permissions...' : 
+                       allFoldersLoading ? 'Loading available folders...' :
+                       foldersLoading ? 'Applying folder access controls...' : 
+                       'Refreshing datasets from S3...'}
                     </span>
                   </div>
                 </div>
@@ -542,33 +545,53 @@ export default function Home() {
 
               <ErrorBoundary>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {allDatasetsLoading ? (
+                  {(allDatasetsLoading || foldersLoading) ? (
                     // Show skeleton cards while loading
                     Array.from({ length: 12 }, (_, index) => (
                       <SkeletonFolderCard key={`skeleton-${index}`} index={index} />
                     ))
+                  ) : folders.length === 0 ? (
+                    // Show no access message when user has no folder permissions
+                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Database className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        You do not have access to any datasets
+                      </h3>
+                      <p className="text-gray-500 max-w-md">
+                        Contact your administrator to request access to data sources and begin exploring the data lake.
+                      </p>
+                    </div>
                   ) : (
                     paginatedFolders.map((folderName, index) => {
                       // Use all datasets to find datasets for this folder
                       const folderDatasets = allDatasets.filter(
                         (dataset) => dataset.topLevelFolder === folderName,
                       );
-                      // Find community data points for this folder
-                      const folderDataPointsEntry = folderDataPoints.find((entry) =>
-                        entry.folder_label
-                          .toLowerCase()
-                          .startsWith(folderName.replace(/_/g, " ").toLowerCase()),
-                      );
-
                       return (
                         <div key={folderName} className={`opacity-0 animate-slide-up stagger-${Math.min(index, 11)}`}>
                           <FolderCard
                             folderName={folderName}
                             datasets={folderDatasets}
                             onClick={() => handleFolderSelect(folderName)}
-                            {...(folderDataPointsEntry?.total_community_data_points !== undefined && {
-                              totalCommunityDataPoints: folderDataPointsEntry.total_community_data_points
-                            })}
+                            totalCommunityDataPoints={
+                              folderDatasets.reduce((total, dataset) => {
+                                const metadata = dataset.metadata as any;
+                                if (!metadata) return total;
+
+                                const records = metadata.recordCount ? parseInt(metadata.recordCount) : 0;
+                                const columns = metadata.columnCount ? parseInt(metadata.columnCount) : 0;
+                                const completeness = metadata.completenessScore ? parseFloat(metadata.completenessScore) / 100.0 : 1;
+
+                                if (isNaN(records) || isNaN(columns) || isNaN(completeness)) {
+                                  return total;
+                                }
+
+                                const dataPoints = records * columns * completeness;
+                                return total + dataPoints;
+                              }, 0)
+                            }
                           />
                         </div>
                       );

@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Edit, Trash2, AlertTriangle, RefreshCw, Folder } from "lucide-react";
+import FolderAccessManagement from "@/components/folder-access-management";
 import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface User {
   id: number;
@@ -99,12 +101,20 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       return res.json();
     },
     onSuccess: () => {
+      // Close dialog immediately
+      setDeletingUser(null);
+      
+      // Clear entire query cache and force immediate refetch
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/users-folder-access'] });
+      
       toast({
         title: "User deleted",
         description: "User has been deleted successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      setDeletingUser(null);
     },
     onError: (error: any) => {
       toast({
@@ -190,15 +200,16 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage users and system settings</p>
+          <p className="text-muted-foreground">Manage users, permissions, and system settings</p>
         </div>
         <Button
           variant="outline"
           onClick={() => {
             queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/admin/users-folder-access'] });
             toast({
               title: "Refreshing data",
-              description: "User data is being refreshed...",
+              description: "Admin data is being refreshed...",
             });
           }}
           className="flex items-center space-x-2"
@@ -208,6 +219,20 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           <span>Reload</span>
         </Button>
       </div>
+
+      <Tabs defaultValue="users" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users" className="flex items-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span>User Management</span>
+          </TabsTrigger>
+          <TabsTrigger value="folder-access" className="flex items-center space-x-2">
+            <Folder className="h-4 w-4" />
+            <span>Folder Access</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -431,10 +456,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         </DialogContent>
                       </Dialog>
 
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Dialog>
+                            <DialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -443,34 +468,39 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {currentUser?.id === user.id 
-                                ? "Cannot delete your own account" 
-                                : "Delete user"
-                              }
-                            </TooltipContent>
-                          </Tooltip>
-                        </DialogTrigger>
-                        <DialogContent>
-
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => setDeletingUser(null)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={handleDeleteUser}
-                              disabled={deleteUserMutation.isPending}
-                            >
-                              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Delete User</DialogTitle>
+                                <DialogDescription>
+                                  Are you sure you want to delete "{deletingUser?.username}"? This action cannot be undone and will remove the user permanently.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setDeletingUser(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={handleDeleteUser}
+                                  disabled={deleteUserMutation.isPending}
+                                >
+                                  {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {currentUser?.id === user.id 
+                            ? "Cannot delete your own account" 
+                            : "Delete user"
+                          }
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -479,6 +509,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="folder-access">
+          <FolderAccessManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

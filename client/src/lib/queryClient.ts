@@ -2,8 +2,21 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = res.statusText;
+    try {
+      // Clone the response so we can read it
+      const clonedRes = res.clone();
+      const jsonResponse = await clonedRes.json();
+      errorMessage = jsonResponse.message || JSON.stringify(jsonResponse);
+    } catch {
+      try {
+        const textResponse = await res.text();
+        errorMessage = textResponse || res.statusText;
+      } catch {
+        errorMessage = res.statusText;
+      }
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -32,7 +45,7 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : null,
     credentials: "include",
   });
 
@@ -73,7 +86,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 300000, // 5 minutes default
       retry: false,
     },
     mutations: {

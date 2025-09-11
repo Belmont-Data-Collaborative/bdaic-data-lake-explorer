@@ -17,27 +17,42 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
-  const dynamicLastUpdated = useDynamicTime(stats?.lastRefreshTime || null);
-  
+  // Check if we received an error object instead of stats first
+  let validStats = stats;
+  if (stats && (stats as any).message && !stats.totalDatasets) {
+    console.log('StatsCards received error response:', (stats as any).message);
+    // Don't render stats for error responses - let loading state show
+    validStats = undefined;
+  }
+
+  const dynamicLastUpdated = useDynamicTime(validStats?.lastRefreshTime || null);
+
   // Always call hooks at the top level - never conditionally
   // Animated counting for numeric stats (will be used when stats are available)
   const animatedDatasets = useCountAnimation({
-    target: stats?.totalDatasets || 0,
+    target: validStats?.totalDatasets || 0,
     duration: 1800,
     delay: 100,
   });
   
   const animatedDataSources = useCountAnimation({
-    target: stats?.dataSources || 0,
+    target: validStats?.dataSources || 0,
     duration: 1600,
     delay: 300,
   });
   
   const animatedCommunityPoints = useCountAnimation({
-    target: stats?.totalCommunityDataPoints || 0,
+    target: validStats?.totalCommunityDataPoints || 0,
     duration: 2200,
     delay: 500,
   });
+
+  // Debug: Check if stats are being received
+  console.log('StatsCards - stats received:', !!stats);
+  console.log('StatsCards - validStats received:', !!validStats);
+  console.log('StatsCards - totalCommunityDataPoints:', stats?.totalCommunityDataPoints);
+  console.log('StatsCards - Full stats object:', JSON.stringify(stats, null, 2));
+
 
   // Loading state placeholders (will be used when stats are not available)
   const placeholderDatasets = useCountAnimation({ target: 250, duration: 2000 });
@@ -45,7 +60,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   const placeholderPoints = useCountAnimation({ target: 15000000, duration: 2500, delay: 400 });
 
   // Loading state with animated placeholders
-  if (!stats) {
+  if (!validStats) {
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
@@ -128,7 +143,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Total Size",
-      value: stats.totalSize,
+      value: validStats.totalSize,
       icon: HardDrive,
       bgColor: "bg-green-100",
       iconColor: "text-green-600",

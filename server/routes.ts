@@ -4,14 +4,14 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { createAwsS3Service } from "./lib/aws";
 import { openAIService } from "./lib/openai";
-import { insertAwsConfigSchema, insertDatasetSchema, registerUserSchema, loginUserSchema, updateUserSchema } from "@shared/schema";
+import { insertAwsConfigSchema, registerUserSchema, adminCreateUserSchema, loginUserSchema, updateUserSchema, updateUserFolderAccessSchema } from "@shared/schema";
 import { z } from "zod";
-import { authenticateToken, authorizeRole, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
+import { authenticateToken, requireAdmin, requireUser, AuthRequest } from "./middleware/auth";
 
 // Simple cache for expensive operations
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-function getCached<T>(key: string, ttl: number = 30000): T | null {
+function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data as T;
@@ -54,6 +54,9 @@ async function warmCache(): Promise<void> {
     const uniqueDataSources = new Set();
     const folderStats = new Map<string, { count: number; size: number }>();
     
+    // Calculate community data points for precomputed admin stats
+    let totalCommunityDataPoints = 0;
+    
     // Single pass through datasets for all computations
     datasets.forEach(d => {
       // Data sources computation
@@ -62,6 +65,23 @@ async function warmCache(): Promise<void> {
           .split(',')
           .map((s: string) => s.trim())
           .forEach((s: string) => uniqueDataSources.add(s));
+      }
+      
+      // Community data points calculation
+      const metadata = d.metadata as any;
+      if (metadata && 
+          metadata.recordCount && 
+          metadata.columnCount && 
+          metadata.completenessScore &&
+          !isNaN(parseInt(metadata.recordCount)) &&
+          !isNaN(metadata.columnCount) &&
+          !isNaN(metadata.completenessScore)) {
+        
+        const recordCount = parseInt(metadata.recordCount);
+        const columnCount = parseInt(metadata.columnCount);
+        const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+        const dataPoints = recordCount * columnCount * completenessScore;
+        totalCommunityDataPoints += dataPoints;
       }
       
       // Folder statistics
@@ -91,6 +111,7 @@ async function warmCache(): Promise<void> {
         dataSources: uniqueDataSources.size,
         lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
         lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+        totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
       }, 1800000], // 30 minutes
     ] as const;
     
@@ -131,59 +152,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
   
-  // User Registration and Authentication endpoints
+  // User Registration - DISABLED
+  // Contact administrator for new account creation
   app.post("/api/auth/register", async (req, res) => {
-    try {
-      const validation = registerUserSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
-        });
-      }
-
-      const { username, email, password, role = "user" } = validation.data;
-
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(409).json({ message: "Username already exists" });
-      }
-
-      const existingEmail = await storage.getUserByEmail(email);
-      if (existingEmail) {
-        return res.status(409).json({ message: "Email already exists" });
-      }
-
-      // Hash the password
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      // Create new user
-      const newUser = await storage.createUser({
-        username,
-        email,
-        passwordHash,
-        role,
-        isActive: true,
-      });
-
-      // Generate JWT token
-      const token = storage.generateJWT(newUser);
-
-      res.status(201).json({
-        message: "User registered successfully",
-        token,
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email,
-          role: newUser.role,
-        },
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Registration failed" });
-    }
+    return res.status(403).json({ 
+      message: "User registration is disabled. Please contact your administrator for new account creation." 
+    });
   });
 
   app.post("/api/auth/login", async (req, res) => {
@@ -193,25 +167,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userValidation.success) {
         const { username, password } = userValidation.data;
         
-        const user = await storage.verifyUserPassword(username, password);
+        const result = await storage.verifyUserPassword(username, password);
         
-        if (user) {
+        if (result.user) {
           // Update last login time
-          await storage.updateUserLastLogin(user.id);
+          await storage.updateUserLastLogin(result.user.id);
           
           // Generate JWT token
-          const token = storage.generateJWT(user);
+          const token = storage.generateJWT(result.user);
           
           return res.json({ 
             success: true,
             token,
             user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              role: user.role,
+              id: result.user.id,
+              username: result.user.username,
+              email: result.user.email,
+              role: result.user.role,
             },
           });
+        } else {
+          // Return specific error messages based on the error type
+          let message: string;
+          switch (result.error) {
+            case 'user_not_found':
+              message = "Username not found";
+              break;
+            case 'inactive_user':
+              message = "Your account is inactive. Please contact the administrator";
+              break;
+            case 'invalid_password':
+              message = "Invalid password";
+              break;
+            default:
+              message = "Authentication failed";
+          }
+          return res.status(401).json({ message });
         }
       }
 
@@ -225,13 +216,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.verifyPassword(password);
       
       if (isValid) {
-        res.json({ success: true });
+        return res.json({ success: true });
       } else {
-        res.status(401).json({ message: "Invalid password" });
+        return res.status(401).json({ message: "Invalid password" });
       }
     } catch (error) {
       console.error("Error during login:", error);
-      res.status(500).json({ message: "Login failed" });
+      return res.status(500).json({ message: "Login failed" });
     }
   });
 
@@ -259,10 +250,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.setPassword(newPassword);
-      res.json({ message: "Password updated successfully" });
+      return res.json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("Error setting password:", error);
-      res.status(500).json({ message: "Failed to update password" });
+      return res.status(500).json({ message: "Failed to update password" });
     }
   });
 
@@ -275,10 +266,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authConfig = await storage.setPassword("DataIsGood");
       }
       
-      res.json({ hasPassword: !!authConfig });
+      return res.json({ hasPassword: !!authConfig });
     } catch (error) {
       console.error("Error checking auth status:", error);
-      res.status(500).json({ message: "Failed to check auth status" });
+      return res.status(500).json({ message: "Failed to check auth status" });
     }
   });
 
@@ -314,13 +305,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        isAiEnabled: user.isAiEnabled,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       }));
-      res.json(safeUsers);
+      return res.json(safeUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      return res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
@@ -341,16 +333,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+      return res.json({
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
         role: updatedUser.role,
         isActive: updatedUser.isActive,
+        isAiEnabled: updatedUser.isAiEnabled,
       });
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      return res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Admin-only user creation endpoint
+  app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      console.log('Admin create user request body:', req.body);
+      const validation = adminCreateUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        console.log('Validation failed:', validation.error.errors);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { username, email, password, role = "user" } = validation.data;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+
+      // Hash the password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create new user with AI disabled by default (admin can enable later)
+      const newUser = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        role,
+        isActive: true,
+        isAiEnabled: false, // AI features disabled by default
+      });
+
+      console.log(`Admin ${req.user!.username} created new user: ${newUser.username} (ID: ${newUser.id})`);
+
+      return res.status(201).json({
+        message: "User created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role,
+          isActive: newUser.isActive,
+          isAiEnabled: newUser.isAiEnabled,
+        }
+      });
+    } catch (error) {
+      console.error("Admin user creation error:", error);
+      return res.status(500).json({ message: "Failed to create user" });
     }
   });
 
@@ -368,10 +419,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({ message: "User deleted successfully" });
+      return res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: "Failed to delete user" });
+      return res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // AI usage tracking routes
+  app.get('/api/admin/ai-usage', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const allUsersUsage = await storage.getAllUsersAiUsage();
+      res.json(allUsersUsage);
+    } catch (error) {
+      console.error('Error getting AI usage stats:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
@@ -383,17 +445,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+
+
+      return res.json({
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
+        isAiEnabled: user.isAiEnabled,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
-      res.status(500).json({ message: "Failed to fetch profile" });
+      return res.status(500).json({ message: "Failed to fetch profile" });
     }
   });
 
@@ -414,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({
+      return res.json({
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
@@ -422,7 +487,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error updating profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      return res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Folder Access Management Routes
+  app.get("/api/admin/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderAccess = await storage.getAllFolderAccess();
+      return res.json(folderAccess);
+    } catch (error) {
+      console.error("Error fetching folder access:", error);
+      return res.status(500).json({ message: "Failed to fetch folder access" });
+    }
+  });
+
+  app.get("/api/admin/users-folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      // Force no-cache headers to ensure fresh database fetch
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      console.log('Fetching fresh users-folder-access data from database');
+      const usersWithAccess = await storage.getUsersWithFolderAccess();
+      console.log(`Found ${usersWithAccess.length} users with folder access data`);
+      return res.json(usersWithAccess);
+    } catch (error) {
+      console.error("Error fetching users with folder access:", error);
+      return res.status(500).json({ message: "Failed to fetch users with folder access" });
+    }
+  });
+
+  app.get("/api/admin/users/:userId/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const folderAccess = await storage.getUserFolderAccess(userId);
+      return res.json(folderAccess);
+    } catch (error) {
+      console.error("Error fetching user folder access:", error);
+      return res.status(500).json({ message: "Failed to fetch user folder access" });
+    }
+  });
+
+  app.put("/api/admin/users/:userId/folder-access", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const validation = updateUserFolderAccessSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      // Check if user exists
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Don't allow modifying admin folder access
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: "Cannot modify folder access for admin users" });
+      }
+
+      const accessRecords = await storage.setUserFolderAccess(
+        userId, 
+        validation.data.folderNames, 
+        req.user!.id
+      );
+
+      console.log(`Updated folder access for user ${userId} with folders:`, validation.data.folderNames);
+      
+      return res.json({
+        message: "Folder access updated successfully",
+        accessRecords,
+      });
+    } catch (error) {
+      console.error("Error updating user folder access:", error);
+      return res.status(500).json({ message: "Failed to update user folder access" });
+    }
+  });
+
+  app.get("/api/user/accessible-folders", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const accessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      return res.json(accessibleFolders);
+    } catch (error) {
+      console.error("Error fetching accessible folders:", error);
+      return res.status(500).json({ message: "Failed to fetch accessible folders" });
+    }
+  });
+
+  // Folder AI Settings endpoints
+  // User AI settings route - now just returns empty array since we don't use folder-based settings anymore
+  app.get("/api/admin/folder-ai-settings", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      // Return empty array since AI settings are now per-user, not per-folder
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching folder AI settings:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI settings" });
+    }
+  });
+
+  app.get("/api/admin/folder-ai-settings/:folderName", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const folderName = req.params.folderName;
+      const setting = await storage.getFolderAiSetting(folderName);
+      res.json(setting || { folderName, isAiEnabled: false });
+    } catch (error) {
+      console.error("Error fetching folder AI setting:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI setting" });
+    }
+  });
+
+  // User AI settings route
+  app.put("/api/admin/users/:userId/ai-enabled", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { isAiEnabled } = req.body;
+
+      console.log(`Updated AI setting for user ${userId}: ${isAiEnabled ? 'enabled' : 'disabled'}`);
+      const updatedUser = await storage.updateUserAiEnabled(userId, isAiEnabled);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      return res.json({ 
+        message: `User AI setting updated successfully for user ${userId}`,
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Error updating user AI setting:", error);
+      res.status(500).json({ message: "Failed to update user AI setting" });
+    }
+  });
+
+  // Get AI settings for user's accessible folders
+  app.get("/api/user/folder-ai-settings", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    try {
+      const accessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      const aiSettings = await storage.getFolderAiSettingsForFolders(accessibleFolders);
+      res.json(aiSettings);
+    } catch (error) {
+      console.error("Error fetching user folder AI settings:", error);
+      res.status(500).json({ message: "Failed to fetch folder AI settings" });
     }
   });
 
@@ -616,6 +831,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Cache miss - loading datasets from storage');
         allDatasets = await storage.getDatasets();
         setCache('datasets-all', allDatasets, 300000); // 5 minutes cache
+      }
+
+      // Apply user folder access filtering FIRST if user is authenticated
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = storage.verifyJWT(token);
+          if (decoded) {
+            // Admin users have access to all folders by default
+            if (decoded.role === 'admin') {
+              console.log(`User ${decoded.id} is admin - has access to all folders`);
+            } else {
+              const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+              console.log(`User ${decoded.id} has access to folders:`, userAccessibleFolders);
+              
+              // Filter datasets to only show those in accessible folders
+              allDatasets = allDatasets.filter(d => 
+                userAccessibleFolders.includes(d.topLevelFolder)
+              );
+              console.log(`After folder access filtering: ${allDatasets.length} datasets remaining`);
+            }
+          }
+        } catch (error) {
+          // If token is invalid, continue without filtering
+          console.log('Invalid token provided, returning all datasets');
+        }
       }
       
       // Apply filters
@@ -890,10 +1132,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced dataset chat endpoint with file access and visualization
-  app.post("/api/datasets/:id/chat", async (req, res) => {
+  app.post("/api/datasets/:id/chat", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { message, conversationHistory, enableVisualization } = req.body;
+      const user = req.user as User;
       
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
@@ -904,14 +1147,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Dataset not found" });
       }
 
-      const response = await openAIService.chatWithDatasetEnhanced(
-        dataset, 
-        message, 
-        conversationHistory || [], 
-        enableVisualization || false
-      );
-      
-      res.json(response);
+      try {
+        const response = await openAIService.chatWithDatasetEnhanced(
+          dataset, 
+          message, 
+          conversationHistory || [], 
+          enableVisualization || false
+        );
+        
+        // Log successful AI usage
+        await storage.logAiUsage(
+          user.id,
+          dataset.id,
+          'ask_ai',
+          message,
+          true, // response received successfully
+          req.ip,
+          req.get('User-Agent')
+        );
+        
+        res.json(response);
+      } catch (aiError) {
+        // Log failed AI usage attempt  
+        await storage.logAiUsage(
+          user.id,
+          dataset.id,
+          'ask_ai',
+          message,
+          false, // response failed
+          req.ip,
+          req.get('User-Agent')
+        );
+        throw aiError;
+      }
     } catch (error) {
       console.error("Error in dataset chat:", error);
       res.status(500).json({ message: "Failed to process chat message" });
@@ -919,9 +1187,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch dataset chat endpoint for multi-dataset analysis
-  app.post("/api/datasets/batch-chat", async (req, res) => {
+  app.post("/api/datasets/batch-chat", authenticateToken, async (req, res) => {
     try {
       const { message, datasetIds, conversationHistory, enableVisualization } = req.body;
+      const user = req.user as User;
       
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ message: "Message is required" });
@@ -942,14 +1211,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      const response = await openAIService.chatWithMultipleDatasets(
-        datasets, 
-        message, 
-        conversationHistory || [], 
-        enableVisualization || false
-      );
-      
-      res.json(response);
+      try {
+        const response = await openAIService.chatWithMultipleDatasets(
+          datasets, 
+          message, 
+          conversationHistory || [], 
+          enableVisualization || false
+        );
+        
+        // Log successful AI usage for multi-dataset chat
+        await storage.logAiUsage(
+          user.id,
+          datasets.length > 0 ? datasets[0].id : null, // Use first dataset or null
+          'multi_chat',
+          message,
+          true, // response received successfully
+          req.ip,
+          req.get('User-Agent')
+        );
+        
+        res.json(response);
+      } catch (aiError) {
+        // Log failed AI usage attempt
+        await storage.logAiUsage(
+          user.id,
+          datasets.length > 0 ? datasets[0].id : null,
+          'multi_chat',
+          message,
+          false, // response failed
+          req.ip,
+          req.get('User-Agent')
+        );
+        throw aiError;
+      }
     } catch (error) {
       console.error("Error in batch dataset chat:", error);
       res.status(500).json({ message: "Failed to process batch chat message" });
@@ -957,7 +1251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Find datasets by query
-  app.post("/api/datasets/search", async (req, res) => {
+  app.post("/api/datasets/search", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { query } = req.body;
       
@@ -966,12 +1260,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Starting search for:', query);
-      const datasets = await storage.getDatasets();
-      console.log('Found datasets:', datasets.length);
       
-      // Use fallback search primarily with AI search as enhancement
+      // Get user's accessible folders
+      const userAccessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      console.log('User accessible folders:', userAccessibleFolders);
+      
+      // If user has no accessible folders, return empty results
+      if (userAccessibleFolders.length === 0) {
+        console.log('User has no accessible folders, returning empty results');
+        return res.json({ results: [] });
+      }
+      
+      // Get all datasets and filter by user's accessible folders
+      const allDatasets = await storage.getDatasets();
+      const accessibleDatasets = allDatasets.filter(dataset => 
+        userAccessibleFolders.includes(dataset.topLevelFolder)
+      );
+      
+      console.log('Found datasets:', allDatasets.length);
+      console.log('Accessible datasets:', accessibleDatasets.length);
+      
+      // Use fallback search on accessible datasets only
       console.log('Running fallback search...');
-      const fallbackResults = openAIService.fallbackSearch(query, datasets);
+      const fallbackResults = openAIService.fallbackSearch(query, accessibleDatasets);
       console.log('Fallback results:', fallbackResults.length);
       
       // Return results immediately to avoid timeouts
@@ -1317,11 +1628,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique top-level folders (optionally filtered by tag)
+  // Get unique top-level folders (optionally filtered by tag) - respects user folder access
   app.get("/api/folders", async (req, res) => {
     try {
       const { tag } = req.query;
       let datasets = await storage.getDatasets();
+      
+      // Filter datasets by user's folder access first if user is authenticated
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = storage.verifyJWT(token);
+          if (decoded) {
+            // Admin users have access to all folders by default
+            if (decoded.role !== 'admin') {
+              const userAccessibleFolders = await storage.getUserAccessibleFolders(decoded.id);
+              datasets = datasets.filter(d => 
+                userAccessibleFolders.includes(d.topLevelFolder)
+              );
+            }
+          }
+        } catch (error) {
+          // If token is invalid, continue without filtering
+          console.log('Invalid token for folders endpoint, returning all folders');
+        }
+      }
       
       // If tag filter is provided, only include folders that contain datasets with that tag
       if (tag && tag !== 'all') {
@@ -1343,7 +1675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Filtering folders by tag "${tag}": found ${folders.length} folders with that tag`);
         res.json(folders);
       } else {
-        // Return all folders
+        // Return accessible folders only
         const folders = Array.from(new Set(datasets
           .map(d => d.topLevelFolder)
           .filter(Boolean)))
@@ -1358,20 +1690,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get tag frequencies for filtering (always global, not folder-scoped)
-  app.get("/api/tags", async (req, res) => {
+  app.get("/api/tags", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const cacheKey = 'tag-frequencies-global';
+      // Get user's accessible folders
+      const userAccessibleFolders = await storage.getUserAccessibleFolders(req.user!.id);
+      const cacheKey = `tag-frequencies-user-${req.user!.id}-${userAccessibleFolders.sort().join(',')}`;
       
       const cached = getCached<Array<{tag: string, count: number}>>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
 
-      const datasets = await storage.getDatasets();
+      // Get all datasets and filter by user's accessible folders
+      const allDatasets = await storage.getDatasets();
+      const accessibleDatasets = allDatasets.filter(dataset => 
+        userAccessibleFolders.includes(dataset.topLevelFolder)
+      );
+
       const tagCounts = new Map<string, number>();
 
-      // Extract tags from each dataset's metadata across all folders
-      datasets.forEach(dataset => {
+      // Extract tags from each accessible dataset's metadata
+      accessibleDatasets.forEach(dataset => {
         const metadata = dataset.metadata as any;
         if (metadata && metadata.tags && Array.isArray(metadata.tags)) {
           metadata.tags.forEach((tag: string) => {
@@ -1388,7 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count);
 
-      console.log(`Found ${tagFrequencies.length} unique tags across entire data lake`);
+      console.log(`Found ${tagFrequencies.length} unique tags across ${accessibleDatasets.length} accessible datasets for user ${req.user!.username}`);
       
       setCache(cacheKey, tagFrequencies, 600000); // Cache for 10 minutes
       res.json(tagFrequencies);
@@ -1417,52 +1756,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return sources;
   };
 
-  // Optimized stats endpoint with caching
-  let statsCache: { data: any; timestamp: number } | null = null;
-  const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-  app.get("/api/stats", async (req, res) => {
+  // Private stats endpoint for authenticated users (no caching for accurate user-specific data)
+  app.get("/api/stats/private", authenticateToken, requireUser, async (req: AuthRequest, res) => {
     try {
-      // Use precomputed stats from cache for maximum performance
-      let stats = getCached<any>('precomputed-stats');
+      const user = req.user!;
+      console.log(`Calculating fresh private stats for user ${user.username} (${user.role})`);
       
-      if (stats) {
-        res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
-        return res.json(stats);
+      // Get all datasets fresh from storage
+      const allDatasets = await storage.getDatasets();
+      
+      // Filter datasets based on user's folder access
+      let accessibleDatasets = allDatasets;
+      
+      if (user.role !== 'admin') {
+        // Get user's accessible folders
+        const accessibleFolders = await storage.getUserAccessibleFolders(user.id);
+        
+        // Filter datasets to only include those from accessible folders
+        accessibleDatasets = allDatasets.filter(dataset => 
+          accessibleFolders.includes(dataset.topLevelFolder)
+        );
+        
+        console.log(`User ${user.username} has access to ${accessibleFolders.length} folders, ${accessibleDatasets.length} datasets`);
       }
-
-      // Fallback to legacy cache check
-      if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
-        return res.json(statsCache.data);
-      }
-
-      const datasets = await storage.getDatasets();
       
-      const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
-      const uniqueDataSources = extractDataSources(datasets);
+      const totalSize = accessibleDatasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+      const uniqueDataSources = extractDataSources(accessibleDatasets);
       
-      // Calculate total community data points across all datasets
-      const totalCommunityDataPoints = datasets
+      // Calculate total community data points across accessible datasets
+      const totalCommunityDataPoints = accessibleDatasets
         .filter(d => {
           const metadata = d.metadata as any;
           return metadata && 
                  metadata.recordCount && 
                  metadata.columnCount && 
-                 metadata.completenessScore;
+                 metadata.completenessScore &&
+                 !isNaN(parseInt(metadata.recordCount)) &&
+                 !isNaN(metadata.columnCount) &&
+                 !isNaN(metadata.completenessScore);
         })
         .reduce((total, d) => {
           const metadata = d.metadata as any;
           const recordCount = parseInt(metadata.recordCount);
-          const columnCount = metadata.columnCount;
-          const completenessScore = metadata.completenessScore / 100.0;
-          return total + (recordCount * columnCount * completenessScore);
+          const columnCount = parseInt(metadata.columnCount);
+          const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+          const dataPoints = recordCount * columnCount * completenessScore;
+          
+          console.log(`Dataset ${d.name}: ${recordCount} records × ${columnCount} columns × ${completenessScore} = ${Math.round(dataPoints)} data points`);
+          return total + dataPoints;
         }, 0);
+
+      console.log(`User ${user.username} PRIVATE ENDPOINT total community data points: ${Math.round(totalCommunityDataPoints)} from ${accessibleDatasets.length} accessible datasets`);
       
       // Use the last refresh time instead of dataset modification times
       const lastRefreshTime = await storage.getLastRefreshTime();
 
-      stats = {
-        totalDatasets: datasets.length,
+      const stats = {
+        totalDatasets: accessibleDatasets.length,
         totalSize: formatFileSize(totalSize),
         dataSources: uniqueDataSources.size,
         lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
@@ -1470,13 +1820,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
       };
 
-      // Cache the results
-      statsCache = {
-        data: stats,
-        timestamp: Date.now()
-      };
+      console.log(`PRIVATE ENDPOINT sending stats response for user ${user.username}:`, JSON.stringify(stats, null, 2));
       
-      setCache('precomputed-stats', stats, 1800000); // 30 minutes
+      // Never cache private stats to ensure accuracy
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching private stats:", error);
+      res.status(500).json({ message: "Failed to fetch private statistics" });
+    }
+  });
+
+  // Public stats endpoint for landing page (no authentication required)
+  app.get("/api/stats/public", async (req, res) => {
+    try {
+      // Use precomputed stats from cache for maximum performance
+      let stats = getCached<any>('precomputed-stats');
+      
+      if (!stats) {
+        // Fallback: compute stats if not cached
+        const datasets = await storage.getDatasets();
+        const lastRefreshTime = await storage.getLastRefreshTime();
+        const folders = Array.from(new Set(datasets.map(d => d.topLevelFolder).filter(Boolean)));
+        const totalSize = datasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+        const uniqueDataSources = new Set();
+        
+        // Calculate community data points
+        let totalCommunityDataPoints = 0;
+        datasets.forEach(d => {
+          if (d.metadata && (d.metadata as any).dataSource) {
+            (d.metadata as any).dataSource
+              .split(',')
+              .map((s: string) => s.trim())
+              .forEach((s: string) => uniqueDataSources.add(s));
+          }
+          
+          const metadata = d.metadata as any;
+          if (metadata && 
+              metadata.recordCount && 
+              metadata.columnCount && 
+              metadata.completenessScore &&
+              !isNaN(parseInt(metadata.recordCount)) &&
+              !isNaN(metadata.columnCount) &&
+              !isNaN(metadata.completenessScore)) {
+            
+            const recordCount = parseInt(metadata.recordCount);
+            const columnCount = parseInt(metadata.columnCount);
+            const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+            const dataPoints = recordCount * columnCount * completenessScore;
+            totalCommunityDataPoints += dataPoints;
+          }
+        });
+        
+        stats = {
+          totalDatasets: datasets.length,
+          totalSize: formatFileSize(totalSize),
+          dataSources: uniqueDataSources.size,
+          lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+          lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+          totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
+        };
+        
+        // Cache the computed stats
+        setCache('precomputed-stats', stats, 1800000); // 30 minutes
+      }
+      
+      console.log(`Public stats endpoint serving stats: lastUpdated = ${stats.lastUpdated}, lastRefreshTime = ${stats.lastRefreshTime}`);
+      
+      res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching public stats:", error);
+      res.status(500).json({ message: "Failed to fetch public statistics" });
+    }
+  });
+
+  // Optimized stats endpoint with caching
+  let statsCache: { data: any; timestamp: number } | null = null;
+  const STATS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  // Simple test endpoint to verify authentication  
+  app.get("/api/test-auth", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    console.log('=== /api/test-auth endpoint hit ===');
+    const user = req.user!;
+    res.json({ 
+      message: 'Authentication working', 
+      user: user.username, 
+      userId: user.id,
+      role: user.role 
+    });
+  });
+
+  app.get("/api/stats", authenticateToken, requireUser, async (req: AuthRequest, res) => {
+    console.log('=== /api/stats endpoint hit ===');
+    console.log('Request headers authorization:', req.headers.authorization ? 'Present' : 'Missing');
+    console.log('Authenticated user:', req.user?.username || 'NO USER');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    try {
+      const user = req.user!;
+      const { folder } = req.query;
+      
+      // If folder filter is specified, bypass cache for accurate folder-specific stats
+      const isFilteredRequest = folder && folder !== 'all';
+      
+      // For admins, use precomputed stats from cache for maximum performance (only for unfiltered requests)
+      if (user.role === 'admin' && !isFilteredRequest) {
+        let stats = getCached<any>('precomputed-stats');
+        
+        if (stats) {
+          console.log(`Admin user ${user.username} using cached stats: totalCommunityDataPoints = ${stats.totalCommunityDataPoints}`);
+          res.set('Cache-Control', 'public, max-age=1800'); // 30 minutes browser cache
+          return res.json(stats);
+        }
+
+        // Fallback to legacy cache check for admins
+        if (statsCache && Date.now() - statsCache.timestamp < STATS_CACHE_DURATION) {
+          console.log(`Admin user ${user.username} using legacy cached stats: totalCommunityDataPoints = ${statsCache.data.totalCommunityDataPoints}`);
+          return res.json(statsCache.data);
+        }
+      }
+      
+      console.log(`Calculating fresh stats for user ${user.username} (${user.role})${isFilteredRequest ? ` for folder: ${folder}` : ''}`);
+      
+      // Clear any potentially stale cached values for non-admin users
+      if (user.role !== 'admin') {
+        console.log('Bypassing all caches for non-admin user');
+      }
+
+      // Get all datasets
+      const allDatasets = await storage.getDatasets();
+      
+      // Filter datasets based on user's folder access
+      let accessibleDatasets = allDatasets;
+      
+      if (user.role !== 'admin') {
+        // Get user's accessible folders
+        const accessibleFolders = await storage.getUserAccessibleFolders(user.id);
+        
+        // Filter datasets to only include those from accessible folders
+        accessibleDatasets = allDatasets.filter(dataset => 
+          accessibleFolders.includes(dataset.topLevelFolder)
+        );
+        
+        console.log(`User ${user.username} has access to ${accessibleFolders.length} folders, ${accessibleDatasets.length} datasets`);
+      }
+      
+      // Apply folder filter if specified
+      if (isFilteredRequest) {
+        accessibleDatasets = accessibleDatasets.filter(dataset => 
+          dataset.topLevelFolder === folder
+        );
+        console.log(`After folder filter '${folder}': ${accessibleDatasets.length} datasets`);
+      }
+      
+      const totalSize = accessibleDatasets.reduce((sum, dataset) => sum + Number(dataset.sizeBytes), 0);
+      const uniqueDataSources = extractDataSources(accessibleDatasets);
+      
+      // Calculate total community data points across accessible datasets
+      const totalCommunityDataPoints = accessibleDatasets
+        .filter(d => {
+          const metadata = d.metadata as any;
+          return metadata && 
+                 metadata.recordCount && 
+                 metadata.columnCount && 
+                 metadata.completenessScore &&
+                 !isNaN(parseInt(metadata.recordCount)) &&
+                 !isNaN(metadata.columnCount) &&
+                 !isNaN(metadata.completenessScore);
+        })
+        .reduce((total, d) => {
+          const metadata = d.metadata as any;
+          const recordCount = parseInt(metadata.recordCount);
+          const columnCount = parseInt(metadata.columnCount);
+          const completenessScore = parseFloat(metadata.completenessScore) / 100.0;
+          const dataPoints = recordCount * columnCount * completenessScore;
+          
+          console.log(`Dataset ${d.name}: ${recordCount} records × ${columnCount} columns × ${completenessScore} = ${Math.round(dataPoints)} data points`);
+          return total + dataPoints;
+        }, 0);
+
+      console.log(`User ${user.username} total community data points: ${Math.round(totalCommunityDataPoints)} from ${accessibleDatasets.length} accessible datasets`);
+      
+      // Use the last refresh time instead of dataset modification times
+      const lastRefreshTime = await storage.getLastRefreshTime();
+
+      const stats = {
+        totalDatasets: accessibleDatasets.length,
+        totalSize: formatFileSize(totalSize),
+        dataSources: uniqueDataSources.size,
+        lastUpdated: lastRefreshTime ? getTimeAgo(lastRefreshTime) : "Never",
+        lastRefreshTime: lastRefreshTime ? lastRefreshTime.toISOString() : null,
+        totalCommunityDataPoints: Math.round(totalCommunityDataPoints),
+      };
+
+      console.log(`About to send stats response for user ${user.username}:`, JSON.stringify(stats, null, 2));
+
+      // Cache the stats for admin users to improve performance (only for full stats, not filtered)
+      if (user.role === 'admin' && !isFilteredRequest) {
+        statsCache = {
+          data: stats,
+          timestamp: Date.now()
+        };
+        setCache('precomputed-stats', stats, 1800000); // 30 minute cache
+        res.set('Cache-Control', 'public, max-age=1800');
+      } else {
+        // For non-admin users or filtered requests, don't cache as it's user-specific or filtered
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
 
       res.json(stats);
     } catch (error) {
@@ -1485,30 +2036,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Documentation endpoint - serve API docs from replit.md
+  // Documentation endpoint - serve API docs from dedicated file
   app.get("/api/docs/markdown", async (req, res) => {
     try {
       const fs = await import('fs');
       const path = await import('path');
       
-      // Read the replit.md file
-      const filePath = path.join(process.cwd(), 'replit.md');
+      // Read the dedicated API documentation file
+      const filePath = path.join(process.cwd(), 'docs/api-documentation.md');
       const content = fs.readFileSync(filePath, 'utf-8');
       
-      // Extract only the API Documentation section
-      const apiDocsStart = content.indexOf('## API Documentation');
-      if (apiDocsStart === -1) {
-        return res.status(404).json({ message: "API Documentation section not found" });
-      }
-      
-      // Find the next major section to stop at
-      const nextSectionIndex = content.indexOf('\n## ', apiDocsStart + 1);
-      const apiDocsContent = nextSectionIndex !== -1 
-        ? content.substring(apiDocsStart, nextSectionIndex)
-        : content.substring(apiDocsStart);
-      
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.send(apiDocsContent);
+      res.send(content);
     } catch (error) {
       console.error("Error reading API documentation:", error);
       res.status(500).json({ message: "Failed to load API documentation" });
