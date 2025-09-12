@@ -7,6 +7,7 @@ import { DatasetSearch } from "./dataset-search";
 import { useDatasetRefresh, useGenerateInsights } from "@/hooks/use-api-mutations";
 import { ErrorBoundaryWrapper } from "./error-boundary-wrapper";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface SearchFiltersProps {
   searchTerm: string;
@@ -39,6 +40,7 @@ export function SearchFilters({
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
+  const [tagSearchTerm, setTagSearchTerm] = useState("");
 
   // Use currentFolder parameter for potential future enhancements
   console.log("Current folder context:", currentFolder);
@@ -55,6 +57,11 @@ export function SearchFilters({
     staleTime: 600000, // 10 minutes cache
     gcTime: 1800000, // 30 minutes garbage collection
   });
+
+  // Filter tags based on search term
+  const filteredTags = tagFrequencies.filter(({ tag }: { tag: string }) => 
+    tag.toLowerCase().includes(tagSearchTerm.toLowerCase())
+  );
 
   const handleRefresh = () => {
     refreshDatasetsMutation.mutate(undefined);
@@ -120,8 +127,18 @@ export function SearchFilters({
                   </div>
                 </SelectTrigger>
                 <SelectContent role="listbox" className="max-h-80">
+                  <div className="p-2 border-b">
+                    <Input
+                      type="text"
+                      placeholder="Search tags..."
+                      value={tagSearchTerm}
+                      onChange={(e) => setTagSearchTerm(e.target.value)}
+                      className="h-8"
+                      data-testid="input-tag-search"
+                    />
+                  </div>
                   <SelectItem value="all">All Tags</SelectItem>
-                  {tagFrequencies.map(({ tag, count }: { tag: string; count: number }) => (
+                  {filteredTags.map(({ tag, count }: { tag: string; count: number }) => (
                     <SelectItem key={tag} value={tag}>
                       <div className="flex items-center justify-between w-full">
                         <span className="capitalize">{tag.replace(/_/g, " ")}</span>
@@ -131,6 +148,11 @@ export function SearchFilters({
                       </div>
                     </SelectItem>
                   ))}
+                  {filteredTags.length === 0 && tagSearchTerm && (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No tags found for "{tagSearchTerm}"
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             )}
