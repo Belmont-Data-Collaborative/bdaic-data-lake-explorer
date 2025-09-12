@@ -7,7 +7,7 @@ import { DatasetSearch } from "./dataset-search";
 import { useDatasetRefresh, useGenerateInsights } from "@/hooks/use-api-mutations";
 import { ErrorBoundaryWrapper } from "./error-boundary-wrapper";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface SearchFiltersProps {
   searchTerm: string;
@@ -41,6 +41,8 @@ export function SearchFilters({
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
   const [tagSearchTerm, setTagSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [tagSelectOpen, setTagSelectOpen] = useState(false);
 
   // Use currentFolder parameter for potential future enhancements
   console.log("Current folder context:", currentFolder);
@@ -58,10 +60,36 @@ export function SearchFilters({
     gcTime: 1800000, // 30 minutes garbage collection
   });
 
-  // Filter tags based on search term
-  const filteredTags = tagFrequencies.filter(({ tag }: { tag: string }) => 
-    tag.toLowerCase().includes(tagSearchTerm.toLowerCase())
-  );
+  // Debounce search term with 300ms delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(tagSearchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tagSearchTerm]);
+
+  // Reset search when dropdown closes
+  useEffect(() => {
+    if (!tagSelectOpen) {
+      setTagSearchTerm("");
+      setDebouncedSearchTerm("");
+    }
+  }, [tagSelectOpen]);
+
+  // Normalize text for search (replace underscores with spaces, lowercase, trim)
+  const normalizeText = (text: string) => 
+    text.toLowerCase().replace(/_/g, " ").trim();
+
+  // Filter tags based on debounced search term with minimum 2 characters
+  const filteredTags = useMemo(() => {
+    if (debouncedSearchTerm.length < 2) {
+      return tagFrequencies;
+    }
+    const normalizedSearch = normalizeText(debouncedSearchTerm);
+    return tagFrequencies.filter(({ tag }: { tag: string }) => 
+      normalizeText(tag).includes(normalizedSearch)
+    );
+  }, [debouncedSearchTerm, tagFrequencies]);
 
   const handleRefresh = () => {
     refreshDatasetsMutation.mutate(undefined);
@@ -119,7 +147,12 @@ export function SearchFilters({
             )}
             
             {onTagChange && (
-              <Select value={tagFilter} onValueChange={onTagChange}>
+              <Select 
+                value={tagFilter} 
+                onValueChange={onTagChange}
+                open={tagSelectOpen}
+                onOpenChange={setTagSelectOpen}
+              >
                 <SelectTrigger className="w-64 touch-target" aria-label="Filter by tag">
                   <div className="flex items-center">
                     <Tag className="mr-2" size={16} aria-hidden="true" />
@@ -133,9 +166,19 @@ export function SearchFilters({
                       placeholder="Search tags..."
                       value={tagSearchTerm}
                       onChange={(e) => setTagSearchTerm(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onKeyUp={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onFocus={() => setTagSelectOpen(true)}
+                      autoComplete="off"
                       className="h-8"
                       data-testid="input-tag-search"
                     />
+                    {tagSearchTerm.length > 0 && tagSearchTerm.length < 2 && (
+                      <div className="text-xs text-muted-foreground mt-1 px-1">
+                        Type at least 2 characters to filter
+                      </div>
+                    )}
                   </div>
                   <SelectItem value="all">All Tags</SelectItem>
                   {filteredTags.map(({ tag, count }: { tag: string; count: number }) => (
@@ -148,9 +191,9 @@ export function SearchFilters({
                       </div>
                     </SelectItem>
                   ))}
-                  {filteredTags.length === 0 && tagSearchTerm && (
+                  {filteredTags.length === 0 && debouncedSearchTerm.length >= 2 && (
                     <div className="p-2 text-sm text-muted-foreground text-center">
-                      No tags found for "{tagSearchTerm}"
+                      No tags found for "{debouncedSearchTerm}"
                     </div>
                   )}
                 </SelectContent>
