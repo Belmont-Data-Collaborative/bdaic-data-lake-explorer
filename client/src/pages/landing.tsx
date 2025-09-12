@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database, Cloud, BarChart3, Shield, Download, Search, Eye, EyeOff, UserPlus, Book, FileText, Brain, Accessibility } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/format-number";
 import Register from "./register";
 import ReactMarkdown from "react-markdown";
@@ -50,7 +50,14 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
   // Fetch global statistics for public display
   const { data: globalStats } = useQuery<GlobalStatsResponse>({
-    queryKey: ['/api/stats'],
+    queryKey: ['/api/stats/public'],
+    queryFn: async () => {
+      const response = await fetch('/api/stats/public');
+      if (!response.ok) {
+        throw new Error('Failed to fetch public stats');
+      }
+      return response.json();
+    },
   });
 
   // Fetch datasets for comprehensive stats
@@ -241,6 +248,14 @@ For detailed API specifications, please contact the system administrator.`;
       return;
     }
 
+    // Clear any existing authentication data before new login attempt
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated');
+    // Clear all React Query cache to prevent stale authentication data
+    queryClient.clear();
+    queryClient.removeQueries({ queryKey: ['/api/auth/verify'] });
+    
     // Support legacy password-only login if no username provided
     const credentials = loginData.username.trim() 
       ? loginData 
@@ -387,7 +402,7 @@ For detailed API specifications, please contact the system administrator.`;
                     <span>Smart Dataset Discovery</span>
                   </CardTitle>
                   <CardDescription>
-                    Automatically discover and catalog 259 datasets across 16 S3 folders with intelligent metadata extraction
+                    Automatically discover and catalog {globalStats?.totalDatasets || '...'} datasets across {globalStats?.dataSources || '...'} S3 folders with intelligent metadata extraction
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -395,7 +410,7 @@ For detailed API specifications, please contact the system administrator.`;
                     <li>• Multi-format support (CSV, JSON, Parquet, YAML)</li>
                     <li>• Automatic metadata extraction with 30+ field variations</li>
                     <li>• Real-time S3 synchronization and refresh</li>
-                    <li>• Folder-based organization with 16 active data sources</li>
+                    <li>• Folder-based organization with {globalStats?.dataSources || '...'} active data sources</li>
                     <li>• File size analysis and completeness scoring</li>
                   </ul>
                 </CardContent>
@@ -575,24 +590,35 @@ For detailed API specifications, please contact the system administrator.`;
                 <h3 className="text-2xl font-bold text-foreground mb-4">Current Data Lake Status</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">259</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {globalStats?.totalDatasets ? formatNumber(globalStats.totalDatasets) : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Total Datasets</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">16</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {globalStats?.dataSources ? formatNumber(globalStats.dataSources) : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Data Sources</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">27.4 GB</div>
+                    <div className="text-3xl font-bold text-purple-600">
+                      {globalStats?.totalSize || '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Total Size</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600">15.4M+</div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      {globalStats?.totalCommunityDataPoints ? `${formatNumber(globalStats.totalCommunityDataPoints)}+` : '...'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Community Data Points</div>
                   </div>
                 </div>
                 <p className="text-muted-foreground mt-4">
                   Connected to <strong>bdaic-public-transform</strong> S3 bucket with real-time synchronization
+                  {globalStats?.lastUpdated && (
+                    <span> • Last updated: {globalStats.lastUpdated}</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -732,6 +758,30 @@ For detailed API specifications, please contact the system administrator.`;
                     <CardDescription>
                       Enter your credentials to access the full data lake explorer interface
                     </CardDescription>
+                    {(localStorage.getItem('authToken') || localStorage.getItem('currentUser')) && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('currentUser');
+                            localStorage.removeItem('authenticated');
+                            queryClient.clear();
+                            queryClient.removeQueries();
+                            toast({
+                              title: "Session cleared",
+                              description: "You can now log in with different credentials",
+                            });
+                            // Force page reload to ensure complete state reset
+                            setTimeout(() => window.location.reload(), 100);
+                          }}
+                        >
+                          Switch User / Clear Session
+                        </Button>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
@@ -784,16 +834,7 @@ For detailed API specifications, please contact the system administrator.`;
                       </Button>
                     </form>
                     
-                    <div className="mt-4 text-center">
-                      <Button
-                        variant="link"
-                        onClick={() => setShowRegister(true)}
-                        className="text-sm"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        New user? Register here
-                      </Button>
-                    </div>
+                    {/* Registration disabled - contact administrator for new accounts */}
                   </CardContent>
                 </Card>
               ) : (

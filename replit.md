@@ -1,65 +1,60 @@
 # Data Lake Explorer
 
 ## Overview
-
-Data Lake Explorer is a full-stack web application for exploring AWS S3 data lakes. It provides AI-powered insights and conversational dataset analysis, offering an intuitive interface for browsing, metadata viewing, and leveraging AI to understand data patterns and use cases. The project aims to provide comprehensive data lake management with a focus on user experience and AI-driven data exploration, enabling users to efficiently extract value from large datasets.
+Data Lake Explorer is a full-stack web application designed for secure, scalable, and user-friendly exploration of AWS S3 data lakes. Its primary purpose is to enable organizations to efficiently analyze and extract value from large datasets, integrating AI-powered insights, robust role-based access control, advanced filtering, and intelligent data management, all while maintaining strict security.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
-
-The application employs a modern full-stack architecture, separating frontend and backend concerns. It uses React 18 with TypeScript for the frontend, an Express.js API with TypeScript for the backend, and PostgreSQL with Drizzle ORM for data persistence. AWS S3 is integrated for data lake discovery and access, while OpenAI API provides AI-powered insights and conversational analysis.
+The application employs a modern full-stack architecture. The frontend is built with React and TypeScript, while the backend utilizes Express.js with TypeScript. PostgreSQL and Drizzle ORM handle data persistence. Key integrations include AWS S3 for data lake operations and OpenAI for AI-powered insights and conversational analysis.
 
 ### Core Architectural Decisions:
-- **Full-Stack Separation**: Clear division between React frontend and Express.js backend.
-- **Type Safety**: Extensive use of TypeScript across both frontend and backend.
+- **Full-Stack Separation**: Distinct React frontend and Express.js backend.
+- **Type Safety**: Comprehensive TypeScript usage across the application.
 - **ORM-based Database Management**: Drizzle ORM for PostgreSQL schema and queries.
 - **Cloud-Native Storage**: Direct integration with AWS S3 for data lake operations.
 - **AI-Driven Features**: Central role of OpenAI for data understanding and interaction.
-- **Authentication**: JWT-based authentication with role-based access control (Admin, Editor, Viewer).
-- **Hierarchical Tag Filtering**: Advanced system for filtering datasets and folders based on tags.
+- **Authentication**: JWT-based authentication supporting role-based access control (Admin, Editor, Viewer).
+- **Hierarchical Tag Filtering**: Advanced system for filtering datasets and folders.
 - **Data Sampling**: Intelligent data sampling for large datasets to optimize AI analysis.
-- **Accessibility**: Comprehensive WCAG AA compliance with ARIA labels, semantic HTML, and keyboard navigation.
-- **Performance Optimization**: Focus on caching, database indexing, and response compression for sub-2-second load times.
-- **Error Handling**: Robust error boundary system for graceful application recovery.
+- **Accessibility**: WCAG AA compliance with ARIA labels, semantic HTML, and keyboard navigation.
+- **Performance Optimization**: Focus on caching, database indexing, and response compression.
 
 ### UI/UX Decisions:
 - **Responsive Design**: Single-page application optimized for various screen sizes.
 - **Component Library**: shadcn/ui built on Tailwind CSS and Radix UI for consistent, accessible components.
-- **Visual Feedback**: Smooth loading animations, skeleton placeholders, and animated counting effects for statistics.
+- **Visual Feedback**: Smooth loading animations and skeleton placeholders.
 - **Intuitive Navigation**: Tab-based navigation system and folder-first browsing.
-- **Readability**: Enhanced typography, contrast, and layout for improved content readability, especially in API documentation and metadata displays.
-- **Interactive Chat**: AI chat window with improved scrolling and markdown support for rich AI responses.
+- **Interactive Chat**: AI chat window with improved scrolling and markdown support.
 
 ### Technical Implementations:
-- **Frontend**: React Router (Wouter), TanStack Query for state management, React Hook Form with Zod for form handling, Vite for build.
+- **Frontend**: React, React Router (Wouter), TanStack Query for state management, React Hook Form with Zod for form handling, Vite for build.
 - **Backend**: Express.js for RESTful APIs, AWS SDK v3 for S3 operations, OpenAI API integration.
-- **Database**: PostgreSQL for dataset metadata, AWS configurations, authentication, and download tracking. Schema includes `datasets`, `aws_config`, `auth_config`, and `refresh_log`.
-- **Data Flow**: User authentication, AWS configuration, S3 bucket scanning for dataset discovery, persistence to PostgreSQL, AI analysis, and user interaction through filtering, search, and conversational AI.
-- **Deployment**: Designed for Node.js platforms, with static frontend builds served alongside the Express API.
+- **Database**: PostgreSQL for metadata, AWS configurations, user authentication, RBAC, folder permissions, and download tracking.
+- **AI Functionality**: User-controlled AI features (Ask AI, Generate Insights, Multi-dataset Chat), enabled by default for admin users.
+- **User Management**: User registration is disabled; new accounts are created by administrators with default zero dataset access and disabled AI features.
+- **Data Flow**: Authentication with RBAC, AWS configuration, automated S3 scanning, metadata extraction to PostgreSQL, AI analysis, and user interaction via filtering, search, and conversational AI.
 
 ### Feature Specifications:
-- **Smart Dataset Discovery**: Scans S3 buckets, extracts metadata (including comprehensive YAML metadata), and persists information.
-- **AI-Powered Analytics**: Generates insights (summary, patterns, use cases) and provides conversational analysis via OpenAI.
-- **Enterprise Authentication**: JWT-based with bcrypt hashing, role-based access control, user management (admin only), and secure token handling.
-- **Advanced Filtering & Search**: Comprehensive filtering by folder, format, size, and search queries.
-- **Hierarchical Tag Filtering**: Filters folders and datasets based on tags, with persistence across navigation.
-- **Download Tracking**: Monitors dataset usage with separate counts for sample, full, and metadata downloads.
-- **Data Sampling**: Intelligent sampling strategies for AI analysis of large datasets.
-- **AWS Configuration Management**: Allows testing, creation, and activation of multiple S3 configurations with automatic dataset refresh.
-- **Accessibility Compliance**: WCAG AA compliant with ARIA labels, keyboard navigation, and semantic HTML.
-- **Performance Monitoring**: Internal system for tracking and optimizing application performance.
+- **Smart Dataset Discovery**: Automated S3 bucket scanning with metadata extraction.
+- **AI-Powered Analytics**: Insights generation using OpenAI GPT-4o for data analysis and conversational exploration.
+- **Enterprise Authentication**: JWT-based authentication with RBAC and secure password handling.
+- **Advanced Filtering & Search**: Multi-dimensional filtering by folder, format, size, tags, and intelligent search.
+- **Download Tracking**: Usage monitoring for various download types.
+- **AWS Configuration Management**: Multi-environment S3 configuration support.
+- **Folder Access Control**: Granular permissions for data lake sections.
+- **Statistics Calculation**: Dual stats system for public overview and user-specific filtered data.
+- **Server-Side Caching**: Multi-layered caching with optimized TTL strategies.
 
 ## External Dependencies
 
 ### AWS Services
 - **S3**: Primary cloud storage for all datasets.
-- **AWS SDK v3**: JavaScript client library for interacting with S3 services.
+- **AWS SDK v3**: JavaScript client library for S3 services.
 
 ### AI Services
-- **OpenAI API**: Utilized for generating AI insights, conversational analysis (GPT-4o model), and RAG (Retrieval Augmented Generation) capabilities.
+- **OpenAI API**: Utilized for AI insights, conversational analysis (GPT-4o), and RAG capabilities.
 
 ### Database
 - **PostgreSQL**: Relational database for storing application metadata.
@@ -68,12 +63,12 @@ The application employs a modern full-stack architecture, separating frontend an
 
 ### UI/UX Libraries
 - **React**: Frontend JavaScript library.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
-- **shadcn/ui**: Reusable UI components built on Radix UI and Tailwind CSS.
-- **Radix UI**: Low-level UI component library for accessibility and customization.
+- **Tailwind CSS**: Utility-first CSS framework.
+- **shadcn/ui**: Reusable UI components.
+- **Radix UI**: Low-level UI component library for accessibility.
 - **Lucide React**: Icon library.
 - **React Hook Form**: Form management library.
-- **Zod**: TypeScript-first schema validation library.
+- **Zod**: TypeScript-first schema validation.
 - **TanStack Query**: Data fetching and caching library.
 - **Wouter**: Lightweight React router.
 - **Vite**: Frontend build tool.

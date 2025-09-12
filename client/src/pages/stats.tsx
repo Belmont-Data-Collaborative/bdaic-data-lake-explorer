@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StatsCards } from "@/components/stats-cards";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { formatNumber } from "@/lib/format-number";
+import { apiRequest } from "@/lib/queryClient";
 import type { Dataset } from "@shared/schema";
 
 interface Stats {
@@ -25,6 +26,10 @@ export default function StatsPage() {
   // Fetch global statistics
   const { data: globalStats, isLoading: statsLoading } = useQuery<GlobalStatsResponse>({
     queryKey: ['/api/stats'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/stats');
+      return response.json();
+    },
   });
 
   // Fetch all datasets to calculate community data points

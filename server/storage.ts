@@ -1,6 +1,27 @@
-import { datasets, awsConfig, authConfig, refreshLog, downloads, users, type Dataset, type InsertDataset, type AwsConfig, type InsertAwsConfig, type AuthConfig, type InsertAuthConfig, type RefreshLog, type InsertRefreshLog, type Download, type InsertDownload, type User, type InsertUser, type UpdateUser } from "@shared/schema";
+import { 
+  datasets, 
+  awsConfig, 
+  authConfig, 
+  refreshLog, 
+  downloads, 
+  users, 
+  userFolderAccess,
+  folderAiSettings,
+  aiUsageLog,
+  type Dataset,
+  type InsertDataset,
+  type AwsConfig,
+  type InsertAwsConfig,
+  type AuthConfig,
+  type Download,
+  type User,
+  type InsertUser,
+  type UpdateUser,
+  type UserFolderAccess,
+  insertAiUsageLogSchema
+} from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -13,7 +34,7 @@ export interface IStorage {
   updateDataset(id: number, dataset: Partial<InsertDataset>): Promise<Dataset | undefined>;
   deleteDataset(id: number): Promise<boolean>;
   upsertDataset(dataset: InsertDataset): Promise<Dataset>;
-  
+
   // AWS config operations
   getAwsConfig(): Promise<AwsConfig | undefined>;
   getAllAwsConfigs(): Promise<AwsConfig[]>;
@@ -22,21 +43,54 @@ export interface IStorage {
   deleteAwsConfig(id: number): Promise<boolean>;
   setActiveAwsConfig(id: number): Promise<AwsConfig | undefined>;
   upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig>;
-  
+
   // Auth operations
   getAuthConfig(): Promise<AuthConfig | undefined>;
   setPassword(password: string): Promise<AuthConfig>;
   verifyPassword(password: string): Promise<boolean>;
-  
+
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
   logRefresh(datasetsCount: number): Promise<void>;
-  
+
   // Download tracking operations
   recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
   incrementDownloadCount(datasetId: number, downloadType: 'sample' | 'full' | 'metadata'): Promise<void>;
   getDownloadStats(datasetId: number): Promise<{ sample: number; full: number; metadata: number; total: number }>;
-  
+  getBatchDownloadStats(datasetIds: number[]): Promise<Record<number, { sample: number; full: number; metadata: number; total: number }>>;
+
+  // User management operations
+  createUser(userData: InsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  updateUserAiEnabled(id: number, isAiEnabled: boolean): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  verifyUserPassword(username: string, password: string): Promise<User | null>;
+  updateUserLastLogin(id: number): Promise<void>;
+  generateJWT(user: User): string;
+  verifyJWT(token: string): { id: number; username: string; role: string } | null;
+
+  // Folder access management
+  getUserFolderAccess(userId: number): Promise<UserFolderAccess[]>;
+  setUserFolderAccess(userId: number, folderNames: string[], createdBy: number): Promise<UserFolderAccess[]>;
+  getUserAccessibleFolders(userId: number): Promise<string[]>;
+  getAllFolderAccess(): Promise<any[]>;
+  getUsersWithFolderAccess(): Promise<any[]>;
+
+  // Folder AI settings management
+  getAllFolderAiSettings(): Promise<any[]>;
+  getFolderAiSetting(folderName: string): Promise<any | undefined>;
+  upsertFolderAiSetting(folderName: string, isAiEnabled: boolean, updatedBy: number): Promise<any>;
+  getFolderAiSettingsForFolders(folderNames: string[]): Promise<any[]>;
+
+  // AI usage tracking operations
+  logAiUsage(userId: number, datasetId: number | null, usageType: 'ask_ai' | 'generate_insights' | 'multi_chat', query: string | null, responseReceived: boolean, ipAddress?: string, userAgent?: string): Promise<void>;
+  getUserAiUsageStats(userId: number): Promise<{ totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>;
+  getAllUsersAiUsage(): Promise<Array<{ userId: number; username: string; totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>>;
+
   // Raw query method for optimization checks
   query(sql: string): Promise<any[]>;
 }
@@ -69,6 +123,7 @@ export class DatabaseStorage implements IStorage {
         insights: insertDataset.insights || null,
       })
       .returning();
+    if (!dataset) throw new Error('Failed to create dataset');
     return dataset;
   }
 
@@ -78,7 +133,7 @@ export class DatabaseStorage implements IStorage {
     const updateData = updates.lastModified 
       ? updates 
       : { ...updates };
-    
+
     const [updated] = await db
       .update(datasets)
       .set(updateData)
@@ -95,7 +150,7 @@ export class DatabaseStorage implements IStorage {
   async upsertDataset(datasetData: InsertDataset): Promise<Dataset> {
     // Try to find existing dataset by name and source
     const existing = await this.getDatasetByNameAndSource(datasetData.name, datasetData.source);
-    
+
     if (existing) {
       // Update existing dataset, preserving insights if they exist
       const updates: Partial<InsertDataset> = {
@@ -132,6 +187,7 @@ export class DatabaseStorage implements IStorage {
         lastConnected: new Date(),
       })
       .returning();
+    if (!newConfig) throw new Error('Failed to create AWS config');
     return newConfig;
   }
 
@@ -155,7 +211,7 @@ export class DatabaseStorage implements IStorage {
   async setActiveAwsConfig(id: number): Promise<AwsConfig | undefined> {
     // First, set all configs as inactive
     await db.update(awsConfig).set({ isActive: false });
-    
+
     // Then activate the selected one
     const [updated] = await db
       .update(awsConfig)
@@ -167,7 +223,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertAwsConfig(config: InsertAwsConfig): Promise<AwsConfig> {
     const existing = await this.getAwsConfig();
-    
+
     if (existing) {
       // Update the existing active configuration
       const [updated] = await db
@@ -179,6 +235,7 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(awsConfig.id, existing.id))
         .returning();
+      if (!updated) throw new Error('Failed to update AWS config');
       return updated;
     } else {
       // Create the first configuration as active
@@ -193,6 +250,7 @@ export class DatabaseStorage implements IStorage {
           lastConnected: new Date(),
         })
         .returning();
+      if (!newConfig) throw new Error('Failed to create AWS config');
       return newConfig;
     }
   }
@@ -205,9 +263,9 @@ export class DatabaseStorage implements IStorage {
   async setPassword(password: string): Promise<AuthConfig> {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    
+
     const existing = await this.getAuthConfig();
-    
+
     if (existing) {
       const [updated] = await db
         .update(authConfig)
@@ -217,12 +275,14 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(authConfig.id, existing.id))
         .returning();
+      if (!updated) throw new Error('Failed to update auth config');
       return updated;
     } else {
       const [created] = await db
         .insert(authConfig)
         .values({ passwordHash })
         .returning();
+      if (!created) throw new Error('Failed to create auth config');
       return created;
     }
   }
@@ -232,7 +292,7 @@ export class DatabaseStorage implements IStorage {
     if (!config) {
       return false;
     }
-    
+
     return await bcrypt.compare(password, config.passwordHash);
   }
 
@@ -242,7 +302,7 @@ export class DatabaseStorage implements IStorage {
       .from(refreshLog)
       .orderBy(desc(refreshLog.lastRefreshTime))
       .limit(1);
-    
+
     return lastRefresh?.lastRefreshTime || null;
   }
 
@@ -264,7 +324,29 @@ export class DatabaseStorage implements IStorage {
         ...userData,
       })
       .returning();
+    if (!user) throw new Error('Failed to create user');
     return user;
+  }
+
+  async assignDefaultFolderAccess(userId: number, createdBy: number): Promise<void> {
+    // Default folders for new users
+    const defaultFolders = ['cdc_places', 'cdc_svi'];
+    console.log('Assigning default folders to user:', userId, 'folders:', defaultFolders);
+    
+    const accessRecords = defaultFolders.map(folderName => ({
+      userId,
+      folderName,
+      canAccess: true,
+      createdBy,
+    }));
+
+    const result = await db
+      .insert(userFolderAccess)
+      .values(accessRecords)
+      .onConflictDoNothing() // Prevent duplicates if called multiple times
+      .returning();
+    
+    console.log('Default folder access inserted:', result.length, 'records created');
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -317,17 +399,25 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(users)
       .where(eq(users.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
-  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+  async verifyUserPassword(username: string, password: string): Promise<{ user: User | null; error?: 'user_not_found' | 'inactive_user' | 'invalid_password' }> {
     const user = await this.getUserByUsername(username);
-    if (!user || !user.isActive) {
-      return null;
+    if (!user) {
+      return { user: null, error: 'user_not_found' };
     }
     
+    if (!user.isActive) {
+      return { user: null, error: 'inactive_user' };
+    }
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : null;
+    if (!isValid) {
+      return { user: null, error: 'invalid_password' };
+    }
+    
+    return { user };
   }
 
   async updateUserLastLogin(id: number): Promise<void> {
@@ -335,6 +425,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async updateUserAiEnabled(id: number, isAiEnabled: boolean): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({
+        isAiEnabled,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   generateJWT(user: User): string {
@@ -370,10 +472,11 @@ export class DatabaseStorage implements IStorage {
         userAgent,
       })
       .returning();
-    
+
     // Also increment the counter in the datasets table
     await this.incrementDownloadCount(datasetId, downloadType);
-    
+
+    if (!download) throw new Error('Failed to record download');
     return download;
   }
 
@@ -405,17 +508,294 @@ export class DatabaseStorage implements IStorage {
       })
       .from(datasets)
       .where(eq(datasets.id, datasetId));
-    
+
     if (!dataset) {
       return { sample: 0, full: 0, metadata: 0, total: 0 };
     }
-    
+
     return {
       sample: dataset.sample,
       full: dataset.full,
       metadata: dataset.metadata,
       total: dataset.sample + dataset.full + dataset.metadata,
     };
+  }
+
+  async getBatchDownloadStats(datasetIds: number[]): Promise<Record<number, { sample: number; full: number; metadata: number; total: number }>> {
+    if (datasetIds.length === 0) {
+      return {};
+    }
+
+    const results = await db
+      .select({
+        id: datasets.id,
+        sample: datasets.downloadCountSample,
+        full: datasets.downloadCountFull,
+        metadata: datasets.downloadCountMetadata,
+      })
+      .from(datasets)
+      .where(inArray(datasets.id, datasetIds));
+
+    const stats: Record<number, { sample: number; full: number; metadata: number; total: number }> = {};
+    
+    results.forEach(dataset => {
+      stats[dataset.id] = {
+        sample: dataset.sample,
+        full: dataset.full,
+        metadata: dataset.metadata,
+        total: dataset.sample + dataset.full + dataset.metadata,
+      };
+    });
+
+    // Fill in missing datasets with zero stats
+    datasetIds.forEach(id => {
+      if (!stats[id]) {
+        stats[id] = { sample: 0, full: 0, metadata: 0, total: 0 };
+      }
+    });
+
+    return stats;
+  }
+
+  // Folder access management
+  async getUserFolderAccess(userId: number): Promise<UserFolderAccess[]> {
+    return await db
+      .select()
+      .from(userFolderAccess)
+      .where(eq(userFolderAccess.userId, userId));
+  }
+
+  async setUserFolderAccess(userId: number, folderNames: string[], createdBy: number): Promise<UserFolderAccess[]> {
+    // First, remove all existing access for this user
+    await db
+      .delete(userFolderAccess)
+      .where(eq(userFolderAccess.userId, userId));
+
+    // Then, add the new folder access records
+    if (folderNames.length > 0) {
+      const accessRecords = folderNames.map(folderName => ({
+        userId,
+        folderName,
+        canAccess: true,
+        createdBy,
+      }));
+
+      return await db
+        .insert(userFolderAccess)
+        .values(accessRecords)
+        .returning();
+    }
+
+    return [];
+  }
+
+  async getUserAccessibleFolders(userId: number): Promise<string[]> {
+    // Get user to check if admin
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // Admins have access to all folders
+    if (user.role === 'admin') {
+      // Get all available folders from datasets
+      const allDatasets = await this.getDatasets();
+      const allFolders = Array.from(new Set(
+        allDatasets
+          .map(d => d.topLevelFolder)
+          .filter((folder): folder is string => Boolean(folder))
+      )).sort();
+      return allFolders;
+    }
+
+    // For non-admin users, get their specific folder access
+    const accessRecords = await db
+      .select({ folderName: userFolderAccess.folderName })
+      .from(userFolderAccess)
+      .where(and(
+        eq(userFolderAccess.userId, userId),
+        eq(userFolderAccess.canAccess, true)
+      ));
+
+    return accessRecords.map(record => record.folderName).sort();
+  }
+
+  async getAllFolderAccess() {
+    return await db
+      .select({
+        id: userFolderAccess.id,
+        userId: userFolderAccess.userId,
+        folderName: userFolderAccess.folderName,
+        canAccess: userFolderAccess.canAccess,
+        createdAt: userFolderAccess.createdAt,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+      })
+      .from(userFolderAccess)
+      .leftJoin(users, eq(userFolderAccess.userId, users.id))
+      .orderBy(users.username, userFolderAccess.folderName);
+  }
+
+  async getUsersWithFolderAccess() {
+    const usersWithAccess = await db
+      .select({
+        userId: userFolderAccess.userId,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+        folderName: userFolderAccess.folderName,
+      })
+      .from(userFolderAccess)
+      .leftJoin(users, eq(userFolderAccess.userId, users.id))
+      .where(eq(userFolderAccess.canAccess, true))
+      .orderBy(users.username);
+
+    // Group by user
+    const grouped: Record<number, any> = {};
+    usersWithAccess.forEach(record => {
+      if (!grouped[record.userId]) {
+        grouped[record.userId] = {
+          userId: record.userId,
+          username: record.username,
+          email: record.email,
+          role: record.role,
+          folders: [],
+        };
+      }
+      grouped[record.userId].folders.push(record.folderName);
+    });
+
+    return Object.values(grouped);
+  }
+
+  // Folder AI settings methods
+  async getAllFolderAiSettings(): Promise<any[]> {
+    return await db.select().from(folderAiSettings).orderBy(asc(folderAiSettings.folderName));
+  }
+
+  async getFolderAiSetting(folderName: string): Promise<any | undefined> {
+    const [setting] = await db.select().from(folderAiSettings)
+      .where(eq(folderAiSettings.folderName, folderName));
+    return setting || undefined;
+  }
+
+  async upsertFolderAiSetting(folderName: string, isAiEnabled: boolean, updatedBy: number): Promise<any> {
+    const now = new Date();
+    
+    // Try to update existing record first
+    const [updated] = await db.update(folderAiSettings)
+      .set({ 
+        isAiEnabled, 
+        updatedAt: now, 
+        updatedBy 
+      })
+      .where(eq(folderAiSettings.folderName, folderName))
+      .returning();
+
+    if (updated) {
+      return updated;
+    }
+
+    // If no record exists, insert new one
+    const [inserted] = await db.insert(folderAiSettings)
+      .values({
+        folderName,
+        isAiEnabled,
+        updatedBy,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+
+    return inserted;
+  }
+
+  async getFolderAiSettingsForFolders(folderNames: string[]): Promise<any[]> {
+    if (folderNames.length === 0) {
+      return [];
+    }
+
+    const settings = await db.select().from(folderAiSettings)
+      .where(inArray(folderAiSettings.folderName, folderNames));
+
+    // Create a map for quick lookup
+    const settingsMap = new Map(settings.map(s => [s.folderName, s]));
+
+    // Return settings for all requested folders, with default false for missing ones
+    return folderNames.map(folderName => ({
+      folderName,
+      isAiEnabled: settingsMap.get(folderName)?.isAiEnabled || false,
+      updatedAt: settingsMap.get(folderName)?.updatedAt || null
+    }));
+  }
+
+  // AI usage tracking operations
+  async logAiUsage(userId: number, datasetId: number | null, usageType: 'ask_ai' | 'generate_insights' | 'multi_chat', query: string | null, responseReceived: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
+    await db.insert(aiUsageLog).values({
+      userId,
+      datasetId,
+      usageType,
+      query,
+      responseReceived,
+      ipAddress,
+      userAgent
+    });
+  }
+
+  async getAllUsersAiUsage() {
+    const result = await db
+      .select({
+        userId: aiUsageLog.userId,
+        username: users.username,
+        totalUsage: sql<number>`count(*)`,
+        successfulUsage: sql<number>`count(case when ${aiUsageLog.responseReceived} = true then 1 end)`,
+        askAiUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'ask_ai' then 1 end)`,
+        insightsUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'generate_insights' then 1 end)`,
+        multiChatUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'multi_chat' then 1 end)`,
+      })
+      .from(aiUsageLog)
+      .leftJoin(users, eq(aiUsageLog.userId, users.id))
+      .groupBy(aiUsageLog.userId, users.username);
+
+    return result;
+  }
+
+  async getUserAiUsageStats(userId: number) {
+    const result = await db
+      .select({
+        totalUsage: sql<number>`count(*)`,
+        successfulUsage: sql<number>`count(case when ${aiUsageLog.responseReceived} = true then 1 end)`,
+        askAiUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'ask_ai' then 1 end)`,
+        insightsUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'generate_insights' then 1 end)`,
+        multiChatUsage: sql<number>`count(case when ${aiUsageLog.usageType} = 'multi_chat' then 1 end)`,
+      })
+      .from(aiUsageLog)
+      .where(eq(aiUsageLog.userId, userId));
+
+    return result[0] || {
+      totalUsage: 0,
+      successfulUsage: 0,
+      askAiUsage: 0,
+      insightsUsage: 0,
+      multiChatUsage: 0
+    };
+  }
+
+  async getAllUsersAiUsage(): Promise<Array<{ userId: number; username: string; totalUsage: number; successfulUsage: number; askAiUsage: number; insightsUsage: number; multiChatUsage: number }>> {
+    const usageStats = await db.select({
+      userId: aiUsageLog.userId,
+      username: users.username,
+      totalUsage: sql<number>`COUNT(*)`,
+      successfulUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      askAiUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'ask_ai' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      insightsUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'generate_insights' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`,
+      multiChatUsage: sql<number>`SUM(CASE WHEN ${aiUsageLog.usageType} = 'multi_chat' AND ${aiUsageLog.responseReceived} = true THEN 1 ELSE 0 END)`
+    })
+    .from(aiUsageLog)
+    .leftJoin(users, eq(aiUsageLog.userId, users.id))
+    .groupBy(aiUsageLog.userId, users.username)
+    .orderBy(desc(sql`COUNT(*)`));
+
+    return usageStats;
   }
 
   async query(sql: string): Promise<any[]> {

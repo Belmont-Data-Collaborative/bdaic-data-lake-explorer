@@ -9,6 +9,9 @@ import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import UserPanel from "@/pages/user-panel";
 import AdminPanel from "@/pages/admin-panel";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminUsers from "@/pages/admin/users";
+import AdminFolders from "@/pages/admin/folders";
 import AwsConfiguration from "@/pages/aws-configuration";
 import { MainLayout } from "@/components/main-layout";
 import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper";
@@ -26,8 +29,11 @@ function Router() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // State to control JWT verification query
+  const [shouldVerifyToken, setShouldVerifyToken] = useState(false);
+
   // Verify JWT token on app start
-  const { data: verificationData, isLoading: isVerifying } = useQuery({
+  const { data: verificationData, isLoading: isVerifying, refetch: refetchVerification } = useQuery({
     queryKey: ['/api/auth/verify'],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -38,25 +44,31 @@ function Router() {
       });
       return res.json();
     },
-    enabled: !!localStorage.getItem('authToken'),
+    enabled: shouldVerifyToken && !!localStorage.getItem('authToken'),
     retry: false,
+    staleTime: 0, // Always consider stale to refetch when needed
   });
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('currentUser');
     
-    if (token && storedUser && !isVerifying) {
-      try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
+    if (token && storedUser) {
+      setShouldVerifyToken(true);
+      if (!isVerifying) {
+        try {
+          const user = JSON.parse(storedUser);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          setShouldVerifyToken(false);
+        }
       }
     } else if (!token) {
+      setShouldVerifyToken(false);
       // Check legacy authentication for backwards compatibility
       const legacyAuth = localStorage.getItem('authenticated');
       if (legacyAuth === 'true') {
@@ -77,12 +89,25 @@ function Router() {
   }, [verificationData]);
 
   const handleLogin = (userData?: { token: string; user: User }) => {
+    // First, clear any existing authentication state completely
+    queryClient.clear();
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authenticated');
+    setShouldVerifyToken(false);
+    
     setIsAuthenticated(true);
     if (userData) {
       // JWT-based login
       localStorage.setItem('authToken', userData.token);
       localStorage.setItem('currentUser', JSON.stringify(userData.user));
       setCurrentUser(userData.user);
+      setShouldVerifyToken(true);
+      // Force refetch the verification to update user context immediately
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/verify'] });
+        refetchVerification();
+      }, 100);
     } else {
       // Legacy login fallback
       localStorage.setItem('authenticated', 'true');
@@ -90,11 +115,16 @@ function Router() {
   };
 
   const handleLogout = () => {
+    // Clear all cached data first
+    queryClient.clear();
+    setShouldVerifyToken(false);
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('authenticated');
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    // Force a page reload to ensure completely clean state
+    window.location.href = '/';
   };
 
   if (isLoading || isVerifying) {
@@ -117,7 +147,8 @@ function Router() {
   return (
     <MainLayout onLogout={handleLogout} currentUser={currentUser}>
       <Switch>
-        <Route path="/" component={() => <Home />} />
+        <Route path="/" component={() => <UserPanel currentUser={currentUser} />} />
+        <Route path="/datasets" component={() => <Home />} />
         <Route path="/user-panel" component={() => <UserPanel currentUser={currentUser} />} />
         <Route path="/aws-config" component={() => {
           // Role-based access control for AWS configuration
@@ -134,7 +165,49 @@ function Router() {
           return <AwsConfiguration />;
         }} />
         <Route path="/admin" component={() => {
-          // Role-based access control for admin panel
+          // Role-based access control for admin dashboard
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminDashboard currentUser={currentUser} />;
+        }} />
+        <Route path="/admin/users" component={() => {
+          // Role-based access control for user management
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminUsers currentUser={currentUser} />;
+        }} />
+        <Route path="/admin/folders" component={() => {
+          // Role-based access control for folder management
+          if (currentUser?.role !== 'admin') {
+            return (
+              <div className="container mx-auto py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+                  <p className="text-muted-foreground">You need admin privileges to access this page.</p>
+                </div>
+              </div>
+            );
+          }
+          return <AdminFolders currentUser={currentUser} />;
+        }} />
+        <Route path="/admin-legacy" component={() => {
+          // Keep legacy admin panel for backwards compatibility
           if (currentUser?.role !== 'admin') {
             return (
               <div className="container mx-auto py-8">

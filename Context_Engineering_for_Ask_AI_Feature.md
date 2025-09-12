@@ -1,358 +1,248 @@
 # Context Engineering for Ask AI Feature
-## Data Lake Explorer - Technical Documentation
 
----
+## Overview
 
-## Executive Summary
+The Ask AI feature in Data Lake Explorer uses advanced context engineering to provide intelligent insights and analysis of your datasets. This document explains how the AI system works, how to craft effective questions, and best practices for getting the most valuable responses.
 
-The Ask AI feature in Data Lake Explorer employs sophisticated context engineering to provide intelligent, data-driven insights across AWS S3 datasets. This system combines intelligent data sampling, retrieval-augmented generation (RAG), and multi-dataset analysis capabilities to deliver accurate, contextual responses while maintaining optimal performance.
+## How Ask AI Works
 
----
+### 1. Context Preparation
+When you use the Ask AI feature, the system automatically:
 
-## Table of Contents
+- **Dataset Analysis**: Examines the structure, columns, data types, and sample data from your selected dataset
+- **Metadata Extraction**: Gathers information about file size, format, source, and any available tags
+- **Schema Understanding**: Creates a comprehensive understanding of your data's structure and relationships
+- **Statistical Summary**: Generates basic statistics about numerical columns and categorical distributions
 
-1. [Architecture Overview](#architecture-overview)
-2. [Context Engineering Components](#context-engineering-components)
-3. [Intelligent Data Sampling](#intelligent-data-sampling)
-4. [RAG Implementation](#rag-implementation)
-5. [Multi-Dataset Context Management](#multi-dataset-context-management)
-6. [Performance Optimization](#performance-optimization)
-7. [Technical Implementation](#technical-implementation)
-8. [Use Cases and Applications](#use-cases-and-applications)
+### 2. Intelligent Sampling
+For large datasets, the AI uses smart sampling techniques:
 
----
+- **Representative Sampling**: Selects representative rows that capture the diversity of your data
+- **Column Prioritization**: Focuses on the most informative columns first
+- **Size Optimization**: Ensures the context fits within AI model limits while maintaining data integrity
+- **Quality Filtering**: Removes incomplete or corrupted rows from the sample
 
-## Architecture Overview
-
-### System Design Philosophy
-
-The Ask AI feature is built on three core principles:
-
-1. **Contextual Relevance**: Every AI response is grounded in actual dataset content
-2. **Performance Efficiency**: Intelligent sampling ensures fast responses without sacrificing accuracy
-3. **Scalable Analysis**: Support for both single and multi-dataset queries
-
-### Technology Stack
-
-- **AI Engine**: OpenAI GPT-4o for natural language processing and insight generation
-- **Data Processing**: Node.js with TypeScript for backend data handling
-- **Storage**: AWS S3 for dataset storage, PostgreSQL for metadata
-- **Frontend**: React with Chart.js for visualization rendering
-
----
-
-## Context Engineering Components
-
-### 1. Dataset Metadata Integration
-
-**Purpose**: Provide AI with comprehensive dataset understanding before analysis
-
-**Implementation**:
-- Automatic extraction of dataset structure, column types, and statistical summaries
-- Integration of custom YAML metadata for business context
-- Real-time size and format detection for sampling strategy selection
-
-**Context Data Included**:
-```
-- Dataset name and source location
-- File size and format information
-- Column names and data types
-- Statistical summaries (min, max, mean, null counts)
-- Business metadata from YAML files
-- Historical usage patterns
-```
-
-### 2. Intelligent Sampling Framework
-
-**Purpose**: Create representative data samples that maintain statistical integrity while enabling fast AI processing
-
-**Sampling Strategies**:
-
-| Strategy | Size Limit | Sample Rows | Use Case |
-|----------|------------|-------------|-----------|
-| Representative | 50MB | 5,000 | Large datasets requiring statistical accuracy |
-| Comprehensive | 20MB | 2,000 | Medium datasets with complex patterns |
-| Focused | 10MB | 1,000 | Targeted analysis scenarios |
-| Balanced | 8MB | 750 | Multi-dataset analysis |
-| Lightweight | 5MB | 500 | Quick insights and performance-critical queries |
-
-**Sample Selection Logic**:
-- Stratified random sampling for categorical variables
-- Edge case inclusion for outlier detection
-- Temporal sampling for time-series data
-- Geographic distribution preservation for location-based datasets
-
-### 3. Question Context Analysis
-
-**Purpose**: Tailor data retrieval and sampling based on user query intent
-
-**Query Classification**:
-- **Statistical Queries**: "What's the average income by state?"
-- **Pattern Discovery**: "Show trends in health outcomes over time"
-- **Comparative Analysis**: "Compare education levels between counties"
-- **Anomaly Detection**: "Find unusual patterns in this data"
-
-**Context Adaptation**:
-- Query-specific column selection for targeted sampling
-- Time-range filtering for temporal queries
-- Geographic filtering for location-based analysis
-- Cross-dataset relationship identification
-
----
-
-## RAG Implementation
-
-### Retrieval-Augmented Generation Framework
-
-**Core Components**:
-
-1. **Query Extraction**: Natural language processing to identify data requirements
-2. **Filter Construction**: Automatic generation of data filters based on query context
-3. **Progressive Scanning**: Intelligent data retrieval for complex queries
-4. **Context Assembly**: Combination of metadata, samples, and query context
-
-### Query Processing Pipeline
+### 3. Context Construction
+The AI builds a rich context that includes:
 
 ```
-User Question → Query Analysis → Filter Generation → Data Retrieval → Context Assembly → AI Processing → Response Generation
+Dataset: [Your Dataset Name]
+Format: [CSV/JSON/etc.]
+Size: [Row count and file size]
+Structure: [Column names and types]
+Sample Data: [Representative rows]
+Metadata: [Tags, source information]
+Statistical Summary: [Key metrics and distributions]
 ```
 
-**Query Analysis Engine**:
-- Extracts entities (states, counties, time periods)
-- Identifies required data columns
-- Determines aggregation requirements
-- Classifies visualization needs
+## Effective Question Strategies
 
-**Filter Construction**:
-- State/county geographic filters
-- Date range temporal filters
-- Category-based subset filters
-- Value range numerical filters
+### 1. Descriptive Questions
+Ask about what the data contains and represents:
 
-### Progressive Scanning Technology
+**Good Examples:**
+- "What does this dataset tell us about population demographics?"
+- "Describe the main patterns in this healthcare data"
+- "What are the key variables and their relationships?"
 
-**When Activated**:
-- Queries requiring comprehensive dataset coverage
-- Complex analytical requirements
-- Cross-dataset relationship analysis
+**Why This Works:**
+- Leverages the AI's ability to synthesize information
+- Provides comprehensive overviews
+- Helps identify important trends and patterns
 
-**Process**:
-1. Initial metadata-based assessment
-2. Incremental data chunk processing
-3. Real-time result aggregation
-4. Adaptive sample size adjustment
+### 2. Analytical Questions
+Request specific analysis or calculations:
 
----
+**Good Examples:**
+- "What are the correlations between income and education levels?"
+- "Which counties have the highest rates of diabetes?"
+- "How does air quality vary across different regions?"
 
-## Multi-Dataset Context Management
+**Why This Works:**
+- Utilizes the AI's analytical capabilities
+- Provides quantitative insights
+- Identifies statistical relationships
 
-### Cross-Dataset Analysis Framework
+### 3. Comparative Questions
+Ask about differences and comparisons:
 
-**Context Aggregation Strategy**:
-- Parallel processing of individual dataset contexts
-- Schema alignment for comparable data structures
-- Intelligent relationship mapping between datasets
-- Unified response generation
+**Good Examples:**
+- "How do urban areas compare to rural areas in this dataset?"
+- "What are the differences between states in the top and bottom quartiles?"
+- "Which time periods show the most significant changes?"
 
-### Performance Optimization for Multiple Datasets
+**Why This Works:**
+- Highlights important contrasts
+- Reveals relative performance
+- Identifies outliers and anomalies
 
-**Lightweight Sampling Approach**:
-- Reduced sample size per dataset (500 rows vs 2000+)
-- Parallel dataset processing
-- Optimized memory usage
-- Fast response generation
+### 4. Predictive and Trend Questions
+Explore patterns and potential outcomes:
 
-**Context Synthesis**:
-```
-Dataset A Context + Dataset B Context + ... → Unified Analysis Context → AI Processing → Comparative Insights
-```
+**Good Examples:**
+- "What trends can you identify in this time series data?"
+- "Are there any seasonal patterns in this dataset?"
+- "What factors seem to predict higher outcomes?"
 
-### Relationship Discovery
+**Why This Works:**
+- Uncovers temporal patterns
+- Identifies predictive relationships
+- Provides forward-looking insights
 
-**Automatic Detection**:
-- Common column identification (counties, states, years)
-- Data type compatibility analysis
-- Value range overlap assessment
-- Temporal alignment opportunities
+## Question Crafting Best Practices
 
----
+### 1. Be Specific and Clear
+**Instead of:** "What's interesting about this data?"
+**Try:** "What are the top 3 factors associated with higher life expectancy in this health dataset?"
 
-## Performance Optimization
+### 2. Provide Context When Needed
+**Instead of:** "Why are these numbers high?"
+**Try:** "Why might the poverty rates be higher in these specific counties compared to the state average?"
 
-### Caching Strategy
+### 3. Ask Follow-up Questions
+**Initial:** "What are the main demographic patterns?"
+**Follow-up:** "How do these demographic patterns relate to economic indicators?"
 
-**Multi-Level Caching**:
-1. **Metadata Cache**: Dataset structure and statistics
-2. **Sample Cache**: Pre-computed representative samples
-3. **Context Cache**: Processed context objects
-4. **Response Cache**: Frequently requested insights
+### 4. Request Specific Formats
+- "Provide a summary in bullet points"
+- "List the top 5 findings with supporting data"
+- "Create a narrative explanation of the trends"
 
-### Response Time Targets
+## Types of Insights You Can Expect
 
-| Query Type | Target Response Time | Optimization Strategy |
-|------------|---------------------|----------------------|
-| Simple Statistics | < 5 seconds | Cached metadata analysis |
-| Single Dataset Analysis | < 15 seconds | Intelligent sampling |
-| Multi-Dataset Comparison | < 30 seconds | Parallel processing + lightweight sampling |
-| Complex RAG Queries | < 45 seconds | Progressive scanning + caching |
+### 1. Descriptive Analytics
+- Data quality assessment
+- Distribution descriptions
+- Summary statistics
+- Missing value analysis
 
-### Memory Management
+### 2. Diagnostic Analytics
+- Correlation analysis
+- Outlier identification
+- Pattern recognition
+- Anomaly detection
 
-**Efficient Data Handling**:
-- Streaming data processing for large files
-- Garbage collection optimization
-- Memory pool management for samples
-- Connection pooling for database operations
+### 3. Comparative Analytics
+- Regional comparisons
+- Temporal analysis
+- Demographic breakdowns
+- Performance rankings
 
----
+### 4. Predictive Insights
+- Trend identification
+- Risk factor analysis
+- Forecasting patterns
+- Relationship modeling
 
-## Technical Implementation
+## Multi-Dataset Chat Feature
 
-### Backend Architecture
+When using the multi-dataset chat feature, the AI can:
 
-**Core Services**:
+### Cross-Dataset Analysis
+- Compare metrics across different datasets
+- Identify common patterns and themes
+- Merge insights from related data sources
+- Provide comprehensive multi-source analysis
 
-```typescript
-// Intelligent Data Sampler
-class IntelligentDataSampler {
-  async getIntelligentSample(dataset, strategy, questionContext) {
-    // Strategy selection and sampling logic
-  }
-}
+### Best Practices for Multi-Dataset Queries:
+1. **Specify Datasets**: "Compare poverty rates from the Census data with health outcomes from the CDC data"
+2. **Request Connections**: "How do the environmental factors relate to the health indicators across these datasets?"
+3. **Ask for Synthesis**: "What overall story do these three datasets tell about rural communities?"
 
-// RAG Data Retriever
-class RAGDataRetriever {
-  async queryDatasetWithFilters(dataset, query, maxRows) {
-    // Progressive scanning and filtering
-  }
-}
+## Understanding AI Limitations
 
-// OpenAI Service
-class OpenAIService {
-  async generateInsights(context, question, enableVisualization) {
-    // Context processing and AI generation
-  }
-}
-```
+### What the AI Can Do:
+- Analyze patterns and trends in your data
+- Provide statistical insights and summaries
+- Identify correlations and relationships
+- Generate hypotheses about your data
+- Explain complex data in simple terms
 
-**API Endpoints**:
-- `/api/datasets/:id/chat` - Single dataset AI analysis
-- `/api/datasets/batch-chat` - Multi-dataset AI analysis
-- `/api/datasets/:id/sample` - Intelligent data sampling
-- `/api/datasets/:id/metadata` - Context metadata retrieval
+### What the AI Cannot Do:
+- Access data outside of what you've provided
+- Make definitive causal claims without proper study design
+- Provide personal or sensitive information
+- Replace domain expertise and critical thinking
+- Guarantee 100% accuracy in all interpretations
 
-### Frontend Integration
+## Optimizing Your AI Interactions
 
-**Chart Rendering**:
-- Automatic chart type selection based on data characteristics
-- Interactive Chart.js visualizations
-- Responsive design for various screen sizes
-- Real-time chart updates
+### 1. Start Broad, Then Narrow
+1. Begin with general questions to understand the dataset
+2. Ask more specific questions based on initial insights
+3. Dive deep into areas of particular interest
 
-**User Experience**:
-- Progressive loading indicators
-- Error handling with informative messages
-- Accessibility compliance (WCAG AA)
-- Mobile-optimized interface
+### 2. Iterate and Refine
+- Build on previous responses
+- Ask for clarification when needed
+- Request additional details on interesting findings
 
----
+### 3. Combine Technical and Business Questions
+- "What's the technical correlation between these variables?"
+- "What does this mean for policy decisions?"
+- "How can this insight be applied practically?"
 
-## Use Cases and Applications
+## Privacy and Security
 
-### Research and Analytics
+### Data Handling
+- Only the data you select is analyzed
+- No data is stored permanently by the AI system
+- Analysis occurs in real-time and context is not retained between sessions
+- Your folder access permissions are respected
 
-**Academic Research**:
-- Cross-dataset correlation analysis
-- Temporal trend identification
-- Geographic pattern discovery
-- Statistical hypothesis testing
+### Best Practices
+- Review AI responses for accuracy
+- Validate insights with domain knowledge
+- Use AI as a starting point for deeper analysis
+- Maintain awareness of data sensitivity levels
 
-**Business Intelligence**:
-- Market analysis across multiple data sources
-- Performance benchmarking
-- Risk assessment and monitoring
-- Predictive analytics support
+## Example Interaction Flows
 
-### Public Health Applications
+### Flow 1: Initial Dataset Exploration
+1. **User**: "What does this Census dataset contain?"
+2. **AI**: [Provides overview of demographics, geography, key variables]
+3. **User**: "Which variables show the most variation across counties?"
+4. **AI**: [Identifies high-variance variables with specific examples]
+5. **User**: "Why might [specific variable] vary so much in [specific region]?"
 
-**Disease Surveillance**:
-- Health outcome pattern analysis
-- Social determinant correlation studies
-- Geographic health disparity identification
-- Intervention effectiveness measurement
+### Flow 2: Hypothesis Testing
+1. **User**: "I think urban areas have better health outcomes. What does this data show?"
+2. **AI**: [Analyzes urban vs rural health indicators]
+3. **User**: "What factors might explain these differences?"
+4. **AI**: [Identifies potential contributing factors from the data]
 
-**Policy Analysis**:
-- Evidence-based policy recommendations
-- Impact assessment across populations
-- Resource allocation optimization
-- Program effectiveness evaluation
+### Flow 3: Trend Analysis
+1. **User**: "Are there any time-based patterns in this data?"
+2. **AI**: [Identifies temporal trends and seasonal patterns]
+3. **User**: "What might cause the spike in [time period]?"
+4. **AI**: [Analyzes contextual factors and potential explanations]
 
-### Urban Planning
+## Getting Help
 
-**Community Development**:
-- Infrastructure needs assessment
-- Demographics and housing analysis
-- Transportation pattern evaluation
-- Environmental impact studies
+If you're not getting the insights you need:
 
----
+1. **Rephrase Your Question**: Try asking the same thing in a different way
+2. **Provide More Context**: Explain what you're looking for and why
+3. **Break Down Complex Questions**: Ask one thing at a time
+4. **Check Your Data Access**: Ensure you have permissions for the datasets you're asking about
 
-## Context Engineering Best Practices
+## Advanced Tips
 
-### Data Quality Assurance
+### Using Domain Knowledge
+- Inform the AI about specific domain context when relevant
+- Ask about industry-standard metrics and benchmarks
+- Request explanations in domain-specific terminology
 
-**Validation Framework**:
-- Automatic data type validation
-- Missing value analysis and reporting
-- Outlier detection and flagging
-- Consistency checks across datasets
+### Statistical Requests
+- Ask for confidence levels and statistical significance
+- Request specific statistical tests when appropriate
+- Inquire about sample sizes and potential biases
 
-### Security and Privacy
-
-**Data Protection**:
-- Secure sampling without full data exposure
-- Access control integration
-- Audit logging for data usage
-- Privacy-preserving analysis techniques
-
-### Scalability Considerations
-
-**Growth Planning**:
-- Horizontal scaling for increased dataset volume
-- Performance monitoring and optimization
-- Cache invalidation strategies
-- Resource allocation management
-
----
-
-## Future Enhancements
-
-### Advanced Analytics
-
-**Planned Features**:
-- Machine learning model integration
-- Predictive analytics capabilities
-- Automated insight discovery
-- Real-time data stream analysis
-
-### Enhanced Visualization
-
-**Visualization Roadmap**:
-- Interactive dashboard generation
-- Advanced chart types (heatmaps, network graphs)
-- Geographic mapping integration
-- Custom visualization templates
+### Visualization Suggestions
+- Ask the AI to suggest appropriate chart types for your data
+- Request insights about what visualizations would be most effective
+- Get recommendations for highlighting key findings
 
 ---
 
-## Conclusion
-
-The Ask AI feature represents a sophisticated approach to data lake exploration, combining intelligent context engineering with advanced AI capabilities. By leveraging intelligent sampling, RAG implementation, and optimized performance strategies, the system provides researchers, analysts, and decision-makers with powerful tools for extracting insights from complex datasets.
-
-The context engineering framework ensures that AI responses are always grounded in actual data while maintaining the performance necessary for interactive analysis. This approach enables users to ask natural language questions and receive accurate, contextual insights backed by real data analysis.
-
----
-
-*Document Version: 1.0*  
-*Last Updated: January 2025*  
-*Prepared for: External Documentation*
+*This document is designed to help you maximize the value of the Ask AI feature. The AI system continues to improve based on usage patterns and feedback, so your interactions help make the feature better for everyone.*

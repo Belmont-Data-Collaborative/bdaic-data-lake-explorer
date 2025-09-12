@@ -67,6 +67,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("user"), // 'user', 'admin'
   isActive: boolean("is_active").notNull().default(true),
+  isAiEnabled: boolean("is_ai_enabled").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
@@ -108,6 +109,65 @@ export const downloads = pgTable("downloads", {
   datasetTypeIdx: index("idx_downloads_dataset_type").on(table.datasetId, table.downloadType),
 }));
 
+export const userFolderAccess = pgTable("user_folder_access", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  folderName: text("folder_name").notNull(),
+  canAccess: boolean("can_access").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+}, (table) => ({
+  // Index on userId for fast user lookups
+  userIdIdx: index("idx_user_folder_access_user_id").on(table.userId),
+  // Index on folderName for folder-based queries
+  folderNameIdx: index("idx_user_folder_access_folder_name").on(table.folderName),
+  // Composite index for user + folder queries
+  userFolderIdx: index("idx_user_folder_access_user_folder").on(table.userId, table.folderName),
+  // Unique constraint to prevent duplicate access records
+  uniqueUserFolder: index("unique_user_folder").on(table.userId, table.folderName),
+}));
+
+// Table for managing Ask AI feature per folder
+export const folderAiSettings = pgTable("folder_ai_settings", {
+  id: serial("id").primaryKey(),
+  folderName: text("folder_name").notNull().unique(),
+  isAiEnabled: boolean("is_ai_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+}, (table) => ({
+  // Index on folderName for fast folder lookups
+  folderNameIdx: index("idx_folder_ai_settings_folder_name").on(table.folderName),
+  // Index on isAiEnabled for filtering enabled folders
+  isAiEnabledIdx: index("idx_folder_ai_settings_is_ai_enabled").on(table.isAiEnabled),
+}));
+
+// Table for tracking AI usage per user
+export const aiUsageLog = pgTable("ai_usage_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  datasetId: integer("dataset_id").references(() => datasets.id, { onDelete: "set null" }),
+  usageType: text("usage_type").notNull(), // 'ask_ai', 'generate_insights', 'multi_chat'
+  query: text("query"), // The user's question/prompt
+  responseReceived: boolean("response_received").notNull().default(false), // Only count successful responses
+  usedAt: timestamp("used_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+}, (table) => ({
+  // Index on userId for fast user lookups
+  userIdIdx: index("idx_ai_usage_log_user_id").on(table.userId),
+  // Index on datasetId for dataset-specific usage
+  datasetIdIdx: index("idx_ai_usage_log_dataset_id").on(table.datasetId),
+  // Index on usageType for filtering by feature type
+  usageTypeIdx: index("idx_ai_usage_log_usage_type").on(table.usageType),
+  // Index on usedAt for time-based queries
+  usedAtIdx: index("idx_ai_usage_log_used_at").on(table.usedAt),
+  // Index on responseReceived to filter successful uses
+  responseReceivedIdx: index("idx_ai_usage_log_response_received").on(table.responseReceived),
+  // Composite index for user + successful responses
+  userSuccessIdx: index("idx_ai_usage_log_user_success").on(table.userId, table.responseReceived),
+}));
+
 export const insertDatasetSchema = createInsertSchema(datasets).omit({
   id: true,
 });
@@ -115,6 +175,16 @@ export const insertDatasetSchema = createInsertSchema(datasets).omit({
 export const insertDownloadSchema = createInsertSchema(downloads).omit({
   id: true,
   downloadedAt: true,
+});
+
+export const insertUserFolderAccessSchema = createInsertSchema(userFolderAccess).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Schema for updating folder access
+export const updateUserFolderAccessSchema = z.object({
+  folderNames: z.array(z.string()),
 });
 
 export const insertAwsConfigSchema = createInsertSchema(awsConfig).omit({
@@ -140,6 +210,22 @@ export const insertUserSchema = createInsertSchema(users).omit({
   lastLoginAt: true,
 });
 
+export const insertFolderAiSettingsSchema = createInsertSchema(folderAiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAiUsageLogSchema = createInsertSchema(aiUsageLog).omit({
+  id: true,
+  usedAt: true,
+});
+
+// Schema for updating folder AI settings
+export const updateFolderAiSettingsSchema = z.object({
+  isAiEnabled: z.boolean(),
+});
+
 // Registration schema with password confirmation
 export const registerUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -150,6 +236,14 @@ export const registerUserSchema = z.object({
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+});
+
+// Admin user creation schema (no password confirmation needed)
+export const adminCreateUserSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+  role: z.enum(["admin", "user"]).default("user"),
 });
 
 // Login schema
@@ -165,15 +259,6 @@ export const updateUserSchema = z.object({
   role: z.enum(["user", "admin"]).optional(),
   isActive: z.boolean().optional(),
 });
-
-export type Dataset = typeof datasets.$inferSelect;
-export type InsertDataset = z.infer<typeof insertDatasetSchema>;
-export type AwsConfig = typeof awsConfig.$inferSelect;
-export type InsertAwsConfig = z.infer<typeof insertAwsConfigSchema>;
-export type AuthConfig = typeof authConfig.$inferSelect;
-export type InsertAuthConfig = z.infer<typeof insertAuthConfigSchema>;
-export type RefreshLog = typeof refreshLog.$inferSelect;
-export type InsertRefreshLog = z.infer<typeof insertRefreshLogSchema>;
 
 export const datasetInsights = z.object({
   summary: z.string(),
@@ -236,3 +321,6 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type UserFolderAccess = typeof userFolderAccess.$inferSelect;
+export type InsertUserFolderAccess = z.infer<typeof insertUserFolderAccessSchema>;
+export type UpdateUserFolderAccess = z.infer<typeof updateUserFolderAccessSchema>;

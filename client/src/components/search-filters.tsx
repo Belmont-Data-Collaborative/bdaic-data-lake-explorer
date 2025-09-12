@@ -22,6 +22,9 @@ interface SearchFiltersProps {
   isRefreshing?: boolean;
   showFolderFilter?: boolean;
   currentFolder?: string;
+  userAiEnabled?: boolean;
+  hasDatasetAccess?: boolean;
+  isAdminUser?: boolean;
 }
 
 export function SearchFilters({
@@ -37,6 +40,9 @@ export function SearchFilters({
   isRefreshing = false,
   showFolderFilter = false,
   currentFolder,
+  userAiEnabled = false,
+  hasDatasetAccess = true,
+  isAdminUser = false,
 }: SearchFiltersProps) {
   const refreshDatasetsMutation = useDatasetRefresh();
   const generateInsightsMutation = useGenerateInsights();
@@ -47,14 +53,9 @@ export function SearchFilters({
   // Use currentFolder parameter for potential future enhancements
   console.log("Current folder context:", currentFolder);
 
-  // Fetch global tags (not folder-scoped anymore for top-level filtering)
+  // Fetch user-accessible tags (based on folder permissions)
   const { data: tagFrequencies = [] } = useQuery({
     queryKey: ["/api/tags"],
-    queryFn: async () => {
-      const response = await fetch('/api/tags');
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    },
     enabled: !!onTagChange,
     staleTime: 600000, // 10 minutes cache
     gcTime: 1800000, // 30 minutes garbage collection
@@ -129,7 +130,7 @@ export function SearchFilters({
                 <SelectItem value="avro">Avro</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {showFolderFilter && (
               <Select value="all" onValueChange={() => {}}>
                 <SelectTrigger className="w-48 touch-target" aria-label="Filter by folder">
@@ -145,7 +146,7 @@ export function SearchFilters({
                 </SelectContent>
               </Select>
             )}
-            
+
             {onTagChange && (
               <Select 
                 value={tagFilter} 
@@ -199,50 +200,53 @@ export function SearchFilters({
                 </SelectContent>
               </Select>
             )}
-            
-            {onSelectDataset && <DatasetSearch onSelectDataset={onSelectDataset} />}
-            
-            <Button
-              variant="secondary"
-              onClick={() => generateInsightsMutation.mutate(undefined)}
-              disabled={generateInsightsMutation.isPending}
-              className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
-              aria-label="Generate AI insights for all datasets"
-            >
-              {generateInsightsMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" aria-hidden="true"></div>
-                  <span>Generating...</span>
-                  <span className="sr-only">Generating AI insights for all datasets</span>
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2" size={16} aria-hidden="true" />
-                  <span>AI Insights</span>
-                </>
-              )}
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={refreshDatasetsMutation.isPending || isRefreshing}
-              className="touch-target"
-              aria-label="Refresh datasets from AWS S3"
-            >
-              {(refreshDatasetsMutation.isPending || isRefreshing) ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
-                  <span>{isRefreshing ? "Auto-refreshing..." : "Refreshing..."}</span>
-                  <span className="sr-only">Refreshing datasets from AWS S3</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2" size={16} aria-hidden="true" />
-                  <span>Refresh</span>
-                </>
-              )}
-            </Button>
+
+            {onSelectDataset && hasDatasetAccess && <DatasetSearch onSelectDataset={onSelectDataset} />}
+
+            {userAiEnabled && hasDatasetAccess && isAdminUser && (
+              <Button
+                onClick={() => generateInsightsMutation.mutate(undefined)}
+                disabled={generateInsightsMutation.isPending}
+                className="bg-accent-500 hover:bg-accent-600 text-white touch-target"
+                aria-label="Generate AI insights for all datasets"
+              >
+                {generateInsightsMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" aria-hidden="true"></div>
+                    <span>Generating...</span>
+                    <span className="sr-only">Generating AI insights for all datasets</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2" size={16} aria-hidden="true" />
+                    <span>AI Insights</span>
+                  </>
+                )}
+              </Button>
+            )}
+
+            {isAdminUser && (
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={refreshDatasetsMutation.isPending || isRefreshing}
+                className="touch-target"
+                aria-label="Refresh datasets from AWS S3"
+              >
+                {(refreshDatasetsMutation.isPending || isRefreshing) ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground mr-2" aria-hidden="true"></div>
+                    <span>{isRefreshing ? "Auto-refreshing..." : "Refreshing..."}</span>
+                    <span className="sr-only">Refreshing datasets from AWS S3</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2" size={16} aria-hidden="true" />
+                    <span>Refresh</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </section>

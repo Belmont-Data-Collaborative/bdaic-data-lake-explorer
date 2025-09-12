@@ -1,80 +1,69 @@
 # Data Lake Explorer
 
-A high-performance, comprehensive full-stack web application for exploring AWS S3 data lakes with AI-powered insights, conversational dataset analysis, and advanced performance optimizations. Built with React, Express.js, PostgreSQL, and OpenAI integration.
+A comprehensive full-stack web application for exploring and analyzing AWS S3 data lakes with AI-powered insights, role-based access control, and intelligent data management capabilities.
 
-## Features
+## 🚀 Features
 
-### 🗂️ Dataset Management
-- **Multi-configuration AWS S3 integration** with persistent storage
-- **Automatic dataset discovery** from S3 buckets with metadata extraction
-- **Advanced filtering and search** by name, format, folder, and data source
-- **Top-level folder filtering** for organized bucket navigation (e.g., cdc_places, cdc_svi, cdc_wonder)
-- **Real-time statistics** showing total datasets, size, and data sources
-- **Intelligent dataset ordering** maintaining S3 bucket structure
+### Core Functionality
+- **AI-Powered Analytics**: Generate insights, patterns, and use cases using OpenAI GPT-4o
+- **Smart Dataset Discovery**: Automated S3 bucket scanning with metadata extraction
+- **Hierarchical Tag Filtering**: Advanced filtering system for datasets and folders
+- **Data Sampling**: Intelligent sampling strategies for large dataset analysis
+- **Real-time Statistics**: Dynamic stats calculation with performance optimization
 
-### 🤖 AI-Powered Analysis
-- **AI-generated insights** for datasets including summaries, patterns, and use cases
-- **Conversational AI assistant** for interactive dataset exploration
-- **Contextual responses** based on dataset metadata and column schemas
-- **Bulk insights generation** for multiple datasets
-- **Find Dataset feature** with topic-based search using natural language queries
+### Security & Access Control
+- **Role-Based Permissions**: Admin and User access levels with granular control
+- **JWT Authentication**: Secure token-based authentication system
+- **Folder Access Control**: Granular permissions for specific data lake sections
+- **AI Feature Control**: Individual user-level AI capability management
+- **Inactive Account Protection**: Immediate account deactivation functionality
+- **Admin-Only Registration**: Complete control over new user account creation
+- **Session Management**: Comprehensive user session handling with security logging
 
-### 📊 Data Exploration
-- **Interactive column explorer** with search and pagination
-- **Comprehensive metadata visualization** including data types, encoding, and record counts
-- **YAML metadata integration** for enhanced dataset documentation
-- **Completeness scoring** with visual progress indicators
-- **Sample file download** using AWS presigned URLs
-- **Smart tagging** based on content analysis
-- **Dynamic time formatting** for last updated timestamps
+### Performance & Scalability
+- **Intelligent Caching**: Multi-layered caching with optimal TTL strategies
+- **Database Optimization**: Strategic indexing and query optimization
+- **Performance Monitoring**: Built-in metrics and slow query detection
+- **Response Compression**: Gzip compression for large data transfers
 
-### 🔧 Configuration Management
-- **Multiple AWS configuration support** with easy switching
-- **Session persistence** across page refreshes
-- **PostgreSQL database** for reliable configuration storage
-- **Connection testing** and validation
+### User Experience
+- **Accessibility Compliance**: WCAG AA compliant interface
+- **Responsive Design**: Optimized for all screen sizes
+- **Interactive Chat**: AI chat window with markdown support
+- **Visual Feedback**: Smooth animations and loading states
 
-### 🔐 Security & Authentication
-- **Password-based authentication** protecting access to the data lake
-- **Secure password storage** using bcrypt hashing
-- **Session management** with localStorage persistence
-- **Easy password management** through the login interface
-
-## Technology Stack
+## 🛠 Technology Stack
 
 ### Frontend
-- **React 18** with TypeScript and strict mode
-- **TanStack Query** for data fetching and intelligent caching
-- **Tailwind CSS** with shadcn/ui components and WCAG AA compliance
-- **Wouter** for client-side routing
-- **React Hook Form** with Zod validation
-- **Comprehensive error boundaries** for graceful failure handling
-- **Custom hooks** for dataset filtering, API mutations, and loading states
+- **React 18** with TypeScript for type safety
+- **Vite** for fast development and building
+- **TanStack Query** for data fetching and caching
+- **Wouter** for lightweight routing
+- **shadcn/ui** + **Tailwind CSS** for modern UI components
+- **React Hook Form** + **Zod** for form validation
 
 ### Backend
-- **Express.js** with TypeScript and performance monitoring
-- **PostgreSQL** with Drizzle ORM and comprehensive indexing
-- **AWS SDK v3** for S3 integration with presigned URLs
-- **OpenAI API** for AI features and conversational analysis
+- **Express.js** with TypeScript for API development
+- **Drizzle ORM** for type-safe database operations
+- **PostgreSQL** for robust data persistence
+- **bcrypt** for secure password hashing
+- **JWT** for stateless authentication
+
+### External Services
+- **AWS S3** for data lake storage and management
+- **OpenAI API** for AI-powered analytics and insights
 - **Neon Database** for serverless PostgreSQL hosting
-- **Advanced compression** with gzip optimization and intelligent caching
-- **Performance monitoring** with response time tracking and slow query detection
 
-### Infrastructure
-- **Vite** for development and optimized building
-- **Node.js 20** runtime with ES modules
-- **Environment-based configuration** with secure credential management
-- **Database indexing** for optimal query performance
-- **API response compression** and intelligent cache headers
+## 📋 Prerequisites
 
-## Prerequisites
+- **Node.js** 20 or higher
+- **PostgreSQL** database
+- **AWS S3** bucket access
+- **OpenAI API** key
 
-- Node.js 20 or higher
-- PostgreSQL database (or Neon account)
-- AWS account with S3 access
-- OpenAI API account
+## ⚡ Quick Start
 
-## Environment Variables
+### 1. Environment Setup
 
 Create a `.env` file in the root directory:
 
@@ -82,329 +71,172 @@ Create a `.env` file in the root directory:
 # Database
 DATABASE_URL=postgresql://username:password@host:port/database
 
-# AWS Credentials
+# Authentication
+JWT_SECRET=your_secure_jwt_secret
+
+# AWS Configuration
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=your_aws_region
+AWS_S3_BUCKET=your_bucket_name
 
-# OpenAI
+# AI Services
 OPENAI_API_KEY=your_openai_api_key
 
-# PostgreSQL (if using separate configuration)
-PGHOST=your_pg_host
-PGPORT=5432
-PGUSER=your_pg_user
-PGPASSWORD=your_pg_password
-PGDATABASE=your_pg_database
+# Application
+NODE_ENV=development
+PORT=5000
 ```
 
-## Installation
+### 2. Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd data-lake-explorer
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up the database**
-   ```bash
-   npm run db:push
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Access the application**
-   Open [http://localhost:5000](http://localhost:5000) in your browser
-
-## Usage
-
-### Authentication
-
-The application requires a password to access the data lake:
-
-1. **Login Access**
-   - A secure password is automatically configured for the application
-   - Enter the password on the login page to access the application
-
-2. **Session Management**
-   - Once logged in, you'll stay authenticated across browser sessions
-   - Click "Logout" in the header to securely exit the application
-
-3. **Password Management**
-   - Use "Change Password" on the login page to set a custom password
-   - Current password verification is required for security when changing passwords
-
-### Initial Setup
-
-1. **Configure AWS Connection**
-   - Click on the "AWS Configuration" panel
-   - Enter your S3 bucket name and AWS region
-   - Test the connection to verify access
-
-2. **Refresh Datasets**
-   - Click "Refresh Datasets" to scan your S3 bucket
-   - The system will automatically extract metadata and organize datasets
-
-### Exploring Datasets
-
-1. **Browse Datasets**
-   - Use search filters to find specific datasets
-   - Filter by format (CSV, JSON, Parquet, etc.)
-   - Filter by top-level folder for organized navigation
-   - View dataset statistics and metadata with completeness scores
-
-2. **Generate AI Insights**
-   - Click "Generate Insights" on any dataset
-   - AI will analyze structure and suggest use cases
-   - View patterns, recommendations, and summaries
-
-3. **Find Datasets by Topic**
-   - Click "Find Dataset" to open AI-powered search
-   - Enter natural language queries like "food insecurity rates" or "climate data"
-   - AI analyzes all datasets and returns relevance-scored matches with explanations
-   - Click on results to automatically open dataset details
-
-4. **Chat with Datasets**
-   - Click "Ask AI" to open conversational interface
-   - Ask questions about data structure, analysis approaches, or insights
-   - AI has full context of dataset metadata and previous insights
-
-5. **Download Samples**
-   - Click "Download Sample" to get example files
-   - Uses secure AWS presigned URLs for direct access
-
-### Configuration Management
-
-1. **Multiple Configurations**
-   - Create different configurations for various environments (Production, Development, Testing)
-   - **One-click configuration switching** with clear visual indicators showing active configuration
-   - **Enhanced UI** with connection status indicators and active state badges
-   - Configurations persist across sessions with PostgreSQL storage
-
-2. **Active Configuration Management**
-   - Only one configuration can be active at a time
-   - **Visual status indicators** (blue dot and badge) show which configuration is currently in use
-   - **"Use This" buttons** allow instant switching between configurations
-   - Active configurations cannot be deleted for safety
-
-3. **Session Management**
-   - All settings saved to PostgreSQL database
-   - Automatic reconnection on page refresh
-   - Configuration history and last-used timestamps maintained
-
-## API Endpoints
-
-### Datasets
-- `GET /api/datasets` - List all datasets (ordered by source path)
-- `GET /api/datasets/:id` - Get specific dataset
-- `POST /api/datasets/refresh` - Refresh dataset list from S3
-- `POST /api/datasets/bulk-insights` - Generate AI insights for all datasets
-- `POST /api/datasets/:id/insights` - Generate AI insights for specific dataset
-- `POST /api/datasets/:id/chat` - Chat with dataset AI
-- `GET /api/datasets/:id/download-sample` - Get sample download URL
-- `POST /api/datasets/search` - AI-powered dataset search by topic
-
-### Configuration
-- `GET /api/aws-config` - Get active AWS configuration
-- `GET /api/aws-configs` - List all configurations
-- `POST /api/aws-configs` - Create new configuration
-- `PUT /api/aws-configs/:id` - Update configuration
-- `DELETE /api/aws-configs/:id` - Delete configuration
-- `POST /api/aws-configs/:id/activate` - Set active configuration
-
-### Statistics
-- `GET /api/stats` - Get dataset statistics (5-minute cache)
-- `GET /api/folders` - Get list of top-level folders (10-minute cache)
-- `GET /api/folders/community-data-points` - Get community data calculations
-- `GET /api/datasets/quick-stats` - Get quick dataset statistics (1-minute cache)
-
-### Performance Monitoring
-- `GET /api/performance/stats` - Get performance metrics and statistics
-- `GET /api/performance/db-status` - Get database optimization status and recommendations
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/set-password` - Set or change password
-- `GET /api/auth/status` - Check authentication status
-
-### Documentation
-- `GET /api/docs/markdown` - Get API documentation from replit.md
-
-## Database Schema & Optimizations
-
-### Datasets Table (Optimized with Indexes)
-- `id` - Primary key
-- `name` - Dataset name (indexed for fast search)
-- `source` - Source directory path (indexed for filtering)
-- `topLevelFolder` - Top-level folder for filtering (indexed)
-- `format` - File format (CSV, JSON, etc.) (indexed)
-- `size` - Human-readable file size
-- `sizeBytes` - File size in bytes (BIGINT, indexed for sorting)
-- `lastModified` - Last modification date (indexed for date sorting)
-- `createdDate` - Creation date
-- `status` - Dataset status (indexed for filtering)
-- `metadata` - JSON metadata (columns, encoding, completeness score, etc.)
-- `insights` - AI-generated insights (JSON)
-
-**Performance Indexes:**
-- Single column indexes on: `top_level_folder`, `format`, `status`, `name`, `source`, `lastModified`, `sizeBytes`
-- Composite index on: `(top_level_folder, format)` for common filtering patterns
-
-### AWS Config Table (Optimized)
-- `id` - Primary key
-- `name` - Configuration name
-- `bucketName` - S3 bucket name
-- `region` - AWS region
-- `isConnected` - Connection status (indexed)
-- `lastConnected` - Last connection timestamp
-- `isActive` - Active configuration flag (indexed)
-- `createdAt` - Creation timestamp
-
-**Performance Indexes:**
-- Single column indexes on: `isActive`, `isConnected`
-
-### Auth Config Table
-- `id` - Primary key
-- `hashedPassword` - Bcrypt hashed password
-- `createdAt` - Creation timestamp
-- `updatedAt` - Last update timestamp
-
-### Refresh Log Table (Optimized)
-- `id` - Primary key
-- `lastRefreshTime` - Timestamp of refresh operation (indexed)
-- `datasetsCount` - Number of datasets refreshed
-
-**Performance Indexes:**
-- Single column index on: `lastRefreshTime` for finding recent refreshes
-
-## Performance Features
-
-### Database Optimizations
-- **Comprehensive Indexing**: All frequently queried columns have dedicated indexes
-- **Composite Indexes**: Optimized for common query patterns (folder + format filtering)
-- **Query Performance**: Significant improvement in dataset filtering and search operations
-- **Slow Query Detection**: Automatic logging of queries taking over 2 seconds
-
-### API Response Optimizations
-- **Enhanced Compression**: Gzip compression with 1KB threshold and level 9 compression
-- **Intelligent Caching**: Variable TTL based on endpoint type:
-  - Statistics: 5-minute cache
-  - Folder lists: 10-minute cache
-  - Dataset queries: 1-minute cache
-  - AWS config: 1-minute private cache
-- **Compression Hints**: Content-encoding hints for large responses
-- **Cache Invalidation**: Automatic cache clearing on data refresh
-
-### Performance Monitoring
-- **Real-time Metrics**: Response time tracking, cache hit rates, and request counting
-- **Slow Query Alerts**: Automatic detection and logging of performance issues
-- **Performance Endpoints**: `/api/performance/stats` and `/api/performance/db-status`
-- **Optimization Recommendations**: Automatic suggestions based on performance data
-
-## Development
-
-### Project Structure
-```
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/     # UI components
-│   │   ├── pages/          # Route components
-│   │   ├── hooks/          # Custom hooks
-│   │   └── lib/            # Utilities
-├── server/                 # Express backend
-│   ├── lib/                # Services (AWS, OpenAI)
-│   ├── routes.ts           # API routes
-│   ├── storage.ts          # Database operations
-│   └── index.ts            # Server entry point
-├── shared/                 # Shared types and schemas
-│   └── schema.ts           # Database schema
-└── components.json         # shadcn/ui configuration
-```
-
-### Scripts
-- `npm run dev` - Start development server with performance monitoring
-- `npm run build` - Build for production with optimizations
-- `npm run db:push` - Push database schema changes and create indexes
-- `npm run db:studio` - Open Drizzle Studio for database management
-
-### Performance Monitoring
-Access performance insights at:
-- `/api/performance/stats` - View response times, cache hit rates, and slow queries
-- `/api/performance/db-status` - Check database optimization status and recommendations
-
-### Adding New Features
-
-1. **Database Changes**
-   - Update `shared/schema.ts`
-   - Run `npm run db:push`
-   - Update storage interfaces in `server/storage.ts`
-
-2. **API Endpoints**
-   - Add routes in `server/routes.ts`
-   - Implement validation with Zod schemas
-   - Update frontend queries
-
-3. **UI Components**
-   - Create components in `client/src/components/`
-   - Use shadcn/ui for consistent styling
-   - Implement with TanStack Query for data management
-
-## Deployment
-
-### Environment Setup
-1. Set up PostgreSQL database
-2. Configure AWS credentials
-3. Set OpenAI API key
-4. Update environment variables
-
-### Build and Deploy
 ```bash
-npm run build
-npm start
+# Clone the repository
+git clone <repository-url>
+cd data-lake-explorer
+
+# Install dependencies
+npm install
+
+# Set up the database
+npm run db:push
+
+# Start the development server
+npm run dev
 ```
 
-## Contributing
+### 3. Access the Application
+
+- **Frontend**: http://localhost:5000
+- **API**: http://localhost:5000/api
+- **Health Check**: http://localhost:5000/api/health
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[API Reference](docs/API.md)** - Complete API documentation with authentication and security details
+- **[Security Guide](docs/SECURITY.md)** - Security architecture, access control, and best practices
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions for multiple platforms
+- **[AI Context Engineering](Context_Engineering_for_Ask_AI_Feature.md)** - Technical documentation for AI features
+- **[Architecture Overview](replit.md)** - Detailed system architecture and user preferences
+
+## 🏗 Project Structure
+
+```
+├── client/                 # React frontend application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── lib/           # Utility functions
+│   │   └── hooks/         # Custom React hooks
+├── server/                 # Express.js backend
+│   ├── routes.ts          # API route definitions
+│   ├── storage.ts         # Database operations
+│   └── lib/               # Server utilities
+├── shared/                 # Shared TypeScript types
+│   └── schema.ts          # Database schema definitions
+├── docs/                   # Project documentation
+└── README.md              # This file
+```
+
+## 🔧 Available Scripts
+
+```bash
+# Development
+npm run dev              # Start development server
+npm run build           # Build for production
+npm run start           # Start production server
+
+# Database
+npm run db:push         # Push schema changes to database
+npm run db:studio       # Open database studio
+
+# Quality Assurance
+npm run type-check      # TypeScript type checking
+npm run lint            # Code linting
+npm run format          # Code formatting
+```
+
+## 🚀 Deployment
+
+### Replit (Recommended)
+
+1. Click the **Deploy** button in Replit
+2. Configure environment variables in Replit Secrets
+3. Your app will be available at `https://your-repl-name.your-username.replit.app`
+
+### Docker
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
+
+### Manual Deployment
+
+See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions on various deployment platforms.
+
+## 🔐 Security
+
+### Authentication & Authorization
+- **JWT-based authentication** with secure token handling and session management
+- **Role-based access control** with Admin and User roles
+- **Individual AI permissions** controlled at user level
+- **Folder-level access control** for granular data lake permissions
+- **Admin-only registration** ensuring complete user onboarding control
+
+### Security Features
+- **bcrypt password hashing** with secure salt rounds
+- **Input validation** using comprehensive Zod schemas
+- **Inactive account protection** with immediate login prevention
+- **CORS protection** for cross-origin request security
+- **Rate limiting** to prevent abuse and ensure fair usage
+- **Audit logging** for user actions and administrative changes
+
+## 📊 Performance Features
+
+- **Intelligent caching** with optimized TTL strategies
+- **Database indexing** for fast query execution
+- **Response compression** for reduced bandwidth
+- **Performance monitoring** with built-in metrics
+- **Query optimization** with connection pooling
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make changes and test thoroughly
-4. Update README.md if needed
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📄 License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 
-For issues and questions:
-1. Check existing GitHub issues
-2. Create a new issue with detailed description
-3. Include error logs and environment details
+- **Documentation**: Check the `docs/` directory
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Health Checks**: Monitor application status at `/api/health`
 
----
+## 🔄 Recent Updates (August 2025)
 
-**Data Lake Explorer** - High-performance, AI-driven data lake exploration with comprehensive optimizations for large-scale datasets.
+### Security & Access Control Enhancements
+- ✅ **Registration Completely Disabled**: New accounts can only be created by administrators
+- ✅ **User-Based AI Control**: AI features (Ask AI, Generate Insights, Multi-dataset Chat) now controlled at individual user level
+- ✅ **Inactive Account Restrictions**: Comprehensive login prevention for inactive accounts with custom messaging
+- ✅ **Admin-Only Actions**: Restricted Refresh and AI Insights buttons to admin users only
+- ✅ **Zero-Access Registration**: New users start with no dataset access, requiring manual permission assignment
 
-## Recent Updates (July 2025)
+### User Interface Improvements
+- ✅ **Simplified User Management**: Removed complex folder access and AI settings tabs for cleaner interface
+- ✅ **Conditional AI UI**: Dynamic showing/hiding of AI features based on individual user permissions
+- ✅ **Enhanced Error Handling**: Better parsing and display of server validation errors
+- ✅ **Table Refresh Logic**: Immediate database refresh after user role updates
 
-### Performance Optimizations
-- ✅ **Database Indexing**: Comprehensive indexes on all frequently queried columns
-- ✅ **API Compression**: Enhanced gzip compression with optimized settings
-- ✅ **Intelligent Caching**: Variable TTL based on endpoint characteristics
-- ✅ **Performance Monitoring**: Real-time tracking and slow query detection
-- ✅ **Query Optimization**: Composite indexes for common filtering patterns
-
-### Architecture Improvements
-- ✅ **Error Boundaries**: Comprehensive error handling throughout the application
-- ✅ **Custom Hooks**: Centralized logic for dataset filtering and API mutations
-- ✅ **TypeScript Strict Mode**: Enhanced type safety and development experience
-- ✅ **Accessibility**: WCAG AA compliance with proper ARIA labels and keyboard navigation
-- ✅ **Loading States**: Centralized loading state management with Zustand
+### Performance & Reliability
+- ✅ **Cache-Busting Implementation**: Forced fresh database queries for user management
+- ✅ **Server-Side Caching**: Intelligent multi-layered caching with optimized TTL strategies
+- ✅ **Community Data Points Fix**: Accurate calculation for admin users across all accessible datasets
+- ✅ **Performance Monitoring**: Comprehensive slow query detection and optimization

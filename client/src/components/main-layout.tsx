@@ -28,12 +28,15 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
   });
 
   const currentTab = location === "/user-panel" ? "user-panel" : 
+                    location === "/datasets" ? "datasets" :
                     location === "/admin" ? "admin" :
                     location === "/aws-config" ? "aws-config" : "home";
 
   const handleTabChange = (value: string) => {
     if (value === "home") {
       navigate("/");
+    } else if (value === "datasets") {
+      navigate("/datasets");
     } else if (value === "user-panel") {
       navigate("/user-panel");
     } else if (value === "admin") {
@@ -45,8 +48,8 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
 
   // Keyboard navigation for tab switching
   const availableTabs = currentUser?.role === 'admin' 
-    ? ["home", "user-panel", "aws-config", "admin"]
-    : ["home", "user-panel"];
+    ? ["home", "datasets", "user-panel", "aws-config", "admin"]
+    : ["home", "datasets", "user-panel"];
 
   useKeyboardNavigation({
     onArrowLeft: () => {
@@ -59,7 +62,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
       const nextIndex = currentIndex < availableTabs.length - 1 ? currentIndex + 1 : 0;
       handleTabChange(availableTabs[nextIndex]!);
     },
-    isActive: true,
+    enabled: true,
   });
 
   return (
@@ -148,7 +151,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
           <nav id="navigation" className="border-t border-border overflow-x-auto" role="navigation" aria-label="Main navigation">
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
               <TabsList 
-                className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-4' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}
+                className={`flex w-full min-w-max sm:grid ${currentUser?.role === 'admin' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} sm:max-w-3xl bg-transparent h-auto p-0`}
                 role="tablist"
                 aria-label="Main navigation tabs"
               >
@@ -157,6 +160,16 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
                   role="tab"
                   aria-selected={currentTab === "home"}
+                  aria-controls="main-content"
+                >
+                  <User size={16} aria-hidden="true" />
+                  <span className="text-responsive-sm">User Panel</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="datasets" 
+                  className="flex items-center space-x-1 sm:space-x-2 py-3 px-2 sm:px-4 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary rounded-none touch-target whitespace-nowrap focus-ring"
+                  role="tab"
+                  aria-selected={currentTab === "datasets"}
                   aria-controls="main-content"
                 >
                   <Database size={16} aria-hidden="true" />
@@ -168,6 +181,7 @@ export function MainLayout({ children, onLogout, currentUser }: MainLayoutProps)
                   role="tab"
                   aria-selected={currentTab === "user-panel"}
                   aria-controls="main-content"
+                  style={{ display: 'none' }} 
                 >
                   <User size={16} aria-hidden="true" />
                   <span className="text-responsive-sm">User Panel</span>

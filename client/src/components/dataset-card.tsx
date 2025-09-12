@@ -55,6 +55,8 @@ interface DatasetCardProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onSelectionClick?: (event: React.MouseEvent) => void;
+  userAiEnabled?: boolean;
+  currentFolder?: string | null;
 }
 
 export function DatasetCard({
@@ -63,6 +65,8 @@ export function DatasetCard({
   isSelectionMode = false,
   isSelected = false,
   onSelectionClick,
+  userAiEnabled = false,
+  currentFolder = null,
 }: DatasetCardProps) {
   const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -417,7 +421,7 @@ export function DatasetCard({
                     {dataset.name}
                   </h3>
                 </header>
-                
+
                 <div 
                   id={`dataset-summary-${dataset.id}`}
                   className="sr-only"
@@ -428,7 +432,7 @@ export function DatasetCard({
                   last modified on {new Date(dataset.lastModified).toLocaleDateString()}.
                   {metadata?.description && ` Description: ${metadata.description}`}
                 </div>
-                
+
                 <div 
                   className="flex items-center flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-contrast-medium mt-1"
                   role="list"
@@ -530,7 +534,7 @@ export function DatasetCard({
                         </span>
                       </div>
                     )}
-                    
+
                     {/* Download Statistics */}
                     {downloadStats && (
                       <div className="py-2 border-b border-border">
@@ -943,7 +947,7 @@ export function DatasetCard({
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : userAiEnabled ? (
                     <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
                       <Brain className="mx-auto text-gray-400 mb-2" size={24} />
                       <p className="text-sm text-gray-600 mb-3">
@@ -965,6 +969,13 @@ export function DatasetCard({
                         )}
                       </Button>
                     </div>
+                  ) : (
+                    <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
+                      <Brain className="mx-auto text-gray-400 mb-2" size={24} />
+                      <p className="text-sm text-gray-600">
+                        AI features are not enabled for your account
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -972,14 +983,16 @@ export function DatasetCard({
               {/* Action Buttons */}
               <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
                 <div className="flex items-center flex-wrap gap-2 sm:gap-4" role="group" aria-label="Dataset actions">
-                  <Button
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground touch-target"
-                    onClick={() => setIsChatOpen(true)}
-                    aria-label={`Open AI chat for ${dataset.name}`}
-                  >
-                    <Search className="mr-2" size={16} aria-hidden="true" />
-                    <span>Ask AI</span>
-                  </Button>
+                  {userAiEnabled && (
+                    <Button
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground touch-target"
+                      onClick={() => setIsChatOpen(true)}
+                      aria-label={`Open AI chat for ${dataset.name}`}
+                    >
+                      <Search className="mr-2" size={16} aria-hidden="true" />
+                      <span>Ask AI</span>
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => downloadSampleMutation.mutate(dataset.id)}
@@ -1049,7 +1062,7 @@ export function DatasetCard({
                     Ask AI
                   </Button> */}
                 </div>
-                {insights && (
+                {userAiEnabled && insights && (
                   <Button
                     variant="secondary"
                     onClick={() => generateInsightsMutation.mutate()}
@@ -1076,11 +1089,13 @@ export function DatasetCard({
       </Collapsible>
 
       {/* Dataset Chat Modal */}
-      <DatasetChat
-        dataset={dataset}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
+      {userAiEnabled && (
+        <DatasetChat
+          dataset={dataset}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
     </article>
   );
 }
