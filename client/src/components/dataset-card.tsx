@@ -154,8 +154,14 @@ export function DatasetCard({
 
   const downloadSampleMutation = useMutation({
     mutationFn: async () => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(
         `/api/datasets/${dataset.id}/download-sample`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
       );
 
       if (!response.ok) {
@@ -209,8 +215,14 @@ export function DatasetCard({
 
   const downloadFullMutation = useMutation({
     mutationFn: async () => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(
         `/api/datasets/${dataset.id}/download-full`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
       );
 
       if (!response.ok) {
@@ -264,8 +276,14 @@ export function DatasetCard({
 
   const downloadMetadataMutation = useMutation({
     mutationFn: async () => {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(
         `/api/datasets/${dataset.id}/download-metadata`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
       );
 
       if (!response.ok) {
