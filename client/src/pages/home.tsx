@@ -368,11 +368,42 @@ export default function Home() {
     setSelectedFolder(folderName);
   };
 
-  // Filter folders to only show those with datasets
+  // Filter folders to only show those with datasets that match current filters
   // If allDatasets is still loading, show all folders to prevent flickering
   const foldersWithDatasets = allDatasetsLoading ? folders : folders.filter(folder => {
-    const datasetCount = allDatasets.filter(d => d.topLevelFolder === folder).length;
-    return datasetCount > 0;
+    const folderDatasets = allDatasets.filter(d => d.topLevelFolder === folder);
+    
+    // Apply same filtering logic as useDatasetFiltering hook
+    let filteredDatasets = folderDatasets;
+    
+    // Apply format filter
+    if (formatFilter && formatFilter !== 'all') {
+      filteredDatasets = filteredDatasets.filter(dataset => 
+        dataset.format?.toLowerCase() === formatFilter.toLowerCase()
+      );
+    }
+    
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filteredDatasets = filteredDatasets.filter(dataset =>
+        dataset.name?.toLowerCase().includes(searchLower) ||
+        dataset.source?.toLowerCase().includes(searchLower) ||
+        (dataset.metadata as any)?.title?.toLowerCase().includes(searchLower) ||
+        (dataset.metadata as any)?.description?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Apply tag filter
+    if (tagFilter && tagFilter !== 'all') {
+      filteredDatasets = filteredDatasets.filter(dataset => {
+        const tags = (dataset.metadata as any)?.tags || [];
+        return Array.isArray(tags) && tags.includes(tagFilter);
+      });
+    }
+    
+    // Only show folder if it has datasets after filtering
+    return filteredDatasets.length > 0;
   });
 
   // Show all folders with datasets (no pagination)
