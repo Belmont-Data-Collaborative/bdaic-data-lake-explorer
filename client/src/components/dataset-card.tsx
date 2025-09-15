@@ -179,7 +179,7 @@ export function DatasetCard({
 
       // Sample downloads now use pre-signed URLs (JSON response)
       const data = await response.json();
-      console.log(`Sample download: ${data.fileName} (${Math.round(data.sampleSize / 1024)} KB sample from ${Math.round(data.totalSize / 1024 / 1024)} MB total)`);
+      console.log(`Sample download: ${data.fileName} (${Math.round(data.sampleSize / 1024)} KB sample - 1% from ${Math.round(data.totalSize / 1024 / 1024)} MB total)`);
       
       // Trigger direct download from S3 via pre-signed URL
       const link = document.createElement("a");
@@ -202,7 +202,7 @@ export function DatasetCard({
       // Sample downloads now use pre-signed URLs (no blob handling needed)
       toast({
         title: "Download started",
-        description: `Sample file ${data.fileName} (10% of original) is downloading directly from cloud storage.`,
+        description: `Sample file ${data.fileName} (1% of original) is downloading directly from cloud storage.`,
       });
 
       // Invalidate download stats cache

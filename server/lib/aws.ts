@@ -716,16 +716,22 @@ export class AwsS3Service {
 
       if (!dataFile?.Key || !dataFile.Size) return null;
 
-      // Calculate 10% of the file size for sample download
-      const tenPercentSize = Math.floor(dataFile.Size * 0.1);
+      // Calculate 1% of the file size for sample download (much more reasonable)
+      const onePercentSize = Math.floor(dataFile.Size * 0.01);
+      
+      // Ensure minimum viable sample size (at least 1KB for headers + few rows)
+      const minSampleSize = 1024; // 1KB minimum
+      const maxSampleSize = 10 * 1024 * 1024; // 10MB maximum to prevent huge samples
+      
+      const sampleSize = Math.max(minSampleSize, Math.min(onePercentSize, maxSampleSize));
 
-      console.log(`Generating sample pre-signed URL for ${datasetName}: ${dataFile.Key} (${dataFile.Size} bytes -> ${tenPercentSize} bytes 10%)`);
+      console.log(`Generating sample pre-signed URL for ${datasetName}: ${dataFile.Key} (${dataFile.Size} bytes -> ${sampleSize} bytes ~${Math.round((sampleSize / dataFile.Size) * 100)}%)`);
 
       // Generate pre-signed URL with Range header for partial download
       const getObjectCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: dataFile.Key,
-        Range: `bytes=0-${tenPercentSize - 1}`, // Download only first 10% of the file
+        Range: `bytes=0-${sampleSize - 1}`, // Download only first 1% of the file
       });
 
       const presignedUrl = await getSignedUrl(this.s3Client, getObjectCommand, {
@@ -737,7 +743,7 @@ export class AwsS3Service {
       return {
         url: presignedUrl,
         fileName,
-        sampleSize: tenPercentSize,
+        sampleSize,
         totalSize: dataFile.Size
       };
     } catch (error) {
@@ -839,17 +845,23 @@ export class AwsS3Service {
 
       if (!dataFile?.Key || !dataFile.Size) return null;
 
-      // Calculate 10% of the file size for partial download
-      const tenPercentSize = Math.floor(dataFile.Size * 0.1);
+      // Calculate 1% of the file size for partial download (much more reasonable)
+      const onePercentSize = Math.floor(dataFile.Size * 0.01);
+      
+      // Ensure minimum viable sample size (at least 1KB for headers + few rows)
+      const minSampleSize = 1024; // 1KB minimum
+      const maxSampleSize = 10 * 1024 * 1024; // 10MB maximum to prevent huge samples
+      
+      const sampleSize = Math.max(minSampleSize, Math.min(onePercentSize, maxSampleSize));
 
       console.log(
-        `Generating sample download for ${datasetName}: ${dataFile.Size} bytes -> ${tenPercentSize} bytes (10%)`,
+        `Generating sample download for ${datasetName}: ${dataFile.Size} bytes -> ${sampleSize} bytes (~${Math.round((sampleSize / dataFile.Size) * 100)}%)`,
       );
 
       return {
         key: dataFile.Key,
         bucketName,
-        sampleSize: tenPercentSize,
+        sampleSize,
       };
     } catch (error) {
       console.error(`Error generating download URL for ${datasetName}:`, error);
