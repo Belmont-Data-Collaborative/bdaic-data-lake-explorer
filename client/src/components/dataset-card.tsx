@@ -169,8 +169,21 @@ export function DatasetCard({
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Download failed");
+        let errorMessage = "Download failed";
+        try {
+          // Try to parse as JSON first
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text content
+          try {
+            const textContent = await response.text();
+            errorMessage = textContent || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (textError) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       // Get filename from Content-Disposition header or create one
@@ -327,8 +340,21 @@ export function DatasetCard({
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Download failed");
+        let errorMessage = "Download failed";
+        try {
+          // Try to parse as JSON first
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text content
+          try {
+            const textContent = await response.text();
+            errorMessage = textContent || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (textError) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       // Get filename from Content-Disposition header or create one
