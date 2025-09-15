@@ -173,36 +173,40 @@ export function DatasetCard({
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Download failed");
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      // Sample downloads now use pre-signed URLs (JSON response)
-      const data = await response.json();
-      console.log(`Sample download: ${data.fileName} (${Math.round(data.sampleSize / 1024)} KB sample - 1% from ${Math.round(data.totalSize / 1024 / 1024)} MB total)`);
+      // Sample downloads now stream directly from backend (no pre-signed URLs)
+      const blob = await response.blob();
+      const fileName = response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] || `${dataset.name}-sample.csv`;
+      const sampleSize = parseInt(response.headers.get('x-sample-size') || '0');
+      const totalSize = parseInt(response.headers.get('x-total-size') || '0');
       
-      // Trigger direct download from S3 via pre-signed URL
+      console.log(`Sample download: ${fileName} (${Math.round(sampleSize / 1024)} KB sample - 1% from ${Math.round(totalSize / 1024 / 1024)} MB total)`);
+      
+      // Trigger download from blob
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = data.url;
-      link.download = data.fileName;
-      link.target = "_blank"; // Open in new tab for better UX
+      link.href = url;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+      window.URL.revokeObjectURL(url);
+
       return { 
-        downloadType: 'presigned', 
-        fileName: data.fileName, 
-        sampleSize: data.sampleSize,
-        totalSize: data.totalSize,
-        expiresIn: data.expiresIn 
+        downloadType: 'stream', 
+        fileName, 
+        sampleSize,
+        totalSize 
       };
     },
     onSuccess: (data: any) => {
-      // Sample downloads now use pre-signed URLs (no blob handling needed)
+      // Sample downloads now stream directly from backend (1% of file size)
       toast({
-        title: "Download started",
-        description: `Sample file ${data.fileName} (1% of original) is downloading directly from cloud storage.`,
+        title: "Download completed",
+        description: `Sample file ${data.fileName} (1% of original) has been downloaded successfully.`,
       });
 
       // Invalidate download stats cache
