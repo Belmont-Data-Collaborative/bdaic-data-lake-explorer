@@ -45,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getSafeAuthToken } from "@/lib/auth-utils";
 import { DatasetChat } from "@/components/dataset-chat";
 import { formatNumber } from "@/lib/format-number";
 import type { Dataset, DatasetInsights, DatasetMetadata } from "@shared/schema";
