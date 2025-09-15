@@ -683,12 +683,12 @@ export class AwsS3Service {
     }
   }
 
-  // Generate a pre-signed URL for sample download with Range header (bypasses server timeout)
-  async generateSampleDownloadPresignedUrl(
+  // Stream sample download directly (avoids Range signing issues with pre-signed URLs)
+  async streamSampleDownload(
     bucketName: string,
     source: string,
     datasetName: string,
-  ): Promise<{ url: string; fileName: string; sampleSize: number; totalSize?: number } | null> {
+  ): Promise<{ stream: any; fileName: string; sampleSize: number; totalSize: number; contentType: string } | null> {
     try {
       // Find the first data file (non-YAML) for this dataset
       const command = new ListObjectsV2Command({
@@ -725,29 +725,36 @@ export class AwsS3Service {
       
       const sampleSize = Math.max(minSampleSize, Math.min(onePercentSize, maxSampleSize));
 
-      console.log(`Generating sample pre-signed URL for ${datasetName}: ${dataFile.Key} (${dataFile.Size} bytes -> ${sampleSize} bytes ~${Math.round((sampleSize / dataFile.Size) * 100)}%)`);
+      // Ensure end byte doesn't exceed file size (inclusive end index)
+      const endByte = Math.min(sampleSize - 1, dataFile.Size - 1);
 
-      // Generate pre-signed URL with Range header for partial download
+      console.log(`Streaming sample for ${datasetName}: ${dataFile.Key} (${dataFile.Size} bytes -> ${sampleSize} bytes ~${Math.round((sampleSize / dataFile.Size) * 100)}%) Range: bytes=0-${endByte}`);
+
+      // Get object with Range header for partial download
       const getObjectCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: dataFile.Key,
-        Range: `bytes=0-${sampleSize - 1}`, // Download only first 1% of the file
+        Range: `bytes=0-${endByte}`, // Proper inclusive end index
       });
 
-      const presignedUrl = await getSignedUrl(this.s3Client, getObjectCommand, {
-        expiresIn: 3600, // 1 hour
-      });
+      const s3Response = await this.s3Client.send(getObjectCommand);
+
+      if (!s3Response.Body) {
+        console.error(`No body in S3 response for ${datasetName}`);
+        return null;
+      }
 
       const fileName = `${datasetName}-sample.csv`;
 
       return {
-        url: presignedUrl,
+        stream: s3Response.Body,
         fileName,
         sampleSize,
-        totalSize: dataFile.Size
+        totalSize: dataFile.Size,
+        contentType: 'text/csv'
       };
     } catch (error) {
-      console.error(`Error generating sample pre-signed URL for ${datasetName}:`, error);
+      console.error(`Error streaming sample download for ${datasetName}:`, error);
       return null;
     }
   }

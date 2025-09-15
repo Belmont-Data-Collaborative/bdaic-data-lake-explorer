@@ -1321,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download sample endpoint with pre-signed URL
+  // Download sample endpoint with streaming (fixes Range signing issues)
   app.get("/api/datasets/:id/download-sample", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1339,16 +1339,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const s3Service = createAwsS3Service(config.region);
       
-      // Use pre-signed URL approach to bypass server timeout
-      const presignedInfo = await s3Service.generateSampleDownloadPresignedUrl(
+      // Use streaming approach (avoids Range signing issues with pre-signed URLs)
+      const sampleInfo = await s3Service.streamSampleDownload(
         config.bucketName, 
         dataset.source, 
         dataset.name
       );
       
-      if (!presignedInfo) {
+      if (!sampleInfo) {
         return res.status(404).json({ message: "No sample file found for this dataset" });
       }
+
+      // Set appropriate headers for download
+      res.setHeader('Content-Type', sampleInfo.contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${sampleInfo.fileName}"`);
+      res.setHeader('X-Sample-Size', sampleInfo.sampleSize.toString());
+      res.setHeader('X-Total-Size', sampleInfo.totalSize.toString());
+
+      console.log(`Streaming sample download: ${sampleInfo.fileName} (${sampleInfo.sampleSize} bytes from ${sampleInfo.totalSize} bytes)`);
 
       // Record the download
       await storage.recordDownload(
@@ -1361,18 +1369,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Invalidate download stats cache
       invalidateCache(`download-stats-${id}`);
 
-      // Return the pre-signed URL for direct download
-      return res.json({
-        downloadType: 'presigned',
-        url: presignedInfo.url,
-        fileName: presignedInfo.fileName,
-        sampleSize: presignedInfo.sampleSize,
-        totalSize: presignedInfo.totalSize,
-        expiresIn: 3600 // 1 hour
-      });
+      // Stream the S3 data directly to the response
+      sampleInfo.stream.pipe(res);
     } catch (error) {
-      console.error("Error generating download sample:", error);
-      res.status(500).json({ message: "Failed to generate sample download" });
+      console.error("Error streaming sample download:", error);
+      res.status(500).json({ message: "Failed to stream sample download" });
     }
   });
 
