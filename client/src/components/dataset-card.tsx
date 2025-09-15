@@ -101,7 +101,8 @@ export function DatasetCard({
     if (!metadata?.columns) return [];
 
     return metadata.columns.filter((column) =>
-      column.name.toLowerCase().includes(columnSearchTerm.toLowerCase()),
+      column.name.toLowerCase().includes(columnSearchTerm.toLowerCase()) ||
+      (column.description && column.description.toLowerCase().includes(columnSearchTerm.toLowerCase()))
     );
   }, [metadata?.columns, columnSearchTerm]);
 
