@@ -171,21 +171,23 @@ export function DatasetCard({
     setCurrentPage(1);
     setAiSearchResults([]); // Clear previous AI results
     
-    // Trigger AI search after a short delay if few exact matches
+    // Trigger AI search after a short delay for better semantic results
     if (value.trim() && value.length >= 3) {
       const exactMatches = metadata?.columns?.filter((column) =>
         column.name.toLowerCase().includes(value.toLowerCase()) ||
         (column.description && column.description.toLowerCase().includes(value.toLowerCase()))
       ) || [];
       
-      // If few exact matches, try AI search after brief delay
-      if (exactMatches.length < 3) {
-        setTimeout(() => {
-          if (columnSearchTerm === value) { // Only search if search term hasn't changed
-            performAiColumnSearch(value);
-          }
-        }, 800);
-      }
+      console.log(`Column search for "${value}": found ${exactMatches.length} exact matches`);
+      
+      // Always try AI search for better semantic understanding
+      // AI will find related terms like "location" -> "State", "address", etc.
+      setTimeout(() => {
+        if (columnSearchTerm === value) { // Only search if search term hasn't changed
+          console.log(`Triggering AI search for: "${value}"`);
+          performAiColumnSearch(value);
+        }
+      }, 500); // Reduced delay for faster response
     }
   };
 
