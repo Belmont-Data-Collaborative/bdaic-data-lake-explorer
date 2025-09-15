@@ -1321,6 +1321,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered semantic column search endpoint
+  app.post("/api/datasets/:id/search-columns", async (req, res) => {
+    try {
+      const { searchTerm, columns } = req.body;
+      
+      if (!searchTerm || !columns || !Array.isArray(columns)) {
+        return res.status(400).json({ message: "Search term and columns array are required" });
+      }
+
+      // Use OpenAI to find semantically similar columns
+      const prompt = `Find columns that are semantically related to the search term "${searchTerm}".
+
+Available columns:
+${columns.map(col => `- ${col.name} (${col.type}): ${col.description || 'No description'}`).join('\n')}
+
+Return a JSON array with columns that match the concept of "${searchTerm}". Consider:
+- Synonyms and related terms
+- Conceptual relationships (e.g., "location" matches counties, states, addresses)
+- Domain-specific terminology
+- Functional relationships
+
+For each match, provide:
+{
+  "columnName": "exact column name",
+  "score": 0.8,
+  "reason": "why this column matches the search term"
+}
+
+Score from 0.0 to 1.0 where 1.0 is perfect match. Only include columns with score > 0.5.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a data expert that understands semantic relationships between search terms and data columns. Always respond with valid JSON."
+          },
+          {
+            role: "user", 
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 500,
+      });
+
+      let matches = [];
+      try {
+        const result = JSON.parse(response.choices[0].message.content || "{}");
+        matches = Array.isArray(result) ? result : (result.matches || []);
+      } catch (parseError) {
+        console.warn('Failed to parse AI column search results:', parseError);
+        matches = [];
+      }
+
+      res.json({ 
+        searchTerm,
+        matches: matches.filter((match: any) => 
+          match.score > 0.5 && 
+          columns.some(col => col.name === match.columnName)
+        )
+      });
+    } catch (error) {
+      console.error("Error in AI column search:", error);
+      res.status(500).json({ message: "AI column search failed" });
+    }
+  });
+
   // Download sample endpoint with streaming (fixes Range signing issues)
   app.get("/api/datasets/:id/download-sample", async (req, res) => {
     try {

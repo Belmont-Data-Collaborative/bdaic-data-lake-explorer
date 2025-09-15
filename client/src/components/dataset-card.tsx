@@ -67,7 +67,6 @@ export function DatasetCard({
   isSelected = false,
   onSelectionClick,
   userAiEnabled = false,
-  currentFolder = null,
 }: DatasetCardProps) {
   const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -76,12 +75,6 @@ export function DatasetCard({
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { toast } = useToast();
-  const { handleError } = useErrorHandler();
-  const chatFocusTrapRef = useFocusTrap({ 
-    isActive: isChatOpen, 
-    restoreFocus: true, 
-    autoFocus: true 
-  });
 
   const metadata = dataset.metadata as DatasetMetadata | null;
   const insights = dataset.insights as DatasetInsights | null;
@@ -96,15 +89,46 @@ export function DatasetCard({
     // Always fetch stats for header display
   });
 
-  // Filter and paginate columns
+  // Smart column search with AI-powered semantic similarity
+  const [aiSearchResults, setAiSearchResults] = useState<any[]>([]);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+
+  // Enhanced column filtering with semantic search
   const filteredColumns = useMemo(() => {
     if (!metadata?.columns) return [];
 
-    return metadata.columns.filter((column) =>
+    // First try exact matching (fast)
+    const exactMatches = metadata.columns.filter((column) =>
       column.name.toLowerCase().includes(columnSearchTerm.toLowerCase()) ||
       (column.description && column.description.toLowerCase().includes(columnSearchTerm.toLowerCase()))
     );
-  }, [metadata?.columns, columnSearchTerm]);
+
+    // If we have good exact matches or no search term, return those
+    if (exactMatches.length >= 3 || !columnSearchTerm.trim() || columnSearchTerm.length < 3) {
+      return exactMatches;
+    }
+
+    // If few exact matches and we have AI results, combine them
+    if (aiSearchResults.length > 0) {
+      const aiMatchedColumns = metadata.columns.filter(column => 
+        aiSearchResults.some(result => 
+          result.columnName === column.name && result.score > 0.6
+        )
+      );
+      
+      // Combine exact matches with AI matches, remove duplicates
+      const combined = [...exactMatches];
+      aiMatchedColumns.forEach(aiCol => {
+        if (!exactMatches.find(exact => exact.name === aiCol.name)) {
+          combined.push(aiCol);
+        }
+      });
+      
+      return combined;
+    }
+
+    return exactMatches;
+  }, [metadata?.columns, columnSearchTerm, aiSearchResults]);
 
   const totalPages = Math.ceil(filteredColumns.length / columnsPerPage);
   const startIndex = (currentPage - 1) * columnsPerPage;
@@ -113,10 +137,56 @@ export function DatasetCard({
     ? filteredColumns
     : filteredColumns.slice(startIndex, endIndex);
 
-  // Reset to first page when search changes
+  // AI-powered semantic column search
+  const performAiColumnSearch = async (searchTerm: string) => {
+    if (!metadata?.columns || searchTerm.length < 3) return;
+    
+    setIsAiSearching(true);
+    try {
+      const response = await apiRequest('POST', `/api/datasets/${dataset.id}/search-columns`, {
+        body: JSON.stringify({ 
+          searchTerm,
+          columns: metadata.columns.map(col => ({
+            name: col.name,
+            type: col.type,
+            description: col.description || ''
+          }))
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const results = await response.json();
+      setAiSearchResults(results.matches || []);
+    } catch (error) {
+      console.warn('AI column search failed, using exact matching only:', error);
+      setAiSearchResults([]);
+    } finally {
+      setIsAiSearching(false);
+    }
+  };
+
+  // Enhanced search handler with AI fallback
   const handleSearchChange = (value: string) => {
     setColumnSearchTerm(value);
     setCurrentPage(1);
+    setAiSearchResults([]); // Clear previous AI results
+    
+    // Trigger AI search after a short delay if few exact matches
+    if (value.trim() && value.length >= 3) {
+      const exactMatches = metadata?.columns?.filter((column) =>
+        column.name.toLowerCase().includes(value.toLowerCase()) ||
+        (column.description && column.description.toLowerCase().includes(value.toLowerCase()))
+      ) || [];
+      
+      // If few exact matches, try AI search after brief delay
+      if (exactMatches.length < 3) {
+        setTimeout(() => {
+          if (columnSearchTerm === value) { // Only search if search term hasn't changed
+            performAiColumnSearch(value);
+          }
+        }, 800);
+      }
+    }
   };
 
   const handleColumnsPerPageChange = (value: string) => {
