@@ -139,9 +139,19 @@ export function DatasetCard({
 
   // AI-powered semantic column search
   const performAiColumnSearch = async (searchTerm: string) => {
-    if (!metadata?.columns || searchTerm.length < 3) return;
+    if (!metadata?.columns || searchTerm.length < 3) {
+      console.log('AI search skipped: no columns or term too short');
+      return;
+    }
     
+    if (!userAiEnabled) {
+      console.log('AI search skipped: user AI not enabled');
+      return;
+    }
+    
+    console.log(`Starting AI search for "${searchTerm}" with ${metadata.columns.length} columns`);
     setIsAiSearching(true);
+    
     try {
       const response = await apiRequest('POST', `/api/datasets/${dataset.id}/search-columns`, {
         body: JSON.stringify({ 
@@ -156,6 +166,7 @@ export function DatasetCard({
       });
       
       const results = await response.json();
+      console.log(`AI search results for "${searchTerm}":`, results);
       setAiSearchResults(results.matches || []);
     } catch (error) {
       console.warn('AI column search failed, using exact matching only:', error);
@@ -183,9 +194,12 @@ export function DatasetCard({
       // Always try AI search for better semantic understanding
       // AI will find related terms like "location" -> "State", "address", etc.
       setTimeout(() => {
-        if (columnSearchTerm === value) { // Only search if search term hasn't changed
+        // Check if search term is still the current one (avoid race conditions)
+        if (document.querySelector('input[placeholder*="Search columns"]')?.value === value) {
           console.log(`Triggering AI search for: "${value}"`);
           performAiColumnSearch(value);
+        } else {
+          console.log(`AI search cancelled for "${value}" - search term changed`);
         }
       }, 500); // Reduced delay for faster response
     }

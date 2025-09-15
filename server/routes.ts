@@ -1322,11 +1322,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI-powered semantic column search endpoint
-  app.post("/api/datasets/:id/search-columns", async (req, res) => {
+  app.post("/api/datasets/:id/search-columns", authenticateToken, async (req, res) => {
     try {
+      console.log('AI search endpoint hit with body:', req.body);
       const { searchTerm, columns } = req.body;
       
+      console.log('Search term:', searchTerm, 'Columns length:', columns?.length);
+      
       if (!searchTerm || !columns || !Array.isArray(columns)) {
+        console.log('Validation failed - searchTerm:', !!searchTerm, 'columns:', !!columns, 'isArray:', Array.isArray(columns));
         return res.status(400).json({ message: "Search term and columns array are required" });
       }
 
@@ -1351,7 +1355,7 @@ For each match, provide:
 
 Score from 0.0 to 1.0 where 1.0 is perfect match. Only include columns with score > 0.5.`;
 
-      const response = await openai.chat.completions.create({
+      const response = await openAIService['openai'].chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
