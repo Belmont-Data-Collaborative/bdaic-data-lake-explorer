@@ -42,7 +42,7 @@ This documentation is organized into several sections to help you find the infor
 #### Module Documentation
 - **[Backend Architecture](modules/backend.md)** - Express routes, middleware, and storage
 - **[Frontend Components](modules/frontend.md)** - React components, routing, and state management
-- **[Shared Schema](modules/shared-schema.md)** - TypeScript types and Zod validation
+- **[Shared Schema](modules/shared.md)** - TypeScript types and Zod validation
 - **[Configuration Management](modules/configuration.md)** - Environment and deployment settings
 
 ### 🏗️ Architecture & Design
