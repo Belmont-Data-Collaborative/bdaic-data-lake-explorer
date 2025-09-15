@@ -154,15 +154,12 @@ export function DatasetCard({
     
     try {
       const response = await apiRequest('POST', `/api/datasets/${dataset.id}/search-columns`, {
-        body: JSON.stringify({ 
-          searchTerm,
-          columns: metadata.columns.map(col => ({
-            name: col.name,
-            type: col.type,
-            description: col.description || ''
-          }))
-        }),
-        headers: { 'Content-Type': 'application/json' }
+        searchTerm,
+        columns: metadata.columns.map(col => ({
+          name: col.name,
+          type: col.type,
+          description: col.description || ''
+        }))
       });
       
       const results = await response.json();
