@@ -1,290 +1,132 @@
 # Data Lake Explorer Documentation
 
-## Table of Contents
+Welcome to the comprehensive documentation for Data Lake Explorer - a full-stack application for exploring AWS S3 data lakes with AI-powered insights and role-based access control.
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Installation & Setup](#installation--setup)
-- [API Documentation](#api-documentation)
-- [Authentication](#authentication)
-- [Database Schema](#database-schema)
-- [Performance Optimization](#performance-optimization)
-- [Troubleshooting](#troubleshooting)
+## 📖 Documentation Overview
 
-## Overview
+This documentation is organized into several sections to help you find the information you need quickly:
 
-Data Lake Explorer is a comprehensive web application for managing and analyzing AWS S3 data lakes. It provides AI-powered insights, role-based access control, and intuitive data exploration capabilities.
+### 🚀 Getting Started
+- **[Quick Start Guide](../README.md#quick-start)** - Get up and running in minutes
+- **[Installation & Setup](../README.md#installation)** - Detailed setup instructions
+- **[Environment Configuration](../README.md#environment-setup)** - Required environment variables
 
-### Key Features
+### 👥 User Guides
+- **[User Guide](guides/UserGuide.md)** - Complete guide for end users
+  - Dataset browsing and filtering
+  - AI-powered column search with semantic matching
+  - Sample downloads and data preview
+  - AI chat and insights generation
+  - Folder navigation and access
+- **[Admin Guide](guides/AdminGuide.md)** - Administrative features and system management
+  - User management and RBAC
+  - AI feature control per user
+  - Folder access permissions
+  - AWS configuration and monitoring
+  - Performance tuning and troubleshooting
 
-- **AI-Powered Analytics**: Generate insights and patterns using OpenAI GPT-4o
-- **Role-Based Access Control**: Admin, Editor, and Viewer permissions
-- **Hierarchical Tag Filtering**: Advanced filtering system for datasets and folders
-- **Data Sampling**: Intelligent sampling for large dataset analysis
-- **Real-time Statistics**: Dynamic stats calculation with caching optimization
-- **Accessibility Compliance**: WCAG AA compliant interface
-- **Performance Monitoring**: Built-in performance tracking and optimization
+### 🔧 Technical Reference
 
-## Architecture
+#### API Documentation
+- **[API Reference](API.md)** - Complete REST API documentation
+- **[Authentication](api-documentation.md)** - JWT auth and security details
 
-### Technology Stack
+#### Service Documentation
+- **[AWS S3 Integration](services/aws-s3.md)** - S3 bucket management and data operations
+- **[OpenAI Integration](services/openai.md)** - AI analytics and semantic column search
+- **[Authentication & JWT](services/auth-jwt.md)** - Security implementation details
+- **[Caching System](services/caching.md)** - Multi-layered caching strategies
+- **[Performance Monitoring](services/performance-monitor.md)** - Built-in metrics and optimization
+- **[Intelligent Data Sampler](services/intelligent-data-sampler.md)** - Smart sampling algorithms
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Backend**: Express.js + TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Cloud Storage**: AWS S3 integration
-- **AI Services**: OpenAI API (GPT-4o)
-- **UI Components**: shadcn/ui + Tailwind CSS + Radix UI
+#### Module Documentation
+- **[Backend Architecture](modules/backend.md)** - Express routes, middleware, and storage
+- **[Frontend Components](modules/frontend.md)** - React components, routing, and state management
+- **[Shared Schema](modules/shared-schema.md)** - TypeScript types and Zod validation
+- **[Configuration Management](modules/configuration.md)** - Environment and deployment settings
 
-### System Design
+### 🏗️ Architecture & Design
+- **[System Architecture](ARCHITECTURE.md)** - High-level system design and components
+- **[Database Schema](../shared/schema.ts)** - Data models and relationships
+- **[Security Architecture](SECURITY.md)** - Security measures and best practices
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Client  │────│  Express API    │────│   PostgreSQL    │
-│                 │    │                 │    │                 │
-│ - TanStack Query│    │ - JWT Auth      │    │ - User Data     │
-│ - Wouter Router │    │ - S3 Integration│    │ - Dataset Meta  │
-│ - Form Handling │    │ - OpenAI API    │    │ - Access Control│
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                       ┌─────────────────┐
-                       │    AWS S3       │
-                       │                 │
-                       │ - Data Storage  │
-                       │ - File Metadata │
-                       └─────────────────┘
-```
+### 🚀 Deployment & Operations
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment instructions
+- **[Operations Guide](operations/README.md)** - Monitoring, scaling, and maintenance
+- **[Troubleshooting](operations/troubleshooting.md)** - Common issues and solutions
 
-## Installation & Setup
+### 🤖 AI Features
+- **[AI Context Engineering](../Context_Engineering_for_Ask_AI_Feature.md)** - Technical AI implementation
+- **[Column Search AI](services/openai.md#semantic-column-search)** - AI-powered semantic search
 
-### Prerequisites
+## 🔍 Quick Navigation
 
-- Node.js 20+
-- PostgreSQL database
-- AWS S3 access
-- OpenAI API key
+### By User Type
 
-### Environment Variables
+**End Users:**
+1. Start with [User Guide](guides/UserGuide.md)
+2. Learn about [AI Features](#ai-features) 
+3. Check [Troubleshooting](operations/troubleshooting.md) if needed
 
-Create a `.env` file with:
+**Administrators:**
+1. Read [Admin Guide](guides/AdminGuide.md)
+2. Review [Security Architecture](SECURITY.md)
+3. Follow [Deployment Guide](DEPLOYMENT.md)
+4. Set up [Monitoring](operations/README.md)
 
-```env
-DATABASE_URL=postgresql://username:password@host:port/database
-OPENAI_API_KEY=your_openai_api_key
-JWT_SECRET=your_jwt_secret
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=your_aws_region
-```
+**Developers:**
+1. Understand [System Architecture](ARCHITECTURE.md)
+2. Explore [API Documentation](API.md)
+3. Review [Module Documentation](#module-documentation)
+4. Check [Service Integration](#service-documentation)
 
-### Installation Steps
+### By Feature
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up the database: `npm run db:push`
-4. Start development server: `npm run dev`
+| Feature | User Guide | Admin Guide | Technical Docs |
+|---------|------------|-------------|----------------|
+| AI Column Search | [Search Guide](guides/UserGuide.md#ai-column-search) | [AI Controls](guides/AdminGuide.md#ai-features) | [OpenAI Service](services/openai.md) |
+| Authentication | [Login Guide](guides/UserGuide.md#authentication) | [User Management](guides/AdminGuide.md#user-management) | [JWT Service](services/auth-jwt.md) |
+| Data Downloads | [Download Guide](guides/UserGuide.md#downloads) | [Permissions](guides/AdminGuide.md#folder-access) | [S3 Service](services/aws-s3.md) |
+| Folder Access | [Navigation](guides/UserGuide.md#folders) | [Access Control](guides/AdminGuide.md#rbac) | [Security Docs](SECURITY.md) |
 
-## API Documentation
+## 🆕 Recent Updates
 
-### Authentication Endpoints
+### September 2025 - AI Search Enhancements
+- ✅ AI-powered semantic column search implementation
+- ✅ Enhanced user experience with loading indicators
+- ✅ Optimized sample downloads (1% with smart bounds)
+- ✅ Improved error handling and debugging
 
-#### POST `/api/auth/register`
-Register a new user account.
+### August 2025 - Security & Access Control
+- ✅ Admin-only registration and user creation
+- ✅ Individual AI feature control per user
+- ✅ Enhanced folder-level permissions
+- ✅ Performance optimizations and caching
 
-**Request Body:**
-```json
-{
-  "username": "string",
-  "email": "string", 
-  "password": "string",
-  "role": "admin" | "editor" | "user"
-}
-```
+## 🆘 Support & Troubleshooting
 
-**Response:**
-```json
-{
-  "message": "User registered successfully",
-  "token": "jwt_token",
-  "user": {
-    "id": "number",
-    "username": "string",
-    "email": "string",
-    "role": "string"
-  }
-}
-```
+### Quick Help
+- **Common Issues**: [Troubleshooting Guide](operations/troubleshooting.md)
+- **API Errors**: [API Documentation](API.md#error-handling)
+- **Performance**: [Performance Guide](services/performance-monitor.md)
+- **Security**: [Security Guide](SECURITY.md#troubleshooting)
 
-#### POST `/api/auth/login`
-Authenticate user credentials.
+### Getting Help
+- Check the relevant guide above for your use case
+- Review error messages in browser console and server logs
+- Verify environment configuration and permissions
+- Contact administrators for access-related issues
 
-**Request Body:**
-```json
-{
-  "username": "string",
-  "password": "string"
-}
-```
+---
 
-### Data Endpoints
+## 📝 Documentation Standards
 
-#### GET `/api/stats`
-Get comprehensive statistics for authenticated users.
+All documentation follows these standards:
+- **Clear Navigation**: Each document includes a table of contents
+- **Code Examples**: Working examples with proper syntax highlighting
+- **Error Scenarios**: Common issues and troubleshooting steps
+- **Up-to-Date**: Regular updates reflecting latest features and changes
+- **Accessible**: Plain language with technical details where needed
 
-**Response:**
-```json
-{
-  "totalDatasets": "number",
-  "totalSize": "string",
-  "dataSources": "number", 
-  "lastUpdated": "string",
-  "lastRefreshTime": "string",
-  "totalCommunityDataPoints": "number"
-}
-```
-
-#### GET `/api/datasets`
-Retrieve datasets with filtering and pagination.
-
-**Query Parameters:**
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 20)
-- `folder`: Filter by folder name
-- `search`: Search query
-
-#### GET `/api/user/accessible-folders`
-Get folders accessible to the current user.
-
-### Admin Endpoints
-
-#### GET `/api/admin/users`
-Get all users (admin only).
-
-#### POST `/api/admin/refresh`
-Trigger dataset refresh from S3 (admin only).
-
-## Authentication
-
-The application uses JWT-based authentication with role-based access control:
-
-- **Admin**: Full access to all data and admin functions
-- **Editor**: Can modify data within assigned folders
-- **User**: Read-only access to assigned folders
-
-### Folder Access Control
-
-Users are assigned specific folders they can access. The system filters:
-- Dataset queries based on folder permissions
-- Statistics calculations to show only accessible data
-- Download capabilities restricted to permitted folders
-
-## Database Schema
-
-### Core Tables
-
-#### users
-```sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  username VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL DEFAULT 'user',
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### datasets
-```sql
-CREATE TABLE datasets (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  s3_key VARCHAR(1000) NOT NULL,
-  size_bytes BIGINT,
-  top_level_folder VARCHAR(255),
-  metadata JSONB,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### user_folder_access
-```sql
-CREATE TABLE user_folder_access (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  folder_name VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## Performance Optimization
-
-### Caching Strategy
-
-The application implements a multi-layered caching system:
-
-1. **In-Memory Cache**: Fast access to frequently used data
-2. **Database Indexing**: Optimized queries with strategic indexes
-3. **Response Compression**: Gzip compression for large responses
-4. **Browser Caching**: Appropriate cache headers for static resources
-
-### Cache Warming
-
-Critical data is pre-computed and cached:
-
-```javascript
-// Cache entries with TTL
-const cacheOps = [
-  ['datasets-all', datasets, 300000], // 5 minutes
-  ['folders', folders, 3600000], // 1 hour
-  ['precomputed-stats', stats, 1800000], // 30 minutes
-];
-```
-
-### Performance Monitoring
-
-Built-in monitoring tracks:
-- Query execution times
-- Cache hit rates
-- Memory usage
-- Response times
-
-## Troubleshooting
-
-### Common Issues
-
-#### Cache Issues
-If stats show incorrect values:
-1. Check server logs for cache warnings
-2. Invalidate cache: `POST /api/cache/invalidate`
-3. Restart the application
-
-#### Database Connection
-For connection errors:
-1. Verify DATABASE_URL format
-2. Check PostgreSQL service status
-3. Ensure database exists and user has permissions
-
-#### AWS S3 Access
-For S3 integration issues:
-1. Verify AWS credentials
-2. Check bucket permissions
-3. Confirm region settings
-
-### Performance Issues
-
-If the application is slow:
-1. Check database query performance
-2. Monitor cache hit rates
-3. Review server resource usage
-4. Consider database indexing optimization
-
-### Authentication Problems
-
-For login/access issues:
-1. Verify JWT_SECRET is set
-2. Check token expiration
-3. Confirm user role assignments
-4. Review folder access permissions
+**Last Updated**: September 2025  
+**Version**: 2.1.0 (AI Search Enhancement Release)

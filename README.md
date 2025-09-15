@@ -6,9 +6,10 @@ A comprehensive full-stack web application for exploring and analyzing AWS S3 da
 
 ### Core Functionality
 - **AI-Powered Analytics**: Generate insights, patterns, and use cases using OpenAI GPT-4o
+- **AI-Powered Column Search**: Semantic search that finds related columns (e.g., "location" finds "State", "District")
 - **Smart Dataset Discovery**: Automated S3 bucket scanning with metadata extraction
 - **Hierarchical Tag Filtering**: Advanced filtering system for datasets and folders
-- **Data Sampling**: Intelligent sampling strategies for large dataset analysis
+- **Optimized Data Sampling**: 1% intelligent sampling (1KB-10MB) for efficient large dataset analysis
 - **Real-time Statistics**: Dynamic stats calculation with performance optimization
 
 ### Security & Access Control
@@ -31,6 +32,8 @@ A comprehensive full-stack web application for exploring and analyzing AWS S3 da
 - **Responsive Design**: Optimized for all screen sizes
 - **Interactive Chat**: AI chat window with markdown support
 - **Visual Feedback**: Smooth animations and loading states
+- **Smart Search UX**: Real-time search with AI loading indicators and semantic suggestions
+- **Download Progress**: Visual feedback for sample downloads and full file processing
 
 ## 🛠 Technology Stack
 
@@ -115,11 +118,23 @@ npm run dev
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **[API Reference](docs/API.md)** - Complete API documentation with authentication and security details
+### 📖 User Guides
+- **[User Guide](docs/guides/UserGuide.md)** - Complete guide for end users including AI search features
+- **[Admin Guide](docs/guides/AdminGuide.md)** - Administrative features, RBAC, and system management
+
+### 🔧 Technical Reference
+- **[API Documentation](docs/API.md)** - Complete API reference with authentication and security
+- **[Services Documentation](docs/services/)** - AWS S3, OpenAI, caching, and other service integrations
+- **[Module Documentation](docs/modules/)** - Frontend components, backend architecture, and shared schemas
+
+### 🛡️ Security & Operations
 - **[Security Guide](docs/SECURITY.md)** - Security architecture, access control, and best practices
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions for multiple platforms
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Detailed system architecture and design decisions
+
+### 🤖 AI Features
 - **[AI Context Engineering](Context_Engineering_for_Ask_AI_Feature.md)** - Technical documentation for AI features
-- **[Architecture Overview](replit.md)** - Detailed system architecture and user preferences
+- **[OpenAI Integration](docs/services/openai.md)** - AI-powered analytics and column search implementation
 
 ## 🏗 Project Structure
 
@@ -214,13 +229,56 @@ See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions on vari
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🆘 Support & Troubleshooting
 
-- **Documentation**: Check the `docs/` directory
-- **Issues**: Report bugs or request features via GitHub Issues
+### Quick Help
+- **Documentation**: Comprehensive guides in the [`docs/`](docs/) directory
+- **User Guide**: Step-by-step instructions in [`docs/guides/UserGuide.md`](docs/guides/UserGuide.md)
+- **Admin Guide**: Administrative features in [`docs/guides/AdminGuide.md`](docs/guides/AdminGuide.md)
 - **Health Checks**: Monitor application status at `/api/health`
 
-## 🔄 Recent Updates (August 2025)
+### Common Issues
+
+#### AI Search Not Working
+- Ensure user has AI features enabled (admin setting)
+- Check OpenAI API key is valid and has credits
+- Verify search term is 3+ characters for AI activation
+
+#### Authentication Problems
+- Verify JWT_SECRET is set in environment
+- Check if user account is active (admin can reactivate)
+- Ensure proper role assignments for folder access
+
+#### Performance Issues
+- Monitor cache performance in server logs
+- Check database connection and query times
+- Verify AWS S3 credentials and region settings
+
+#### Sample Download Issues
+- Ensure AWS credentials have S3 read permissions
+- Check if dataset files exist in configured bucket
+- Verify file format is supported (CSV, JSON, etc.)
+
+### Getting Help
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Logs**: Check browser console and server logs for detailed error information
+- **Debug Mode**: Enable detailed logging for troubleshooting
+
+## 🔄 Recent Updates (September 2025)
+
+### AI-Powered Enhancements
+- ✅ **AI-Powered Column Search**: Semantic column search using OpenAI for intelligent matching
+- ✅ **Search UX Improvements**: Loading indicators and real-time feedback for AI searches
+- ✅ **Optimized Sampling**: Reduced sample size from 10% to 1% with intelligent bounds (1KB-10MB)
+- ✅ **Enhanced Error Handling**: Comprehensive error handling for AI and S3 operations
+
+### Performance & Reliability
+- ✅ **S3 Range Request Fix**: Switched from pre-signed URLs to backend streaming for samples
+- ✅ **Authentication Improvements**: Enhanced JWT handling and middleware authentication
+- ✅ **Column Schema Search**: Both column names and descriptions included in search results
+- ✅ **Debug Logging**: Comprehensive logging system for troubleshooting AI search functionality
+
+## 🔄 Previous Updates (August 2025)
 
 ### Security & Access Control Enhancements
 - ✅ **Registration Completely Disabled**: New accounts can only be created by administrators
