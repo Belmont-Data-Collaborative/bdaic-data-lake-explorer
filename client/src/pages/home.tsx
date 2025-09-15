@@ -11,6 +11,7 @@ import { SkeletonFolderCard } from "@/components/skeleton-folder-card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import type { Dataset } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { getSafeAuthToken } from "@/lib/auth-utils";
 
 interface Stats {
   totalDatasets: number;
@@ -117,42 +118,19 @@ export default function Home() {
   // Get user profile (includes AI enabled status) 
   const { data: userProfile } = useQuery({
     queryKey: ["/api/user/profile"],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No authentication token');
-
-      const response = await fetch('/api/user/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user profile');
-      }
-
-      const data = await response.json();
-
-      return data;
-    },
-    enabled: !!localStorage.getItem('authToken'),
-    staleTime: 0, // Always fetch fresh to get isAiEnabled updates
-    gcTime: 30000, // Short cache time
+    enabled: !!getSafeAuthToken(), // Use safe token check
+    staleTime: 300000, // 5 minutes cache to reduce API calls
+    gcTime: 600000, // 10 minutes garbage collection
   });
 
   // Get user's accessible folders first
   const { data: accessibleFolders = [], isLoading: accessibleFoldersLoading, error: accessibleFoldersError, isFetched: accessibleFoldersFetched } = useQuery<string[]>({
     queryKey: ["/api/user/accessible-folders"],
+    enabled: !!getSafeAuthToken(), // Use safe token check
+    staleTime: 300000, // 5 minutes cache to reduce API calls
+    gcTime: 600000, // 10 minutes garbage collection
     queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No authentication token');
-
-      const res = await apiRequest('GET', '/api/user/accessible-folders', null, {
-        'Authorization': `Bearer ${token}`
-      });
+      const res = await apiRequest('GET', '/api/user/accessible-folders');
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -171,9 +149,6 @@ export default function Home() {
 
       return res.json();
     },
-    enabled: !!localStorage.getItem('authToken'),
-    staleTime: 60000, // 1 minute
-    gcTime: 300000, // 5 minutes
     retry: false, // Don't retry auth errors
   });
 
@@ -181,23 +156,18 @@ export default function Home() {
   const hasRealError = accessibleFoldersError && Object.keys(accessibleFoldersError).length > 0;
   const accessibleFoldersReady = accessibleFoldersFetched && !accessibleFoldersLoading && !hasRealError;
 
-  // Stats query - use exact same pattern as working accessibleFolders query
+  // Stats query - use safe API calls
   const { data: globalStats, error: statsError } = useQuery<Stats>({
     queryKey: ["/api/stats", selectedFolder || "all", accessibleFolders?.length || 0],
+    enabled: !!getSafeAuthToken(), // Use safe token check
+    staleTime: 300000, // 5 minutes cache to reduce API calls
+    gcTime: 600000, // 10 minutes garbage collection
     queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No authentication token');
-
       const url = selectedFolder 
         ? `/api/stats?folder=${encodeURIComponent(selectedFolder)}`
         : '/api/stats';
 
-      const res = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await apiRequest('GET', url);
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -213,9 +183,6 @@ export default function Home() {
 
       return res.json();
     },
-    enabled: !!localStorage.getItem('authToken') && accessibleFoldersFetched,
-    staleTime: 60000,
-    gcTime: 300000,
     retry: false,
   });
 
