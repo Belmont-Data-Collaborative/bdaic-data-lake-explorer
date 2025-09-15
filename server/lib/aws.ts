@@ -683,6 +683,69 @@ export class AwsS3Service {
     }
   }
 
+  // Generate a pre-signed URL for sample download with Range header (bypasses server timeout)
+  async generateSampleDownloadPresignedUrl(
+    bucketName: string,
+    source: string,
+    datasetName: string,
+  ): Promise<{ url: string; fileName: string; sampleSize: number; totalSize?: number } | null> {
+    try {
+      // Find the first data file (non-YAML) for this dataset
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: source ? `${source}/` : "",
+        MaxKeys: 100,
+      });
+
+      const response = await this.s3Client.send(command);
+      if (!response.Contents) return null;
+
+      // Find a data file that matches the dataset name
+      const dataFile = response.Contents.find((file) => {
+        if (!file.Key) return false;
+        const fileName = file.Key.split("/").pop() || "";
+        const baseName = fileName.replace(/\.[^/.]+$/, "");
+        const extension = fileName.split(".").pop()?.toLowerCase();
+
+        return (
+          baseName === datasetName &&
+          extension !== "yaml" &&
+          extension !== "yml"
+        );
+      });
+
+      if (!dataFile?.Key || !dataFile.Size) return null;
+
+      // Calculate 10% of the file size for sample download
+      const tenPercentSize = Math.floor(dataFile.Size * 0.1);
+
+      console.log(`Generating sample pre-signed URL for ${datasetName}: ${dataFile.Key} (${dataFile.Size} bytes -> ${tenPercentSize} bytes 10%)`);
+
+      // Generate pre-signed URL with Range header for partial download
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: dataFile.Key,
+        Range: `bytes=0-${tenPercentSize - 1}`, // Download only first 10% of the file
+      });
+
+      const presignedUrl = await getSignedUrl(this.s3Client, getObjectCommand, {
+        expiresIn: 3600, // 1 hour
+      });
+
+      const fileName = `${datasetName}-sample.csv`;
+
+      return {
+        url: presignedUrl,
+        fileName,
+        sampleSize: tenPercentSize,
+        totalSize: dataFile.Size
+      };
+    } catch (error) {
+      console.error(`Error generating sample pre-signed URL for ${datasetName}:`, error);
+      return null;
+    }
+  }
+
   // Generate a pre-signed URL for direct S3 download (bypasses server timeout)
   async generateFullDownloadPresignedUrl(
     bucketName: string,

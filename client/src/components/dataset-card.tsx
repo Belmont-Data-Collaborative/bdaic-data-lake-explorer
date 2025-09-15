@@ -173,34 +173,32 @@ export function DatasetCard({
         throw new Error(errorData.message || "Download failed");
       }
 
-      // Get filename from Content-Disposition header or create one
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let fileName = `${dataset.name}-sample.${dataset.format.toLowerCase()}`;
-
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
-          fileName = filenameMatch[1];
-        }
-      }
-
-      const blob = await response.blob();
-      return { blob, fileName };
-    },
-    onSuccess: (data: { blob: Blob; fileName: string }) => {
-      // Create a temporary link and trigger download
-      const url = window.URL.createObjectURL(data.blob);
+      // Sample downloads now use pre-signed URLs (JSON response)
+      const data = await response.json();
+      console.log(`Sample download: ${data.fileName} (${Math.round(data.sampleSize / 1024)} KB sample from ${Math.round(data.totalSize / 1024 / 1024)} MB total)`);
+      
+      // Trigger direct download from S3 via pre-signed URL
       const link = document.createElement("a");
-      link.href = url;
+      link.href = data.url;
       link.download = data.fileName;
+      link.target = "_blank"; // Open in new tab for better UX
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
+      
+      return { 
+        downloadType: 'presigned', 
+        fileName: data.fileName, 
+        sampleSize: data.sampleSize,
+        totalSize: data.totalSize,
+        expiresIn: data.expiresIn 
+      };
+    },
+    onSuccess: (data: any) => {
+      // Sample downloads now use pre-signed URLs (no blob handling needed)
       toast({
         title: "Download started",
-        description: `Sample file ${data.fileName} (10% of original) is downloading.`,
+        description: `Sample file ${data.fileName} (10% of original) is downloading directly from cloud storage.`,
       });
 
       // Invalidate download stats cache

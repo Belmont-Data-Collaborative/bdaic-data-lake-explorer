@@ -1321,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download sample endpoint
+  // Download sample endpoint with pre-signed URL
   app.get("/api/datasets/:id/download-sample", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1339,18 +1339,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const s3Service = createAwsS3Service(config.region);
       
-      // Get sample file info from the dataset
-      const sampleInfo = await s3Service.generateSampleDownloadUrl(config.bucketName, dataset.source, dataset.name);
+      // Use pre-signed URL approach to bypass server timeout
+      const presignedInfo = await s3Service.generateSampleDownloadPresignedUrl(
+        config.bucketName, 
+        dataset.source, 
+        dataset.name
+      );
       
-      if (!sampleInfo) {
+      if (!presignedInfo) {
         return res.status(404).json({ message: "No sample file found for this dataset" });
-      }
-
-      // Download the partial file content
-      const partialContent = await s3Service.downloadPartialFile(sampleInfo.bucketName, sampleInfo.key, sampleInfo.sampleSize);
-      
-      if (!partialContent) {
-        return res.status(500).json({ message: "Failed to download sample content" });
       }
 
       // Record the download
@@ -1364,14 +1361,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Invalidate download stats cache
       invalidateCache(`download-stats-${id}`);
 
-      // Set appropriate headers for file download
-      const fileName = `${dataset.name}-sample.${dataset.format.toLowerCase()}`;
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader('Content-Length', partialContent.length);
-      
-      // Send the partial file content
-      res.send(partialContent);
+      // Return the pre-signed URL for direct download
+      return res.json({
+        downloadType: 'presigned',
+        url: presignedInfo.url,
+        fileName: presignedInfo.fileName,
+        sampleSize: presignedInfo.sampleSize,
+        totalSize: presignedInfo.totalSize,
+        expiresIn: 3600 // 1 hour
+      });
     } catch (error) {
       console.error("Error generating download sample:", error);
       res.status(500).json({ message: "Failed to generate sample download" });
