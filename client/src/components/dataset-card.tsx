@@ -234,35 +234,71 @@ export function DatasetCard({
         throw new Error(errorData.message || "Download failed");
       }
 
-      // Get filename from Content-Disposition header or create one
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
+      // Check if response is JSON (pre-signed URL) or blob (direct download)
+      const contentType = response.headers.get("Content-Type");
+      
+      if (contentType && contentType.includes("application/json")) {
+        // Large file: Server returned pre-signed URL
+        const data = await response.json();
+        console.log(`Large file download detected: ${data.fileName} (${data.size ? Math.round(data.size / 1024 / 1024) + ' MB' : 'unknown size'})`);
+        
+        // Trigger direct download from S3 via pre-signed URL
+        const link = document.createElement("a");
+        link.href = data.url;
+        link.download = data.fileName;
+        link.target = "_blank"; // Open in new tab for better UX
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        return { 
+          downloadType: 'presigned', 
+          fileName: data.fileName, 
+          size: data.size,
+          expiresIn: data.expiresIn 
+        };
+      } else {
+        // Small file: Server streamed file content
+        console.log(`Small file download detected: ${dataset.name}`);
+        
+        // Get filename from Content-Disposition header or create one
+        const contentDisposition = response.headers.get("Content-Disposition");
+        let fileName = `${dataset.name}.${dataset.format.toLowerCase()}`;
 
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) {
-          fileName = filenameMatch[1];
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (filenameMatch) {
+            fileName = filenameMatch[1];
+          }
         }
+
+        const blob = await response.blob();
+        return { downloadType: 'blob', blob, fileName };
       }
-
-      const blob = await response.blob();
-      return { blob, fileName };
     },
-    onSuccess: (data: { blob: Blob; fileName: string }) => {
-      // Create a temporary link and trigger download
-      const url = window.URL.createObjectURL(data.blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = data.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+    onSuccess: (data: any) => {
+      if (data.downloadType === 'presigned') {
+        // Pre-signed URL download (large files)
+        toast({
+          title: "Download started",
+          description: `Large file ${data.fileName} is downloading directly from cloud storage.`,
+        });
+      } else {
+        // Blob download (small files) - use existing logic
+        const url = window.URL.createObjectURL(data.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = data.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
-      toast({
-        title: "Download started",
-        description: `Full file ${data.fileName} is downloading.`,
-      });
+        toast({
+          title: "Download started",
+          description: `Full file ${data.fileName} is downloading.`,
+        });
+      }
 
       // Invalidate download stats cache
       queryClient.invalidateQueries({

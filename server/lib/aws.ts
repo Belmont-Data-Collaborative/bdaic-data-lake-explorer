@@ -683,6 +683,67 @@ export class AwsS3Service {
     }
   }
 
+  // Generate a pre-signed URL for direct S3 download (bypasses server timeout)
+  async generateFullDownloadPresignedUrl(
+    bucketName: string,
+    source: string,
+    datasetName: string,
+  ): Promise<{ url: string; fileName: string; size?: number } | null> {
+    try {
+      // Find the first data file (non-YAML) for this dataset
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: source ? `${source}/` : "",
+        MaxKeys: 100,
+      });
+
+      const response = await this.s3Client.send(command);
+      if (!response.Contents) return null;
+
+      // Find a data file that matches the dataset name
+      const dataFile = response.Contents.find((file) => {
+        if (!file.Key) return false;
+        const fileName = file.Key.split("/").pop() || "";
+        const baseName = fileName.replace(/\.[^/.]+$/, "");
+        const extension = fileName.split(".").pop()?.toLowerCase();
+
+        return (
+          baseName === datasetName &&
+          extension !== "yaml" &&
+          extension !== "yml"
+        );
+      });
+
+      if (!dataFile?.Key) {
+        console.error(`No data file found for dataset: ${datasetName}`);
+        return null;
+      }
+
+      console.log(`Generating pre-signed URL for ${datasetName}: ${dataFile.Key} (${dataFile.Size || 'unknown'} bytes)`);
+
+      // Generate pre-signed URL with 1 hour expiration
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: dataFile.Key,
+      });
+
+      const presignedUrl = await getSignedUrl(this.s3Client, getObjectCommand, {
+        expiresIn: 3600, // 1 hour
+      });
+
+      const fileName = dataFile.Key.split("/").pop() || datasetName;
+
+      return {
+        url: presignedUrl,
+        fileName,
+        ...(dataFile.Size && { size: dataFile.Size })
+      };
+    } catch (error) {
+      console.error(`Error generating pre-signed URL for ${datasetName}:`, error);
+      return null;
+    }
+  }
+
   async generateSampleDownloadUrl(
     bucketName: string,
     source: string,

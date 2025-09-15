@@ -1378,7 +1378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download full file endpoint
+  // Download full file endpoint with smart routing
   app.get("/api/datasets/:id/download-full", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1396,7 +1396,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const s3Service = createAwsS3Service(config.region);
       
-      // Get full file stream from S3
+      // Check if this is a large file that might timeout
+      // First, try to get file size without downloading
+      const fileSizeThreshold = 100 * 1024 * 1024; // 100MB threshold
+      
+      // For large files, use pre-signed URL to bypass server timeout
+      if (dataset.sizeBytes && dataset.sizeBytes > fileSizeThreshold) {
+        console.log(`Large file detected (${dataset.sizeBytes} bytes > ${fileSizeThreshold}), using pre-signed URL`);
+        
+        const presignedInfo = await s3Service.generateFullDownloadPresignedUrl(
+          config.bucketName, 
+          dataset.source, 
+          dataset.name
+        );
+        
+        if (!presignedInfo) {
+          return res.status(404).json({ message: "File not found or failed to generate download URL" });
+        }
+
+        // Record the download
+        await storage.recordDownload(
+          id, 
+          'full', 
+          req.ip || req.connection.remoteAddress, 
+          req.get('User-Agent')
+        );
+
+        // Invalidate download stats cache
+        invalidateCache(`download-stats-${id}`);
+
+        // Return the pre-signed URL for direct download
+        return res.json({
+          downloadType: 'presigned',
+          url: presignedInfo.url,
+          fileName: `${dataset.name}.${dataset.format.toLowerCase()}`,
+          size: presignedInfo.size,
+          expiresIn: 3600 // 1 hour
+        });
+      }
+
+      // For smaller files, use traditional streaming
+      console.log(`Small file detected (${dataset.sizeBytes || 'unknown'} bytes), using server streaming`);
+      
       const fileInfo = await s3Service.downloadFullFile(config.bucketName, dataset.source, dataset.name);
       
       if (!fileInfo) {
