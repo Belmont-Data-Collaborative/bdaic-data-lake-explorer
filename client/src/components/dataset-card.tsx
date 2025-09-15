@@ -158,12 +158,15 @@ export function DatasetCard({
 
   const downloadSampleMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('authToken');
+      const token = getSafeAuthToken();
       const response = await fetch(
         `/api/datasets/${dataset.id}/download-sample`,
         {
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache',
           },
         }
       );
