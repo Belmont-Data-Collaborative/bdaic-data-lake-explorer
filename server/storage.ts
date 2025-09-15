@@ -458,6 +458,16 @@ export class DatabaseStorage implements IStorage {
       const decoded = jwt.verify(token, secret) as { id: number; username: string; role: string };
       return decoded;
     } catch (error) {
+      // Enhanced error logging to identify token corruption issues
+      const errorName = error instanceof Error ? error.name : 'Unknown';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`JWT VERIFICATION FAILED: ${errorName} - ${errorMessage}`);
+      
+      // Log token format issues to help identify corruption
+      if (errorMessage.includes('malformed') || errorMessage.includes('invalid') || errorName === 'JsonWebTokenError') {
+        console.log(`JWT FORMAT ISSUE: Token length: ${token?.length || 0}, starts with: ${token?.substring(0, 20) || 'N/A'}`);
+      }
+      
       return null;
     }
   }

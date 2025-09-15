@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getSafeAuthToken } from "./auth-utils";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -33,7 +34,7 @@ export async function apiRequest(
   }
   
   // Add JWT token from localStorage if available
-  const token = localStorage.getItem('authToken');
+  const token = getSafeAuthToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -62,7 +63,7 @@ export const getQueryFn: <T>(options: {
     const headers: Record<string, string> = {};
     
     // Add JWT token from localStorage if available
-    const token = localStorage.getItem('authToken');
+    const token = getSafeAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
