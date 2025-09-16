@@ -1,27 +1,35 @@
 # Data Lake Explorer - User Guide
 
-Welcome to Data Lake Explorer! This guide will help you navigate, search, and analyze datasets in your organization's data lake using our AI-powered tools.
+Welcome to Data Lake Explorer! This comprehensive guide will help you navigate, search, and analyze datasets in your organization's data lake using our AI-powered tools and advanced data exploration features.
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
+- [Dashboard Overview](#dashboard-overview)
 - [Authentication & Access](#authentication--access)
 - [Browsing Datasets](#browsing-datasets)
 - [AI-Powered Column Search](#ai-powered-column-search)
 - [Dataset Operations](#dataset-operations)
 - [AI Features](#ai-features)
 - [Downloads & Sampling](#downloads--sampling)
+- [Statistics & Performance](#statistics--performance)
+- [User Panel & Account](#user-panel--account)
+- [Collaboration Features](#collaboration-features)
 - [Troubleshooting](#troubleshooting)
+- [Tips & Best Practices](#tips--best-practices)
 
 ## Getting Started
 
 ### What You Can Do
 
-- **Browse & Explore**: Navigate datasets organized by folders and data sources
-- **Smart Search**: Use AI-powered search to find relevant columns and datasets
-- **Download Data**: Get optimized samples (1% of data) or full datasets
-- **AI Analysis**: Ask questions about your data and generate insights
-- **Collaborate**: Share findings and work with multiple datasets simultaneously
+- **Browse & Explore**: Navigate 294 datasets organized across 17 folders by data sources
+- **Smart Search**: Use AI-powered semantic search to find relevant columns and datasets
+- **Download Data**: Get optimized samples (1% of data with 1KB-10MB bounds) or full datasets
+- **AI Analysis**: Ask questions about your data and generate AI-powered insights
+- **Multi-Dataset Analysis**: Compare and analyze multiple datasets simultaneously
+- **Column Discovery**: Find relevant data columns using natural language descriptions
+- **Real-Time Statistics**: View dynamic statistics about your accessible data
+- **Performance Monitoring**: Track your data usage and download patterns
 
 ### Quick Start Steps
 
@@ -45,9 +53,20 @@ Welcome to Data Lake Explorer! This guide will help you navigate, search, and an
 
 Your access level determines what you can see and do:
 
-- **Folder Access**: You can only see folders assigned to you by administrators
-- **AI Features**: AI capabilities (Ask AI, Generate Insights) may be enabled or disabled for your account
-- **Download Permissions**: All users can download samples and full datasets from accessible folders
+**Role-Based Access:**
+- **User Role**: Access to assigned folders with data exploration and download capabilities
+- **Admin Role**: Full system access including user management and system configuration
+
+**Granular Permissions:**
+- **Folder Access**: You can only see folders explicitly assigned to you by administrators
+- **AI Features**: AI capabilities (Ask AI, Generate Insights, Multi-Dataset Chat) can be enabled/disabled per user
+- **Download Permissions**: Sample downloads (1% samples), full dataset downloads, and metadata downloads
+- **Search Capabilities**: Both exact column matching and AI-powered semantic search
+
+**Account Controls:**
+- **Active Status**: Inactive accounts cannot access the system
+- **Session Management**: JWT-based secure sessions with automatic expiration
+- **Usage Tracking**: Your download and AI usage activities are monitored
 
 ### Account Status
 
@@ -68,11 +87,24 @@ Datasets are organized into folders by data source:
 - **Data Sources**: How many different sources contribute data
 - **Last Updated**: When the folder was last refreshed
 
-**Common Folder Types:**
-- `cdc_places` - CDC health and demographic data
-- `census_acs5` - American Community Survey data
-- `feeding_america` - Food insecurity statistics
-- `irs_990_efile` - Nonprofit organization data
+**Available Data Sources** (17 folders with 294 datasets):
+- `cdc_places` (20 datasets) - CDC health and demographic data
+- `census_acs5` (72 datasets) - American Community Survey data  
+- `census_acs5_profile` (54 datasets) - Census profile data
+- `irs_990_efile` (35 datasets) - Nonprofit organization data
+- `usda_census_agriculture` (30 datasets) - Agricultural census data
+- `ndacan` (17 datasets) - Child welfare and abuse data
+- `nashville_police_incidents` (12 datasets) - Police incident reports
+- `nashville_traffic_accidents` (11 datasets) - Traffic accident data
+- `cms_medicare_disparities` (11 datasets) - Medicare disparity data
+- `cdc_svi` (10 datasets) - Social vulnerability index
+- `epa_ejscreen` (8 datasets) - Environmental justice data
+- `cdc_wonder` (4 datasets) - CDC health statistics
+- `feeding_america` (4 datasets) - Food insecurity statistics
+- `county_health_rankings` (2 datasets) - Health ranking data
+- `state_specific` (2 datasets) - State-level data
+- `epa_smart_location` (1 dataset) - Location-based data
+- `usda_food_access` (1 dataset) - Food access metrics
 
 ### Dataset Information
 
@@ -97,24 +129,41 @@ Each dataset displays:
 
 ### Overview
 
-Our advanced AI search helps you find relevant data columns using natural language, even when column names don't exactly match your search terms.
+Our advanced AI-powered semantic search uses OpenAI GPT-4o to help you find relevant data columns using natural language, even when column names don't exactly match your search terms. This revolutionary feature understands the meaning behind your search and finds conceptually related columns across all your accessible datasets.
 
 ### How It Works
 
 1. **Type Your Search**: Enter 3+ characters describing what you're looking for
-2. **Instant Results**: See exact matches immediately
-3. **AI Processing**: Watch for "AI is searching for semantic matches..." indicator
-4. **Enhanced Results**: AI finds related columns (e.g., "location" finds "State", "District")
+2. **Instant Results**: See exact column name and description matches immediately
+3. **AI Processing**: Watch for "AI is searching for semantic matches..." loading indicator
+4. **Enhanced Results**: AI finds semantically related columns (e.g., "location" finds "State", "District", "County")
+5. **Smart Filtering**: Results are filtered to only show data from folders you can access
 
-### Search Examples
+### Technical Implementation
 
-| Search Term | Finds Columns Like | Why It Matches |
-|-------------|-------------------|----------------|
-| "location" | State, District, County, Address | Geographic identifiers |
-| "income" | Salary, Wages, Earnings, Revenue | Financial data |
-| "health" | BMI, Blood_Pressure, Diagnosis | Medical indicators |
-| "population" | Residents, People_Count, Demographics | Population metrics |
-| "education" | School, Degree, GPA, Enrollment | Educational data |
+**Search Process:**
+- **Immediate Matching**: Local search through column names and descriptions
+- **AI Enhancement**: OpenAI GPT-4o analyzes search intent and finds semantic matches
+- **Context Awareness**: AI considers data context and domain-specific terminology
+- **Performance Optimized**: 2-3 second response time with intelligent caching
+
+### Real Search Examples
+
+| Search Term | Exact Matches | AI-Discovered Matches | Why AI Found Them |
+|-------------|---------------|---------------------|-------------------|
+| "location" | Location_Name | State, District, County, ZIP, Address, Region | Geographic identifiers and spatial data |
+| "income" | Median_Income | Earnings, Wages, Salary, Revenue, Economic_Status | Financial and economic indicators |
+| "health" | Health_Index | BMI, Mortality, Disease_Rate, Medical_Costs | Health outcomes and medical metrics |
+| "population" | Population | People_Count, Residents, Demographics, Households | Population and demographic data |
+| "education" | Education_Level | School_Count, Enrollment, Graduation_Rate, Degrees | Educational attainment and infrastructure |
+| "food security" | (none) | Food_Access, Grocery_Stores, SNAP_Benefits | Food access and assistance programs |
+| "race" | Race | Ethnicity, Demographics, Minority_Population | Demographic and diversity data |
+| "housing" | Housing_Units | Home_Value, Rent, Occupancy, Vacancy_Rate | Housing market and availability |
+
+**Real-World Success Stories:**
+- Searching "food insecurity" finds columns like "SNAP_Recipients", "Food_Desert_Flag", "Grocery_Access"
+- Searching "economic hardship" discovers "Poverty_Rate", "Unemployment", "Income_Inequality"
+- Searching "environmental justice" locates "Air_Quality", "Pollution_Burden", "Environmental_Health"
 
 ### Search Interface
 
@@ -178,12 +227,23 @@ Click on any dataset to expand its details:
 
 ### Dataset Actions
 
-**Available Actions:**
-- **Download Sample**: Get 1% sample (optimized for quick preview)
-- **Download Full Dataset**: Get complete dataset file
-- **Download Metadata**: Get YAML file with column information
-- **Ask AI**: Generate insights about the dataset (if enabled)
-- **Generate Insights**: Create AI-powered analysis (if enabled)
+**Core Actions Available to All Users:**
+- **Download Sample**: Get 1% intelligent sample (1KB-10MB bounds, optimized for preview)
+- **Download Full Dataset**: Get complete dataset file (all formats supported)
+- **Download Metadata**: Get YAML file with complete column schema and technical details
+- **View Column Schema**: Browse all columns with types, descriptions, and sample values
+- **Search Within Dataset**: Use AI search to find specific columns in the dataset
+
+**AI-Powered Actions** (when enabled for your account):
+- **Ask AI**: Ask natural language questions about the dataset
+- **Generate Insights**: Create AI-powered analysis of data patterns and characteristics
+- **Multi-Dataset Chat**: Compare and analyze multiple datasets simultaneously
+
+**Advanced Features:**
+- **Usage Statistics**: View download counts and access patterns
+- **Column Pagination**: Navigate through large schemas efficiently
+- **Format Information**: See technical details about file formats and structure
+- **Last Modified Tracking**: Understand data freshness and update patterns
 
 ## AI Features
 
@@ -192,14 +252,25 @@ Click on any dataset to expand its details:
 ### Ask AI
 
 **Single Dataset Analysis:**
-1. Open a dataset and click **"Ask AI"**
-2. Type your question about the data
-3. Receive AI-generated insights and analysis
+1. Expand any dataset card to view details
+2. Click **"Ask AI"** button in the dataset actions
+3. Type your question about the data structure, patterns, or content
+4. Receive AI-generated insights powered by OpenAI GPT-4o
+5. Continue the conversation with follow-up questions
 
-**Multi-Dataset Analysis:**
-1. Select multiple datasets using checkboxes
-2. Click **"Ask AI"** in the selection panel
+**Multi-Dataset Chat:**
+1. Select multiple datasets using checkboxes (select up to 10 datasets)
+2. Click **"Multi-Dataset Chat"** button in the floating action panel
 3. Ask comparative questions across datasets
+4. Analyze relationships and patterns between different data sources
+5. Generate cross-dataset insights and recommendations
+
+**Sample Questions to Ask:**
+- "What are the main patterns in this demographic data?"
+- "How does this health data compare across different geographic regions?"
+- "What are potential data quality issues I should be aware of?"
+- "How could I combine this dataset with census data for analysis?"
+- "What columns would be most useful for predicting health outcomes?"
 
 ### Generate Insights
 
@@ -215,11 +286,20 @@ Click on any dataset to expand its details:
 
 ### AI Chat Interface
 
-**Chat Features:**
-- **Markdown Support**: Formatted responses with lists, tables, and emphasis
-- **Conversation History**: Previous questions and answers maintained
-- **Context Awareness**: AI remembers your previous questions
-- **Copy Responses**: Copy AI responses for documentation
+**Advanced Chat Features:**
+- **Markdown Support**: Formatted responses with lists, tables, code blocks, and emphasis
+- **Conversation History**: Full conversation context maintained throughout session
+- **Context Awareness**: AI remembers your previous questions and builds on them
+- **Copy Responses**: Copy AI responses for documentation and sharing
+- **Scroll Navigation**: Smooth scrolling with improved chat window management
+- **Loading Indicators**: Clear feedback during AI processing
+- **Error Handling**: Graceful handling of API limits and connectivity issues
+
+**Conversation Management:**
+- **Session Persistence**: Conversations maintained during your login session
+- **Multi-Turn Dialogue**: Ask follow-up questions and build on previous responses
+- **Context Switching**: Switch between single and multi-dataset conversations
+- **Response Quality**: Powered by OpenAI GPT-4o for high-quality, relevant insights
 
 **Best Practices:**
 - Ask specific questions about data patterns
@@ -229,11 +309,18 @@ Click on any dataset to expand its details:
 
 ### Privacy & Security
 
-**Data Handling:**
-- Sample data is sent to OpenAI for processing
-- Questions and responses are processed according to OpenAI's data policies
-- No full datasets are transmitted to external services
-- Your administrator controls AI feature availability
+**AI Data Processing:**
+- **Sample Data Only**: Only dataset samples (1% of data, max 10MB) are sent to OpenAI
+- **No Full Datasets**: Complete datasets never leave your organization's infrastructure
+- **Column Schema Information**: Metadata and column descriptions may be shared for context
+- **OpenAI Policies**: All AI processing follows OpenAI's data usage and retention policies
+- **Administrator Control**: Your admin controls AI feature availability per user
+
+**Security Measures:**
+- **Folder-Based Access**: AI only processes data from folders you have permission to access
+- **User-Level Controls**: AI features can be disabled for individual users
+- **Audit Logging**: All AI usage is tracked for compliance and monitoring
+- **Session Security**: AI conversations are tied to your secure authenticated session
 
 ## Downloads & Sampling
 
