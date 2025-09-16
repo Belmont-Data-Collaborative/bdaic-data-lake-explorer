@@ -114,27 +114,42 @@ npm run dev
 - **API**: http://localhost:5000/api
 - **Health Check**: http://localhost:5000/api/health
 
-## 📚 Documentation
+## 📚 Comprehensive Documentation
 
-Comprehensive documentation is available in the `docs/` directory:
+Complete documentation ecosystem available in the `docs/` directory with professional-grade guides for all users:
 
-### 📖 User Guides
-- **[User Guide](docs/guides/UserGuide.md)** - Complete guide for end users including AI search features
-- **[Admin Guide](docs/guides/AdminGuide.md)** - Administrative features, RBAC, and system management
+### 🎯 **[Documentation Hub](docs/README.md)** - Central navigation for all documentation
+
+### 👥 User Guides
+- **[User Guide](docs/guides/UserGuide.md)** - Complete end-user guide with AI-powered column search, data downloads, and folder navigation
+- **[Admin Guide](docs/guides/AdminGuide.md)** - Administrative features: RBAC, user management, AI controls, AWS configuration
 
 ### 🔧 Technical Reference
-- **[API Documentation](docs/API.md)** - Complete API reference with authentication and security
-- **[Services Documentation](docs/services/)** - AWS S3, OpenAI, caching, and other service integrations
-- **[Module Documentation](docs/modules/)** - Frontend components, backend architecture, and shared schemas
+- **[API Documentation](docs/API.md)** - Complete REST API reference with authentication, endpoints, and error handling
+- **[Service Documentation](docs/services/)** - Deep technical guides:
+  - [AWS S3 Integration](docs/services/aws-s3.md) - S3 operations, dataset discovery, format detection
+  - [OpenAI Integration](docs/services/openai.md) - AI analytics, semantic search, GPT-4o integration
+  - [JWT Authentication](docs/services/auth-jwt.md) - Security implementation, RBAC, session management
+  - [Caching System](docs/services/caching.md) - Multi-layer caching strategies and optimization
+  - [Performance Monitoring](docs/services/performance-monitor.md) - Built-in metrics and optimization
+  - [Intelligent Data Sampler](docs/services/intelligent-data-sampler.md) - Smart sampling algorithms
+- **[Module Documentation](docs/modules/)** - Architecture deep-dive:
+  - [Backend Architecture](docs/modules/backend.md) - Express routes, middleware, storage interface
+  - [Frontend Components](docs/modules/frontend.md) - React components, hooks, state management
+  - [Shared Schema](docs/modules/shared.md) - TypeScript types, Zod validation, database schema
+  - [Configuration](docs/modules/configuration.md) - Environment setup, build tools, deployment
 
-### 🛡️ Security & Operations
-- **[Security Guide](docs/SECURITY.md)** - Security architecture, access control, and best practices
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions for multiple platforms
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - Detailed system architecture and design decisions
+### 🚀 Operations & Deployment
+- **[Operations Hub](docs/operations/README.md)** - Complete operational documentation:
+  - [Deployment Guide](docs/operations/deployment.md) - Production deployment with PM2, Nginx, SSL
+  - [Scaling Guide](docs/operations/scaling.md) - Performance optimization, horizontal scaling strategies
+  - [Troubleshooting Guide](docs/operations/troubleshooting.md) - Comprehensive diagnostic procedures
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design, data flow, technical decisions
+- **[Security Guide](docs/SECURITY.md)** - Security architecture, access control, audit policies
 
 ### 🤖 AI Features
-- **[AI Context Engineering](Context_Engineering_for_Ask_AI_Feature.md)** - Technical documentation for AI features
-- **[OpenAI Integration](docs/services/openai.md)** - AI-powered analytics and column search implementation
+- **[AI Context Engineering](Context_Engineering_for_Ask_AI_Feature.md)** - Technical AI implementation details
+- **[OpenAI Integration Guide](docs/services/openai.md)** - AI-powered analytics and semantic column search
 
 ## 🏗 Project Structure
 
@@ -260,22 +275,34 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Verify file format is supported (CSV, JSON, etc.)
 
 ### Getting Help
+- **Documentation**: Complete troubleshooting guide at [`docs/operations/troubleshooting.md`](docs/operations/troubleshooting.md)
+- **Operations Support**: Deployment and scaling guidance at [`docs/operations/`](docs/operations/)
+- **User Support**: Step-by-step help in [`docs/guides/UserGuide.md`](docs/guides/UserGuide.md)
+- **Admin Support**: Management procedures in [`docs/guides/AdminGuide.md`](docs/guides/AdminGuide.md)
 - **Issues**: Report bugs or request features via GitHub Issues
 - **Logs**: Check browser console and server logs for detailed error information
-- **Debug Mode**: Enable detailed logging for troubleshooting
 
 ## 🔄 Recent Updates (September 2025)
 
-### AI-Powered Enhancements
+### 📚 Comprehensive Documentation Overhaul
+- ✅ **Complete Documentation Ecosystem**: Professional-grade documentation with 7 major areas
+- ✅ **User & Admin Guides**: Complete workflows including AI search and RBAC management
+- ✅ **Technical Deep-Dive**: Service documentation for AWS S3, OpenAI, JWT, caching, performance monitoring
+- ✅ **Module Architecture**: Backend, frontend, shared schema, and configuration documentation
+- ✅ **Operations Documentation**: Production deployment, scaling strategies, comprehensive troubleshooting
+- ✅ **Navigation System**: Centralized docs hub with cross-references and quick navigation
+
+### 🤖 AI-Powered Enhancements
 - ✅ **AI-Powered Column Search**: Semantic column search using OpenAI for intelligent matching
-- ✅ **Search UX Improvements**: Loading indicators and real-time feedback for AI searches
+- ✅ **Search UX Improvements**: Loading indicators ("AI is searching...") and real-time feedback
 - ✅ **Optimized Sampling**: Reduced sample size from 10% to 1% with intelligent bounds (1KB-10MB)
 - ✅ **Enhanced Error Handling**: Comprehensive error handling for AI and S3 operations
 
-### Performance & Reliability
+### 🚀 Performance & Reliability
 - ✅ **S3 Range Request Fix**: Switched from pre-signed URLs to backend streaming for samples
 - ✅ **Authentication Improvements**: Enhanced JWT handling and middleware authentication
 - ✅ **Column Schema Search**: Both column names and descriptions included in search results
+- ✅ **Cache Optimization**: Multi-layered caching with 5.3s warm-up for 294 datasets across 17 folders
 - ✅ **Debug Logging**: Comprehensive logging system for troubleshooting AI search functionality
 
 ## 🔄 Previous Updates (August 2025)
