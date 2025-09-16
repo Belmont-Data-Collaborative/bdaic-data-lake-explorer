@@ -12,7 +12,6 @@ Welcome to Data Lake Explorer! This comprehensive guide will help you navigate, 
 - [Dataset Operations](#dataset-operations)
 - [AI Features](#ai-features)
 - [Downloads & Sampling](#downloads--sampling)
-- [Statistics & Performance](#statistics--performance)
 - [User Panel & Account](#user-panel--account)
 - [Collaboration Features](#collaboration-features)
 - [Troubleshooting](#troubleshooting)
@@ -22,22 +21,22 @@ Welcome to Data Lake Explorer! This comprehensive guide will help you navigate, 
 
 ### What You Can Do
 
-- **Browse & Explore**: Navigate 294 datasets organized across 17 folders by data sources
+- **Browse & Explore**: Navigate datasets organized by folders and data sources
 - **Smart Search**: Use AI-powered semantic search to find relevant columns and datasets
-- **Download Data**: Get optimized samples (1% of data with 1KB-10MB bounds) or full datasets
-- **AI Analysis**: Ask questions about your data and generate AI-powered insights
-- **Multi-Dataset Analysis**: Compare and analyze multiple datasets simultaneously
+- **Download Data**: Get optimized samples (1% of data with intelligent bounds) or full datasets
+- **AI Analysis**: Ask questions about your data and generate AI-powered insights (if enabled)
+- **Multi-Dataset Analysis**: Compare and analyze multiple datasets simultaneously (if enabled)
 - **Column Discovery**: Find relevant data columns using natural language descriptions
 - **Real-Time Statistics**: View dynamic statistics about your accessible data
-- **Performance Monitoring**: Track your data usage and download patterns
+- **Usage Tracking**: Monitor your data access and download patterns
 
 ### Quick Start Steps
 
 1. **Log In**: Use your provided username and password
-2. **Browse Folders**: Explore available data sources in folder cards
-3. **Search Datasets**: Use the search bar or AI-powered search
+2. **Browse Folders**: Explore available data sources in folder cards (based on your permissions)
+3. **Search Datasets**: Use the search bar or AI-powered search (if enabled for your account)
 4. **Preview Data**: Use column schema and sample downloads
-5. **Analyze**: Leverage AI features for insights and questions
+5. **Analyze**: Leverage AI features for insights and questions (if enabled for your account)
 
 ## Authentication & Access
 
@@ -87,24 +86,26 @@ Datasets are organized into folders by data source:
 - **Data Sources**: How many different sources contribute data
 - **Last Updated**: When the folder was last refreshed
 
-**Available Data Sources** (17 folders with 294 datasets):
-- `cdc_places` (20 datasets) - CDC health and demographic data
-- `census_acs5` (72 datasets) - American Community Survey data  
-- `census_acs5_profile` (54 datasets) - Census profile data
-- `irs_990_efile` (35 datasets) - Nonprofit organization data
-- `usda_census_agriculture` (30 datasets) - Agricultural census data
-- `ndacan` (17 datasets) - Child welfare and abuse data
-- `nashville_police_incidents` (12 datasets) - Police incident reports
-- `nashville_traffic_accidents` (11 datasets) - Traffic accident data
-- `cms_medicare_disparities` (11 datasets) - Medicare disparity data
-- `cdc_svi` (10 datasets) - Social vulnerability index
-- `epa_ejscreen` (8 datasets) - Environmental justice data
-- `cdc_wonder` (4 datasets) - CDC health statistics
-- `feeding_america` (4 datasets) - Food insecurity statistics
-- `county_health_rankings` (2 datasets) - Health ranking data
-- `state_specific` (2 datasets) - State-level data
-- `epa_smart_location` (1 dataset) - Location-based data
-- `usda_food_access` (1 dataset) - Food access metrics
+**Common Data Source Types:**
+- `cdc_places` - CDC health and demographic data
+- `census_acs5` - American Community Survey data  
+- `census_acs5_profile` - Census profile data
+- `irs_990_efile` - Nonprofit organization data
+- `usda_census_agriculture` - Agricultural census data
+- `ndacan` - Child welfare and abuse data
+- `nashville_police_incidents` - Police incident reports
+- `nashville_traffic_accidents` - Traffic accident data
+- `cms_medicare_disparities` - Medicare disparity data
+- `cdc_svi` - Social vulnerability index
+- `epa_ejscreen` - Environmental justice data
+- `cdc_wonder` - CDC health statistics
+- `feeding_america` - Food insecurity statistics
+- `county_health_rankings` - Health ranking data
+- `state_specific` - State-level data
+- `epa_smart_location` - Location-based data
+- `usda_food_access` - Food access metrics
+
+**Note**: You will only see folders and datasets that your administrator has granted you access to.
 
 ### Dataset Information
 

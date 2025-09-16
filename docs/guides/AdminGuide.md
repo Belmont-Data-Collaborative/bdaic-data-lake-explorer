@@ -1,6 +1,6 @@
 # Data Lake Explorer - Administrator Guide
 
-This comprehensive guide covers all administrative functions for managing users, configuring access, monitoring performance, and maintaining the Data Lake Explorer system.
+This comprehensive guide covers all administrative functions for managing users, configuring access, monitoring performance, and maintaining the Data Lake Explorer system with the latest AI-powered features and enhanced security.
 
 ## Table of Contents
 
@@ -8,12 +8,16 @@ This comprehensive guide covers all administrative functions for managing users,
 - [User Management](#user-management)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
 - [AI Feature Management](#ai-feature-management)
+- [AI-Powered Column Search](#ai-powered-column-search)
 - [Folder Access Control](#folder-access-control)
 - [AWS Configuration](#aws-configuration)
 - [System Monitoring](#system-monitoring)
 - [Performance Management](#performance-management)
+- [Caching System](#caching-system)
 - [Security Operations](#security-operations)
 - [Data Management](#data-management)
+- [Documentation Management](#documentation-management)
+- [Operations & Deployment](#operations--deployment)
 - [Troubleshooting](#troubleshooting)
 - [Best Practices](#best-practices)
 
@@ -23,51 +27,66 @@ This comprehensive guide covers all administrative functions for managing users,
 
 As an administrator, you have full control over:
 
-- **User Lifecycle**: Creating, managing, and deactivating user accounts
-- **Access Control**: Managing folder permissions and role assignments
-- **AI Features**: Enabling/disabling AI capabilities per user
-- **Data Sources**: Configuring AWS S3 connections and refreshing datasets
-- **System Health**: Monitoring performance, cache management, and troubleshooting
-- **Security**: Managing authentication, sessions, and audit logging
+- **User Lifecycle**: Creating, managing, and deactivating user accounts with zero-access security model
+- **Access Control**: Managing granular folder permissions and role assignments
+- **AI Features**: Individual user-level control of AI capabilities (Ask AI, Generate Insights, Multi-Dataset Chat)
+- **AI Search Management**: Configuring OpenAI GPT-4o powered semantic column search
+- **Data Sources**: Configuring AWS S3 connections and automated dataset discovery with progressive scanning
+- **System Health**: Advanced performance monitoring, multi-layer caching, and comprehensive troubleshooting
+- **Security**: JWT authentication, session management, audit logging, and compliance monitoring
+- **Documentation**: Managing comprehensive user guides, technical documentation, and operational procedures
+- **Operations**: Production deployment, scaling strategies, and system optimization
 
 ### Administrator Dashboard
 
 **Key Metrics Available:**
-- Total datasets and data volume
-- Active users and their permissions
-- System performance indicators
-- Recent user activity and downloads
-- Cache performance and hit rates
+- Real-time dataset statistics and data volume across all folders
+- Active users with detailed permission matrices
+- Advanced performance indicators (response times, cache hit rates, query performance)
+- User activity tracking (downloads, AI usage, search patterns)
+- AI feature utilization and OpenAI API usage
+- Multi-layered cache performance with intelligent warming
+- Database optimization metrics and slow query detection
 
 **Quick Actions:**
-- Create new user accounts
-- Refresh dataset metadata from S3
-- Clear system caches
-- Generate system reports
+- Create new user accounts with customizable permissions
+- Trigger automated S3 dataset refresh with progressive scanning
+- Manage multi-layer cache system (clear, warm, optimize)
+- Generate comprehensive system and usage reports
+- Configure AI search parameters and OpenAI integration
+- Access complete operational documentation and troubleshooting guides
 
 ## User Management
 
 ### Creating New Accounts
 
-**Registration is completely disabled** for regular users. Only administrators can create accounts.
+**Registration is completely disabled** for regular users as of August 2025 security enhancement. Only administrators can create accounts following the zero-access security model.
 
-**Create User Process:**
-1. Navigate to **User Management** section
-2. Click **"Create New User"**
-3. Fill required information:
-   - **Username**: Unique identifier for login
-   - **Email**: Contact email address
-   - **Password**: Secure initial password
-   - **Role**: Admin or User (see RBAC section)
-4. Set initial permissions:
-   - **Folder Access**: No folders by default (zero-access approach)
-   - **AI Features**: Disabled by default for security
+**Enhanced Create User Process:**
+1. Navigate to **Admin Panel** → **User Management** section
+2. Click **"Create New User"** button
+3. Fill required information with validation:
+   - **Username**: Unique identifier for login (validated for conflicts)
+   - **Email**: Contact email address (validated for format and uniqueness)
+   - **Password**: Secure initial password (minimum 8 characters)
+   - **Role**: Admin or User (see updated RBAC section)
+4. Configure security permissions (zero-access by default):
+   - **Folder Access**: No folders assigned (must be explicitly granted)
+   - **AI Features**: All AI capabilities disabled (Ask AI, Generate Insights, Multi-Dataset Chat)
+   - **Account Status**: Active by default
+5. Optional advanced settings:
+   - **AI Search Access**: Enable/disable semantic column search
+   - **Download Permissions**: Sample, full, and metadata download rights
+   - **Session Timeout**: Custom JWT session length
 
-**Default New User Settings:**
+**Default New User Settings (Zero-Access Security Model):**
 - **Role**: User (not Admin)
-- **Folder Access**: None (must be explicitly granted)
-- **AI Features**: Disabled (must be explicitly enabled)
+- **Folder Access**: None (must be explicitly granted per folder)
+- **AI Features**: All disabled (Ask AI, Generate Insights, Multi-Dataset Chat)
+- **AI Search**: Disabled (semantic column search with OpenAI)
+- **Download Rights**: Sample, full, and metadata downloads available once folder access granted
 - **Account Status**: Active
+- **Session Management**: Standard JWT timeout with secure token handling
 
 ### User Account Management
 
@@ -84,11 +103,15 @@ As an administrator, you have full control over:
 - **Toggle Active Status**: Immediately disable/enable login access
 - **Delete Account**: Permanently remove user (use cautiously)
 
-**User Status Indicators:**
+**Enhanced User Status Indicators:**
 - 🟢 **Active**: Can log in and access assigned resources
-- 🔴 **Inactive**: Login disabled, no system access
-- 👑 **Admin**: Full administrative privileges
-- 👤 **User**: Standard user with limited permissions
+- 🔴 **Inactive**: Login disabled, immediate system lockout
+- 👑 **Admin**: Full administrative privileges with AI features enabled by default
+- 👤 **User**: Standard user with folder-based permissions
+- 🤖 **AI Enabled**: User has access to AI-powered features
+- 🔍 **AI Search**: User can use semantic column search
+- 📁 **Folder Access**: Shows number of folders user can access
+- 📊 **Usage Stats**: Download and AI usage tracking
 
 ### Password Management
 
@@ -107,17 +130,21 @@ As an administrator, you have full control over:
 
 ### User Activity Monitoring
 
-**Track User Actions:**
-- Login attempts and session activity
-- Dataset access and download patterns
-- AI feature usage and query frequency
-- Folder access attempts and permissions
+**Enhanced User Activity Tracking:**
+- JWT session management with token expiration monitoring
+- Real-time dataset access and download patterns
+- AI feature usage analytics (Ask AI, Generate Insights, Multi-Dataset Chat)
+- Semantic search usage and OpenAI API consumption
+- Folder access attempts and permission validation
+- Performance metrics per user (response times, cache hits)
 
-**Audit Information:**
-- **Login History**: Successful and failed login attempts
-- **Download Logs**: Sample and full dataset downloads
-- **AI Usage**: AI queries and insights generation
-- **System Actions**: Cache invalidation, system refreshes
+**Comprehensive Audit Information:**
+- **Authentication Logs**: JWT token validation, session management, failed attempts
+- **Download Analytics**: Sample (1% with intelligent bounds), full dataset, and metadata downloads
+- **AI Usage Metrics**: Query frequency, response quality, OpenAI API consumption
+- **Search Analytics**: Column search patterns, AI semantic search usage
+- **System Operations**: Cache invalidation, dataset refresh triggers, performance optimization
+- **Security Events**: Permission changes, account status modifications, admin actions
 
 ## Role-Based Access Control (RBAC)
 
@@ -689,5 +716,119 @@ For technical issues beyond this guide, contact:
 - Application developers for feature issues
 - Security team for access control problems
 
+## AI-Powered Column Search Management
+
+### Overview
+
+The AI-powered column search feature uses OpenAI GPT-4o to provide semantic search capabilities, allowing users to find relevant data columns using natural language descriptions even when column names don't exactly match search terms.
+
+### Administrative Configuration
+
+**OpenAI Integration Setup:**
+- **API Key Configuration**: Ensure OPENAI_API_KEY is configured in environment variables
+- **Model Selection**: Currently using GPT-4o for optimal performance and accuracy
+- **Rate Limiting**: Monitor OpenAI API usage to prevent quota exhaustion
+- **Cost Management**: Track API consumption per user and implement usage policies
+
+**User-Level AI Search Control:**
+- **Individual Enablement**: Enable/disable AI search per user independently
+- **Folder Integration**: AI search respects folder-level permissions
+- **Performance Monitoring**: Track search response times and success rates
+- **Usage Analytics**: Monitor which users utilize AI search most frequently
+
+### Managing AI Search Access
+
+**Configuration Steps:**
+1. Navigate to **Admin Panel** → **User Management**
+2. Select user and toggle **"AI Features Enabled"**
+3. Monitor usage through **AI Analytics Dashboard**
+4. Configure search parameters and response limits
+
+**Technical Monitoring:**
+- **Response Times**: Target 2-3 seconds for AI search completion
+- **API Success Rate**: Monitor OpenAI API connectivity and reliability
+- **Search Quality**: Review user feedback and search result relevance
+- **Cache Integration**: AI search results integrated with multi-layer caching system
+
+## Enhanced Caching System
+
+### Multi-Layer Caching Architecture
+
+**Cache Layers:**
+1. **In-Memory Cache**: Fast access for frequently requested data
+2. **Database Query Cache**: Optimized query results storage
+3. **AI Search Cache**: Cached AI search results for common queries
+4. **Static Asset Cache**: File and metadata caching
+
+**Cache Management:**
+- **Automatic Warming**: Cache preloads critical data on startup
+- **Intelligent TTL**: Different expiration times based on data type
+- **Performance Monitoring**: Real-time cache hit rates and performance metrics
+- **Manual Controls**: Admin ability to clear, warm, and optimize caches
+
+### Cache Performance Optimization
+
+**Current Performance Metrics:**
+- **Warm-up Time**: Optimized cache initialization
+- **Hit Rates**: Monitor cache effectiveness
+- **Memory Usage**: Track cache memory consumption
+- **Invalidation Patterns**: Smart cache clearing on data updates
+
+## Documentation Management
+
+### Comprehensive Documentation System
+
+**Documentation Architecture:**
+- **User Guides**: Complete end-user and administrator documentation
+- **Technical Documentation**: Service integration and module architecture guides
+- **Operations Documentation**: Deployment, scaling, and troubleshooting procedures
+- **API Documentation**: Complete REST API reference with authentication details
+
+**Administrative Documentation Tasks:**
+- **User Training**: Provide access to comprehensive user guides
+- **System Documentation**: Maintain technical documentation for system architecture
+- **Operations Procedures**: Access to deployment and scaling guides
+- **Troubleshooting Resources**: Complete diagnostic and resolution procedures
+
+### Documentation Navigation
+
+**Key Documentation Sections:**
+- **[User Guide](UserGuide.md)**: Complete guide for end users with AI features
+- **[Operations Hub](../operations/README.md)**: Deployment, scaling, and troubleshooting
+- **[API Reference](../API.md)**: Complete REST API documentation
+- **[Service Documentation](../services/)**: Technical integration guides
+- **[Module Documentation](../modules/)**: Code architecture and development guides
+
+## Operations & Deployment
+
+### Production Operations
+
+**Deployment Resources:**
+- **[Deployment Guide](../operations/deployment.md)**: Complete production deployment instructions
+- **[Scaling Guide](../operations/scaling.md)**: Performance optimization and scaling strategies
+- **[Troubleshooting Guide](../operations/troubleshooting.md)**: Comprehensive diagnostic procedures
+
+**System Administration:**
+- **Health Monitoring**: Built-in system health checks and performance metrics
+- **Backup Procedures**: Database and configuration backup strategies
+- **Security Updates**: Regular security patch management and monitoring
+- **Performance Tuning**: Cache optimization, database indexing, and query performance
+
+### Advanced Administration
+
+**Performance Monitoring:**
+- **Real-time Metrics**: System performance, user activity, and resource utilization
+- **Database Optimization**: Query performance analysis and index management
+- **Cache Performance**: Multi-layer cache hit rates and optimization
+- **AI Usage Analytics**: OpenAI API consumption and cost tracking
+
+**Security Management:**
+- **JWT Token Management**: Session security and token expiration policies
+- **User Access Auditing**: Comprehensive logging and access pattern analysis
+- **Folder Permission Management**: Granular access control and permission inheritance
+- **Compliance Monitoring**: User activity tracking and audit trail maintenance
+
+---
+
 **Last Updated**: September 2025  
-**Version**: 2.1.0 (AI Search Enhancement Release)
+**Version**: 2.2.0 (Documentation Enhancement & AI Search Release)
