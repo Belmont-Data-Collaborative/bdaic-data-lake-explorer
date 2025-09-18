@@ -8,6 +8,7 @@ import {
   userFolderAccess,
   folderAiSettings,
   aiUsageLog,
+  schedulerConfig,
   type Dataset,
   type InsertDataset,
   type AwsConfig,
@@ -18,6 +19,9 @@ import {
   type InsertUser,
   type UpdateUser,
   type UserFolderAccess,
+  type SchedulerConfigType,
+  type InsertSchedulerConfig,
+  type UpdateSchedulerConfig,
   insertAiUsageLogSchema
 } from "@shared/schema";
 import { db } from "./db";
@@ -51,7 +55,12 @@ export interface IStorage {
 
   // Refresh tracking operations
   getLastRefreshTime(): Promise<Date | null>;
-  logRefresh(datasetsCount: number): Promise<void>;
+  logRefresh(datasetsCount: number, metadata?: any): Promise<void>;
+  
+  // Scheduler operations
+  getSchedulerConfig(): Promise<any | undefined>;
+  updateSchedulerConfig(config: any): Promise<any>;
+  getSchedulerStatus(): Promise<any>;
 
   // Download tracking operations
   recordDownload(datasetId: number, downloadType: 'sample' | 'full' | 'metadata', ipAddress?: string, userAgent?: string): Promise<Download>;
@@ -306,13 +315,86 @@ export class DatabaseStorage implements IStorage {
     return lastRefresh?.lastRefreshTime || null;
   }
 
-  async logRefresh(datasetsCount: number): Promise<void> {
+  async logRefresh(datasetsCount: number, metadata?: any): Promise<void> {
     await db
       .insert(refreshLog)
       .values({
         lastRefreshTime: new Date(),
         datasetsCount,
+        newDatasets: metadata?.newDatasets || 0,
+        updatedDatasets: metadata?.updatedDatasets || 0,
+        removedDatasets: metadata?.removedDatasets || 0,
+        scheduledRefresh: metadata?.scheduledRefresh || false,
+        errorMessage: metadata?.error || null,
+        metadata: metadata ? JSON.stringify(metadata) : null,
       });
+  }
+  
+  // Scheduler operations
+  async getSchedulerConfig(): Promise<SchedulerConfigType | undefined> {
+    const [config] = await db
+      .select()
+      .from(schedulerConfig)
+      .orderBy(desc(schedulerConfig.id))
+      .limit(1);
+    return config || undefined;
+  }
+
+  async updateSchedulerConfig(config: UpdateSchedulerConfig): Promise<SchedulerConfigType> {
+    const existing = await this.getSchedulerConfig();
+    
+    if (existing) {
+      // Update existing config
+      const [updated] = await db
+        .update(schedulerConfig)
+        .set({
+          ...config,
+          updatedAt: new Date(),
+        })
+        .where(eq(schedulerConfig.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new config
+      const [created] = await db
+        .insert(schedulerConfig)
+        .values({
+          enabled: config.enabled || false,
+          intervalMinutes: config.intervalMinutes || 30,
+          lastRun: config.lastRun,
+          nextRun: config.nextRun,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getSchedulerStatus(): Promise<SchedulerConfigType & { recentRefreshes: any[] }> {
+    const config = await this.getSchedulerConfig();
+    
+    // Get recent refresh history
+    const recentRefreshes = await db
+      .select()
+      .from(refreshLog)
+      .orderBy(desc(refreshLog.lastRefreshTime))
+      .limit(10);
+    
+    const defaultConfig: SchedulerConfigType = {
+      id: 0,
+      enabled: false,
+      intervalMinutes: 30,
+      lastRun: null,
+      nextRun: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    return {
+      ...(config || defaultConfig),
+      recentRefreshes,
+    };
   }
 
   // User management methods

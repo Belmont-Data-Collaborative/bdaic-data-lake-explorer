@@ -86,9 +86,32 @@ export const refreshLog = pgTable("refresh_log", {
   id: serial("id").primaryKey(),
   lastRefreshTime: timestamp("last_refresh_time").notNull().defaultNow(),
   datasetsCount: integer("datasets_count").notNull().default(0),
+  newDatasets: integer("new_datasets").default(0),
+  updatedDatasets: integer("updated_datasets").default(0),
+  removedDatasets: integer("removed_datasets").default(0),
+  scheduledRefresh: boolean("scheduled_refresh").default(false),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata"),
 }, (table) => ({
   // Index on lastRefreshTime for finding most recent refreshes
   lastRefreshTimeIdx: index("idx_refresh_log_last_refresh_time").on(table.lastRefreshTime),
+  // Index on scheduled refresh for filtering automatic vs manual refreshes
+  scheduledRefreshIdx: index("idx_refresh_log_scheduled").on(table.scheduledRefresh),
+}));
+
+export const schedulerConfig = pgTable("scheduler_config", {
+  id: serial("id").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  intervalMinutes: integer("interval_minutes").notNull().default(30),
+  lastRun: timestamp("last_run"),
+  nextRun: timestamp("next_run"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Index on enabled for finding active scheduler
+  enabledIdx: index("idx_scheduler_config_enabled").on(table.enabled),
+  // Index on nextRun for scheduling queries
+  nextRunIdx: index("idx_scheduler_config_next_run").on(table.nextRun),
 }));
 
 export const downloads = pgTable("downloads", {
@@ -324,3 +347,10 @@ export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type UserFolderAccess = typeof userFolderAccess.$inferSelect;
 export type InsertUserFolderAccess = z.infer<typeof insertUserFolderAccessSchema>;
 export type UpdateUserFolderAccess = z.infer<typeof updateUserFolderAccessSchema>;
+
+// Scheduler Config schema
+export const insertSchedulerConfigSchema = createInsertSchema(schedulerConfig);
+export const updateSchedulerConfigSchema = insertSchedulerConfigSchema.partial().omit({ id: true });
+export type InsertSchedulerConfig = z.infer<typeof insertSchedulerConfigSchema>;
+export type UpdateSchedulerConfig = z.infer<typeof updateSchedulerConfigSchema>;
+export type SchedulerConfigType = typeof schedulerConfig.$inferSelect;
