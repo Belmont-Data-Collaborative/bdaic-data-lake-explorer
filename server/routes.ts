@@ -678,6 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Create new AWS configuration
   app.post("/api/aws-configs", async (req, res) => {
     try {
@@ -1508,6 +1509,7 @@ Score from 0.0 to 1.0 where 1.0 is perfect match. Only include columns with scor
 
       // For smaller files, use traditional streaming
       console.log(`Small file detected (${dataset.sizeBytes || 'unknown'} bytes), using server streaming`);
+      console.log(`Attempting to download: bucket=${config.bucketName}, source="${dataset.source}", name="${dataset.name}"`);
       
       const fileInfo = await s3Service.downloadFullFile(config.bucketName, dataset.source, dataset.name);
       
