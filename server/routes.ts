@@ -679,6 +679,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Temporary debug endpoint to check S3 files
+  app.get("/api/debug/s3-files/:folder", async (req, res) => {
+    try {
+      const folder = req.params.folder;
+      const config = await storage.getAwsConfig();
+      
+      if (!config || !config.bucketName) {
+        return res.status(400).json({ message: "AWS configuration not found" });
+      }
+
+      const s3Service = createAwsS3Service(config.region);
+      
+      // List all files in the folder
+      const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+      const command = new ListObjectsV2Command({
+        Bucket: config.bucketName,
+        Prefix: `${folder}/`,
+        MaxKeys: 1000,
+      });
+
+      const response = await s3Service.s3Client.send(command);
+      
+      const files = response.Contents?.map(obj => ({
+        key: obj.Key,
+        size: obj.Size,
+        lastModified: obj.LastModified,
+        sizeFormatted: obj.Size ? `${(obj.Size / 1024 / 1024).toFixed(1)} MB` : '0 MB'
+      })) || [];
+
+      res.json({ 
+        folder, 
+        bucket: config.bucketName,
+        fileCount: files.length,
+        files: files.sort((a, b) => a.key?.localeCompare(b.key || '') || 0)
+      });
+    } catch (error) {
+      console.error("Error listing S3 files:", error);
+      res.status(500).json({ message: "Failed to list S3 files" });
+    }
+  });
+
   // Create new AWS configuration
   app.post("/api/aws-configs", async (req, res) => {
     try {
